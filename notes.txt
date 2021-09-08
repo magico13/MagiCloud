@@ -1,0 +1,15 @@
+GET files # list of files
+GET file/id # metadata of a file
+GET file/id/content # file content
+POST file # upload a new file
+PUT file # replace a file
+DELETE file # remove a file
+
+GET user # user info
+GET user/id # user info for another user
+POST user # create a new user
+DELETE user # remove a user and all of their files
+
+POST login # log in as a user
+
+Using Azure AD for authentication. Might be able to link to the active microsoft account automatically.
