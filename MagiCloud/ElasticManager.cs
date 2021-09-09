@@ -1,5 +1,5 @@
 ﻿using MagiCloud.Configuration;
-using MagiCloud.Models;
+using MagiCommon.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

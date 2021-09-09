@@ -1,11 +1,11 @@
 ﻿using MagiCloud.DataManager;
+using MagiCommon;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -17,12 +17,14 @@ namespace MagiCloud.Controllers
         private readonly ILogger<FileContentController> _logger;
         private readonly IElasticManager _elastic;
         private readonly IDataManager _dataManager;
+        private readonly IHashService _hashService;
 
-        public FileContentController(ILogger<FileContentController> logger, IElasticManager elastic, IDataManager dataManager)
+        public FileContentController(ILogger<FileContentController> logger, IElasticManager elastic, IDataManager dataManager, IHashService hashService)
         {
             _logger = logger;
             _elastic = elastic;
             _dataManager = dataManager;
+            _hashService = hashService;
         }
 
 
@@ -80,11 +82,8 @@ namespace MagiCloud.Controllers
                 if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
-                    using HashAlgorithm alg = SHA256.Create();
                     using var stream = file.OpenReadStream();
-                    var bytes = alg.ComputeHash(stream);
-                    var hash = Convert.ToBase64String(bytes);
-
+                    var hash = _hashService.GenerateHash(stream, false);
                     doc.Hash = hash;
                     doc.MimeType = file.ContentType;
                     doc.Size = file.Length;

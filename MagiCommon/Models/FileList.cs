@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace MagiCloud.Models
+namespace MagiCommon.Models
 {
     public class FileList
     {

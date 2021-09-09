@@ -1,5 +1,5 @@
 ﻿using MagiCloud.DataManager;
-using MagiCloud.Models;
+using MagiCommon.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;

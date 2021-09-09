@@ -1,5 +1,6 @@
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
+using MagiCommon;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +25,8 @@ namespace MagiCloud
 
             services.AddScoped<IElasticManager, ElasticManager>();
             services.AddScoped<IDataManager, FileSystemDataManager>();
-            
+            services.AddScoped<IHashService, HashService>();
+
             services.AddControllers();
 
         }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MagiCloud.Models
+namespace MagiCommon.Models
 {
     public class ElasticFileInfo
     {
