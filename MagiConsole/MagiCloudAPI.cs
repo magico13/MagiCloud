@@ -10,7 +10,7 @@ namespace MagiConsole
     public interface IMagiCloudAPI
     {
         Task<FileList> GetFilesAsync();
-        Task UploadNewFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
+        Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
     }
@@ -30,18 +30,23 @@ namespace MagiConsole
             return await Client.GetFromJsonAsync<FileList>("api/files");
         }
 
-        public async Task UploadNewFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
+        public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
         {
             var response = await Client.PostAsJsonAsync("api/files", fileInfo);
             response.EnsureSuccessStatusCode();
             var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
-            var content = new MultipartFormDataContent
+            if (fileInfo.Hash != returnedInfo.Hash || string.IsNullOrWhiteSpace(returnedInfo.Hash))
             {
-                { new StreamContent(fileStream), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
-            };
+                var content = new MultipartFormDataContent
+                {
+                    { new StreamContent(fileStream), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
+                };
 
-            response = await Client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
-            response.EnsureSuccessStatusCode();
+                response = await Client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
+                response.EnsureSuccessStatusCode();
+            }
+            
+            return await GetFileInfoAsync(returnedInfo.Id);
         }
 
         public async Task<ElasticFileInfo> GetFileInfoAsync(string id)

@@ -91,8 +91,8 @@ namespace MagiCloud.Controllers
                     //write file to data folder
                     await _dataManager.WriteFileAsync(doc.Id, stream);
 
-                    await _elastic.SetHashAsync(id, hash);
-                    await _elastic.IndexDocumentAsync(doc);
+                    await _elastic.UpdateFileAttributesAsync(doc);
+                    //await _elastic.IndexDocumentAsync(doc); //superfluous?
 
                     return NoContent();
                 }

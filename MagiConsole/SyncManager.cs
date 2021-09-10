@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using MagiCommon;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,12 +14,14 @@ namespace MagiConsole
         public MagiContext DbAccess { get; set; }
         public Settings Settings { get; set; }
         public IMagiCloudAPI ApiManager { get; set; }
+        public IHashService HashService { get; set; }
 
-        public SyncManager(MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager)
+        public SyncManager(MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager, IHashService hashService)
         {
             DbAccess = dbContext;
             Settings = config.Value;
             ApiManager = apiManager;
+            HashService = hashService;
         }
 
         public async Task SyncAsync()
@@ -47,15 +50,16 @@ namespace MagiConsole
                         Status = FileStatus.New
                     };
                 }
-                else if (dbFile.LastModified != lastModified)
+                else if (dbFile.LastModified != lastModified) //could check hash but would be expensive
                 {
                     dbFile.Status = FileStatus.Updated;
+                    dbFile.LastModified = lastModified;
                 }
                 knownFiles.Add(dbFile.Id, dbFile);
             }
 
             //check removed files by finding files in the db but not in the folder
-            var removed = DbAccess.Files.Except(knownFiles.Values);
+            var removedFiles = DbAccess.Files.Except(knownFiles.Values);
 
             // server files
             var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
@@ -70,6 +74,29 @@ namespace MagiConsole
                     await DownloadFileAsync(remote.Id);
                 }
             }
+
+            foreach (var kvp in knownFiles)
+            {
+                var info = kvp.Value;
+                //if new, upload as new, if changed, upload as changed
+                if (info.Status == FileStatus.New || info.Status == FileStatus.Updated)
+                {
+                    var path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+                    using var stream = File.OpenRead(path);
+                    info.Hash = HashService.GenerateHash(stream, true);
+                    var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
+                    if (info.Status == FileStatus.New)
+                    { //nothing exists with the new id
+                        DbAccess.Add(updatedInfo);
+                    }
+                    else
+                    { //something already exists with this id
+                        DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
+                    }
+                }
+            }
+
+            await DbAccess.SaveChangesAsync();
         }
 
 
@@ -95,7 +122,6 @@ namespace MagiConsole
             {
                 existing = info.ToFileData();
             }
-            await DbAccess.SaveChangesAsync();
         }
     }
 }

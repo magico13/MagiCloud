@@ -19,7 +19,7 @@ namespace MagiCloud
         Task<ElasticFileInfo> GetDocumentAsync(string id);
         Task<string> IndexDocumentAsync(ElasticFileInfo file);
         Task<bool> DeleteFileAsync(ElasticFileInfo file);
-        Task SetHashAsync(string id, string hash);
+        Task UpdateFileAttributesAsync(ElasticFileInfo file);
     }
 
 
@@ -115,7 +115,10 @@ namespace MagiCloud
         public async Task<string> IndexDocumentAsync(ElasticFileInfo file)
         {
             Setup();
-            file.LastModified = DateTimeOffset.Now;
+            if (file.LastModified == default)
+            {
+                file.LastModified = DateTimeOffset.Now;
+            }
             file.Hash = null;
             // if an id is provided, check if that file actually exists, if not throw that out
             if (!string.IsNullOrWhiteSpace(file.Id))
@@ -127,7 +130,7 @@ namespace MagiCloud
                 }
                 else
                 {
-                    EnsureHash(file, existing);
+                    EnsureFileAttributes(file, existing);
                 }
             }
             if (string.IsNullOrEmpty(file.MimeType))
@@ -162,28 +165,31 @@ namespace MagiCloud
             return false;
         }
 
-        public async Task SetHashAsync(string id, string hash)
+        public async Task UpdateFileAttributesAsync(ElasticFileInfo file)
         {
-            var file = await GetDocumentAsync(id);
-            if (file is null)
+            var existing = await GetDocumentAsync(file.Id);
+            if (existing is null)
             {
-                throw new FileNotFoundException("Can not find file with id " + id, id);
+                throw new FileNotFoundException("Can not find file with id " + file.Id, file.Id);
             }
-            file.Hash = hash;
-            var result = await Client.IndexDocumentAsync(file);
+            existing.Hash = file.Hash;
+            existing.Size = file.Size;
+            existing.MimeType = file.MimeType;
+            var result = await Client.IndexDocumentAsync(existing);
             if (!result.IsValid)
             {
                 if (result.OriginalException != null)
                 {
                     throw result.OriginalException;
                 }
-                _logger.LogError("Error while updating the hash of document {DocId}.", id);
+                _logger.LogError("Error while updating the attributes of document {DocId}.", file.Id);
             }
         }
 
-        private void EnsureHash(ElasticFileInfo newFile, ElasticFileInfo existingFile)
+        private void EnsureFileAttributes(ElasticFileInfo newFile, ElasticFileInfo existingFile)
         {
             newFile.Hash = existingFile?.Hash;
+            newFile.Size = existingFile?.Size ?? 0;
         }
 
         private string GetMimeType(ElasticFileInfo file)
