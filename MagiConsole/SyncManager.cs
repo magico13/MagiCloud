@@ -59,7 +59,7 @@ namespace MagiConsole
             }
 
             //check removed files by finding files in the db but not in the folder
-            var removedFiles = DbAccess.Files.Except(knownFiles.Values);
+            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));// .Except(knownFiles.Values);
 
             // server files
             var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
@@ -94,6 +94,13 @@ namespace MagiConsole
                         DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
                     }
                 }
+            }
+
+            foreach (var file in removedFiles)
+            {
+                // these have been removed locally, remove them from the server
+                await ApiManager.RemoveFileAsync(file.Id);
+                DbAccess.Remove(file);
             }
 
             await DbAccess.SaveChangesAsync();

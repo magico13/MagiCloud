@@ -13,6 +13,7 @@ namespace MagiConsole
         Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
+        Task RemoveFileAsync(string id);
     }
 
     public class MagiCloudAPI : IMagiCloudAPI
@@ -57,6 +58,11 @@ namespace MagiConsole
         public async Task<Stream> GetFileContentAsync(string id)
         {
             return await Client.GetStreamAsync($"api/filecontent/{id}");
+        }
+
+        public async Task RemoveFileAsync(string id)
+        {
+            await Client.DeleteAsync($"api/files/{id}");
         }
     }
 }
