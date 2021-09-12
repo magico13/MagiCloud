@@ -11,8 +11,6 @@ namespace MagiConsole
 {
     public class Program
     {
-
-
         public static async Task Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
@@ -30,7 +28,7 @@ namespace MagiConsole
                 syncTimer?.Change(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
             }, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
 
-            host.Run();
+            await host.RunAsync();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
