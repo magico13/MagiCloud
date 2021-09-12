@@ -2,6 +2,7 @@
 using MagiCommon;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
@@ -42,6 +43,17 @@ namespace MagiCloud.Controllers
                     if (_dataManager.FileExists(doc.Id))
                     {
                         var stream = _dataManager.GetFile(doc.Id);
+                        if (string.IsNullOrWhiteSpace(doc.MimeType))
+                        {
+                            new FileExtensionContentTypeProvider().TryGetContentType($"{doc.Name}.{doc.Extension}", out string type);
+                            if (type is null)
+                            {
+                                type = "application/octet-stream";
+                            }
+                            doc.MimeType = type;
+                            _logger.LogWarning("MimeType data missing for document {DocId}, using type {ContentType}", doc.Id, doc.MimeType);
+
+                        }
                         return File(stream, doc.MimeType, doc.LastModified, new EntityTagHeaderValue($"\"{doc.Hash}\""));
                     }
                     else
@@ -85,7 +97,7 @@ namespace MagiCloud.Controllers
                     using var stream = file.OpenReadStream();
                     var hash = _hashService.GenerateHash(stream, false);
                     doc.Hash = hash;
-                    doc.MimeType = file.ContentType;
+                    doc.MimeType = file.ContentType ?? doc.MimeType;
                     doc.Size = file.Length;
 
                     //write file to data folder

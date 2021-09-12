@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -59,7 +60,13 @@ namespace MagiConsole
             }
 
             //check removed files by finding files in the db but not in the folder
-            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));// .Except(knownFiles.Values);
+            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
+            foreach (var file in removedFiles)
+            {
+                file.Status = FileStatus.Removed;
+                file.LastModified = DateTimeOffset.Now;
+                knownFiles.Add(file.Id, file);
+            }
 
             // server files
             var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
@@ -71,7 +78,19 @@ namespace MagiConsole
                 if (!knownFiles.TryGetValue(remote.Id, out FileData known) || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
                 {
                     //download it
-                    await DownloadFileAsync(remote.Id);
+                    
+                    var success = await DownloadFileAsync(remote.Id);
+                    if (!success)
+                    { //not found on the server, likely invalid/incomplete upload
+                        // Tell it to upload current data instead
+                        if (known != null || knownFiles.TryGetValue($"{remote.Name}.{remote.Extension}", out known))
+                        {
+                            remote.Status = FileStatus.New;
+                            knownFiles.Remove(known.Id);
+                            remote.LastModified = known.LastModified;
+                            knownFiles[remote.Id] = remote;
+                        }
+                    }
                 }
             }
 
@@ -94,40 +113,53 @@ namespace MagiConsole
                         DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
                     }
                 }
-            }
-
-            foreach (var file in removedFiles)
-            {
-                // these have been removed locally, remove them from the server
-                await ApiManager.RemoveFileAsync(file.Id);
-                DbAccess.Remove(file);
+                else if (info.Status == FileStatus.Removed)
+                {
+                    // these have been removed locally, remove them from the server
+                    await ApiManager.RemoveFileAsync(info.Id);
+                    DbAccess.Remove(info);
+                }
             }
 
             await DbAccess.SaveChangesAsync();
         }
 
 
-        private async Task DownloadFileAsync(string id)
+        private async Task<bool> DownloadFileAsync(string id)
         {
-            var info = await ApiManager.GetFileInfoAsync(id);
-            using var stream = await ApiManager.GetFileContentAsync(id);
-            string path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
-
-            using (var filestream = new FileStream(path, FileMode.Create))
+            try
             {
-                await stream.CopyToAsync(filestream);
+                var info = await ApiManager.GetFileInfoAsync(id);
+
+                using var stream = await ApiManager.GetFileContentAsync(id);
+                if (stream == Stream.Null)
+                {
+                    return false;
+                }
+                string path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+
+                using (var filestream = new FileStream(path, FileMode.Create))
+                {
+                    await stream.CopyToAsync(filestream);
+                }
+
+                File.SetLastWriteTimeUtc(path, info.LastModified.UtcDateTime);
+
+                var existing = await DbAccess.Files.FindAsync(info.Id);
+                if (existing == null)
+                {
+                    DbAccess.Add(info.ToFileData());
+                }
+                else
+                {
+                    existing = info.ToFileData();
+                }
+                return true;
             }
-
-            File.SetLastWriteTimeUtc(path, info.LastModified.UtcDateTime);
-
-            var existing = await DbAccess.Files.FindAsync(info.Id);
-            if (existing == null)
+            catch (HttpRequestException ex)
             {
-                DbAccess.Add(info.ToFileData());
-            }
-            else
-            {
-                existing = info.ToFileData();
+                //TODO: logger
+                return false;
             }
         }
     }

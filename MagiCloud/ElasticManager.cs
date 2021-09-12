@@ -190,6 +190,7 @@ namespace MagiCloud
         {
             newFile.Hash = existingFile?.Hash;
             newFile.Size = existingFile?.Size ?? 0;
+            newFile.MimeType = existingFile?.MimeType;
         }
 
         private string GetMimeType(ElasticFileInfo file)
@@ -197,6 +198,10 @@ namespace MagiCloud
             if (string.IsNullOrWhiteSpace(file.MimeType))
             {
                 new FileExtensionContentTypeProvider().TryGetContentType($"{file.Name}.{file.Extension}", out string type);
+                if (type is null)
+                {
+                    type = "application/octet-stream";
+                }
                 return type;
             }
             return null;
