@@ -82,7 +82,10 @@ namespace MagiCloud
         public async Task<FileList> GetDocumentsAsync()
         {
             Setup();
-            var result = await Client.SearchAsync<ElasticFileInfo>(s => s.MatchAll());
+            var result = await Client.SearchAsync<ElasticFileInfo>(s =>
+            {
+                return s.Size(10000).MatchAll(); //10k items currently supported, TODO paginate
+            });
             if (result.IsValid)
             {
                 var list = new List<ElasticFileInfo>();

@@ -1,24 +1,26 @@
 ﻿using MagiCommon;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MagiConsole
 {
     public class SyncManager
     {
+        public ILogger<SyncManager> Logger { get; set; }
         public MagiContext DbAccess { get; set; }
         public Settings Settings { get; set; }
         public IMagiCloudAPI ApiManager { get; set; }
         public IHashService HashService { get; set; }
 
-        public SyncManager(MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager, IHashService hashService)
+        public SyncManager(ILogger<SyncManager> logger, MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager, IHashService hashService)
         {
+            Logger = logger;
             DbAccess = dbContext;
             Settings = config.Value;
             ApiManager = apiManager;
@@ -31,11 +33,96 @@ namespace MagiConsole
             // get files from server
             // compare local to remote, pull down then push up
 
-            var folderFiles = Directory.GetFiles(Settings.FolderPath);
+            int uploaded = 0;
+            int downloaded = 0;
+            int removed = 0;
+
+            var knownFiles = EnumerateLocalFiles();
+
+            //check removed files by finding files in the db but not in the folder
+            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
+            foreach (var file in removedFiles)
+            {
+                file.Status = FileStatus.Removed;
+                file.LastModified = DateTimeOffset.Now;
+                knownFiles[file.Id] = file;
+            }
+
+            // server files
+            var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
+            
+            //loop through remotes, if lastmodified is newer or not known locally then download it
+
+            foreach (var remote in remoteFiles)
+            {
+                if (!knownFiles.TryGetValue(remote.Id, out FileData known) || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
+                {
+                    //download it
+                    
+                    var success = await DownloadFileAsync(remote.Id);
+                    if (!success)
+                    { //not found on the server, likely invalid/incomplete upload
+                        // Tell it to upload current data instead, if we can find it locally
+                        if (known != null || knownFiles.TryGetValue($"{remote.Name}.{remote.Extension}", out known))
+                        {
+                            remote.Status = FileStatus.New;
+                            knownFiles.Remove(known.Id);
+                            remote.LastModified = known.LastModified;
+                            knownFiles[remote.Id] = remote;
+                        }
+                    }
+                    else
+                    {
+                        downloaded++;
+                    }
+                }
+            }
+
+            foreach (var kvp in knownFiles)
+            {
+                var info = kvp.Value;
+                //if new, upload as new, if changed, upload as changed
+                if (info.Status == FileStatus.New || info.Status == FileStatus.Updated)
+                {
+                    var path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+                    using var stream = File.OpenRead(path);
+                    info.Hash = HashService.GenerateHash(stream, true);
+                    var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
+                    uploaded++;
+                    if (info.Status == FileStatus.New)
+                    { //nothing exists with the new id
+                        DbAccess.Add(updatedInfo);
+                    }
+                    else
+                    { //something already exists with this id
+                        DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
+                    }
+                }
+                else if (info.Status == FileStatus.Removed)
+                {
+                    // these have been removed locally, remove them from the server
+                    await ApiManager.RemoveFileAsync(info.Id);
+                    DbAccess.Remove(info);
+                    removed++;
+                }
+            }
+
+            await DbAccess.SaveChangesAsync();
+            Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files.", downloaded, uploaded, removed);
+        }
+
+        private Dictionary<string, FileData> EnumerateLocalFiles()
+        {
             var knownFiles = new Dictionary<string, FileData>();
+            var folderFiles = Directory.GetFiles(Settings.FolderPath, "*", SearchOption.AllDirectories);
             foreach (var file in folderFiles)
             {
+                var relativePath = Path.GetRelativePath(Settings.FolderPath, file); //get relative path from root
+                relativePath = Path.GetDirectoryName(relativePath); //strip off the file info
                 var name = Path.GetFileNameWithoutExtension(file);
+                relativePath = Path.Combine(relativePath, name); //rejoin, minus the extension
+                name = relativePath.Replace(@"\", "/"); //swap to forward slashes
+
                 var ext = Path.GetExtension(file)?.Trim('.');
                 DateTimeOffset lastModified = new DateTimeOffset(File.GetLastWriteTimeUtc(file), TimeSpan.Zero);
 
@@ -58,72 +145,8 @@ namespace MagiConsole
                 }
                 knownFiles.Add(dbFile.Id, dbFile);
             }
-
-            //check removed files by finding files in the db but not in the folder
-            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
-            foreach (var file in removedFiles)
-            {
-                file.Status = FileStatus.Removed;
-                file.LastModified = DateTimeOffset.Now;
-                knownFiles.Add(file.Id, file);
-            }
-
-            // server files
-            var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
-            
-            //loop through remotes, if lastmodified is newer or not known locally then download it
-
-            foreach (var remote in remoteFiles)
-            {
-                if (!knownFiles.TryGetValue(remote.Id, out FileData known) || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
-                {
-                    //download it
-                    
-                    var success = await DownloadFileAsync(remote.Id);
-                    if (!success)
-                    { //not found on the server, likely invalid/incomplete upload
-                        // Tell it to upload current data instead
-                        if (known != null || knownFiles.TryGetValue($"{remote.Name}.{remote.Extension}", out known))
-                        {
-                            remote.Status = FileStatus.New;
-                            knownFiles.Remove(known.Id);
-                            remote.LastModified = known.LastModified;
-                            knownFiles[remote.Id] = remote;
-                        }
-                    }
-                }
-            }
-
-            foreach (var kvp in knownFiles)
-            {
-                var info = kvp.Value;
-                //if new, upload as new, if changed, upload as changed
-                if (info.Status == FileStatus.New || info.Status == FileStatus.Updated)
-                {
-                    var path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
-                    using var stream = File.OpenRead(path);
-                    info.Hash = HashService.GenerateHash(stream, true);
-                    var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
-                    if (info.Status == FileStatus.New)
-                    { //nothing exists with the new id
-                        DbAccess.Add(updatedInfo);
-                    }
-                    else
-                    { //something already exists with this id
-                        DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
-                    }
-                }
-                else if (info.Status == FileStatus.Removed)
-                {
-                    // these have been removed locally, remove them from the server
-                    await ApiManager.RemoveFileAsync(info.Id);
-                    DbAccess.Remove(info);
-                }
-            }
-
-            await DbAccess.SaveChangesAsync();
+            return knownFiles;
         }
-
 
         private async Task<bool> DownloadFileAsync(string id)
         {
@@ -137,6 +160,7 @@ namespace MagiConsole
                     return false;
                 }
                 string path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
 
                 using (var filestream = new FileStream(path, FileMode.Create))
                 {
@@ -158,7 +182,7 @@ namespace MagiConsole
             }
             catch (HttpRequestException ex)
             {
-                //TODO: logger
+                Logger.LogWarning(ex, "Exception while downloading document {DocId}", id);
                 return false;
             }
         }
