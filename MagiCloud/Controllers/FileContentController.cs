@@ -78,7 +78,8 @@ namespace MagiCloud.Controllers
 
         [HttpPut]
         [Route("{id}")]
-        [RequestSizeLimit(2L*1024*1024*1024)] //2 GiB max file size, for now
+        [RequestSizeLimit(int.MaxValue)] //About 2GB
+        [RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = int.MaxValue)]
         public async Task<IActionResult> PutFile(string id, IFormFile file)
         {
             try

@@ -35,9 +35,11 @@ namespace MagiConsole
 
             int uploaded = 0;
             int downloaded = 0;
-            int removed = 0;
+            int removedRemote = 0;
+            int removedLocal = 0;
 
             var knownFiles = EnumerateLocalFiles();
+            var extraLocalFiles = new List<FileData>(knownFiles.Values);
 
             //check removed files by finding files in the db but not in the folder
             var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
@@ -55,10 +57,14 @@ namespace MagiConsole
 
             foreach (var remote in remoteFiles)
             {
-                if (!knownFiles.TryGetValue(remote.Id, out FileData known) || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
+                bool foundLocally = knownFiles.TryGetValue(remote.Id, out FileData known);
+                if (foundLocally)
+                {
+                    extraLocalFiles.Remove(known);
+                }
+                if (!foundLocally || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
                 {
                     //download it
-                    
                     var success = await DownloadFileAsync(remote.Id);
                     if (!success)
                     { //not found on the server, likely invalid/incomplete upload
@@ -78,13 +84,25 @@ namespace MagiConsole
                 }
             }
 
+            foreach (var file in extraLocalFiles)
+            {
+                if (file.Status == FileStatus.Unmodified)
+                {
+                    //this is an extra file, remove it locally
+                    DbAccess.Remove(file);
+                    var path = GetPath(file);
+                    File.Delete(path);
+                    removedLocal++;
+                }
+            }
+
             foreach (var kvp in knownFiles)
             {
                 var info = kvp.Value;
                 //if new, upload as new, if changed, upload as changed
                 if (info.Status == FileStatus.New || info.Status == FileStatus.Updated)
                 {
-                    var path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+                    var path = GetPath(info);
                     using var stream = File.OpenRead(path);
                     info.Hash = HashService.GenerateHash(stream, true);
                     var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
@@ -103,12 +121,13 @@ namespace MagiConsole
                     // these have been removed locally, remove them from the server
                     await ApiManager.RemoveFileAsync(info.Id);
                     DbAccess.Remove(info);
-                    removed++;
+                    removedRemote++;
                 }
             }
 
             await DbAccess.SaveChangesAsync();
-            Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files.", downloaded, uploaded, removed);
+            Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files from server. Removed {LocalCount} files locally.", 
+                downloaded, uploaded, removedRemote, removedLocal);
         }
 
         private Dictionary<string, FileData> EnumerateLocalFiles()
@@ -185,6 +204,16 @@ namespace MagiConsole
                 Logger.LogWarning(ex, "Exception while downloading document {DocId}", id);
                 return false;
             }
+        }
+
+        private string GetPath(FileData info)
+        {
+            var filename = info.Name;
+            if (!string.IsNullOrWhiteSpace(info.Extension))
+            {
+                filename = $"{info.Name}.{info.Extension}";
+            }
+            return Path.Combine(Settings.FolderPath, filename);
         }
     }
 }
