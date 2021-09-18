@@ -20,12 +20,15 @@ namespace MagiCloud
         Task<string> IndexDocumentAsync(ElasticFileInfo file);
         Task<bool> DeleteFileAsync(ElasticFileInfo file);
         Task UpdateFileAttributesAsync(ElasticFileInfo file);
+
+        Task CreateUserAsync(User user);
     }
 
 
     public class ElasticManager : IElasticManager
     {
         public const string FILES_INDEX = "magicloud_files";
+        public const string USER_INDEX = "magicloud_users";
 
         public IElasticClient Client { get; set; }
 
@@ -49,6 +52,10 @@ namespace MagiCloud
                     .IndexName(FILES_INDEX)
                     .IdProperty(p => p.Id)
                 )
+                .DefaultMappingFor<User>(i => i
+                    .IndexName(USER_INDEX)
+                    .IdProperty(p => p.Id)
+                )
                 .EnableDebugMode()
                 .PrettyJson()
                 .RequestTimeout(TimeSpan.FromMinutes(2))
@@ -61,19 +68,22 @@ namespace MagiCloud
         {
             Setup();
 
-            var index = Indices.Index(FILES_INDEX);
-            var exists = await Client.Indices.ExistsAsync(index);
-            if (!exists.Exists)
+            foreach (var indexName in new string[] { FILES_INDEX, USER_INDEX})
             {
-                _logger.LogInformation("Index '{Name}' not found, creating.", FILES_INDEX);
-                var create = await Client.Indices.CreateAsync(index);
-                if (!create.IsValid)
+                var index = Indices.Index(indexName);
+                var exists = await Client.Indices.ExistsAsync(index);
+                if (!exists.Exists)
                 {
-                    if (create.OriginalException != null)
+                    _logger.LogInformation("Index '{Name}' not found, creating.", FILES_INDEX);
+                    var create = await Client.Indices.CreateAsync(index);
+                    if (!create.IsValid)
                     {
-                        throw create.OriginalException;
+                        if (create.OriginalException != null)
+                        {
+                            throw create.OriginalException;
+                        }
+                        throw new Exception(create.ServerError.ToString());
                     }
-                    throw new Exception(create.ServerError.ToString());
                 }
             }
             return true;
@@ -122,6 +132,7 @@ namespace MagiCloud
             {
                 file.LastModified = DateTimeOffset.Now;
             }
+            file.LastUpdated = DateTimeOffset.Now;
             file.Hash = null;
             // if an id is provided, check if that file actually exists, if not throw that out
             if (!string.IsNullOrWhiteSpace(file.Id))
@@ -208,6 +219,14 @@ namespace MagiCloud
                 return type;
             }
             return null;
+        }
+
+        public async Task CreateUserAsync(User user)
+        {
+            var result = await Client.SearchAsync<User>(s =>
+            {
+                return s; // Check if a user with the provided username exists, if so throw
+            });
         }
     }
 }

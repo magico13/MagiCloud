@@ -10,6 +10,7 @@ namespace MagiCommon.Models
         public string Extension { get; set; }
         public long Size { get; set; }
         public DateTimeOffset LastModified { get; set; }
+        public DateTimeOffset LastUpdated { get; set; }
         public string Hash { get; set; }
         public string FileText { get; set; }
     }

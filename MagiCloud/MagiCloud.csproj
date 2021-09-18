@@ -19,5 +19,9 @@
     <ProjectReference Include="..\MagiCommon\MagiCommon.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="data\" />
+  </ItemGroup>
+
 
 </Project>

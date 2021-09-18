@@ -104,7 +104,7 @@ namespace MagiConsole
                 {
                     var path = GetPath(info);
                     using var stream = File.OpenRead(path);
-                    info.Hash = HashService.GenerateHash(stream, true);
+                    info.Hash = HashService.GenerateContentHash(stream, true);
                     var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
                     uploaded++;
                     if (info.Status == FileStatus.New)

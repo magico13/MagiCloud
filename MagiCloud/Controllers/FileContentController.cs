@@ -97,7 +97,7 @@ namespace MagiCloud.Controllers
                 {
                     // document exists in db, pull from file system
                     using var stream = file.OpenReadStream();
-                    var hash = _hashService.GenerateHash(stream, false);
+                    var hash = _hashService.GenerateContentHash(stream, false);
                     doc.Hash = hash;
                     doc.MimeType = file.ContentType ?? doc.MimeType;
                     doc.Size = file.Length;

@@ -16,17 +16,13 @@ namespace MagiConsole
         public string Name { get; set; }
         public string Extension { get; set; }
         public DateTimeOffset LastModified { get; set; }
+        public DateTimeOffset LastUpdated { get; set; }
         public string Hash { get; set; }
         public FileStatus Status { get; set; }
 
-        public override bool Equals(object obj)
+        public override string ToString()
         {
-            return (obj as FileData).Id == Id;
-        }
-
-        public override int GetHashCode()
-        {
-            return Id.GetHashCode();
+            return $"{Name}.{Extension}";
         }
     }
 
