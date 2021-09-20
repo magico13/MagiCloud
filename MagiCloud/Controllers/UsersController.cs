@@ -29,15 +29,27 @@ namespace MagiCloud.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateUserAsync(User user)
         {
-            // hash their password
-            user.Password = _hashService.GeneratePasswordHash(user.Password);
+            await _elastic.SetupIndicesAsync();
             if (!string.IsNullOrEmpty(user.Id))
             {
-                return BadRequest("User Id should not be provided when creating a new user.");
+                return BadRequest(new { Message = "User Id should not be provided when creating a new user." });
+            }
+            if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+            {
+                return BadRequest(new { Message = "Invalid username or password." });
             }
 
-            await _elastic.CreateUserAsync(user);
-            return Ok();
+            // hash their password
+            user.Password = _hashService.GeneratePasswordHash(user.Password);
+
+            var createdUser = await _elastic.CreateUserAsync(user);
+            if (createdUser is null)
+            {
+                return Conflict();
+            }
+            return Ok(createdUser);
         }
+
+        
     }
 }

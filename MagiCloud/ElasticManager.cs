@@ -21,7 +21,7 @@ namespace MagiCloud
         Task<bool> DeleteFileAsync(ElasticFileInfo file);
         Task UpdateFileAttributesAsync(ElasticFileInfo file);
 
-        Task CreateUserAsync(User user);
+        Task<User> CreateUserAsync(User user);
     }
 
 
@@ -221,12 +221,40 @@ namespace MagiCloud
             return null;
         }
 
-        public async Task CreateUserAsync(User user)
+        public async Task<User> CreateUserAsync(User user)
         {
+            // Check if a user with the provided username exists, if so throw
             var result = await Client.SearchAsync<User>(s =>
+                s.Query(q =>
+                    q.Match(m =>
+                        m.Field(f => f.Username)
+                        .Query(user.Username)
+                    )
+                )
+            );
+
+            if (result.Total > 0)
             {
-                return s; // Check if a user with the provided username exists, if so throw
-            });
+                // exists
+                return null;
+            }
+
+            var createResult = await Client.IndexDocumentAsync(user);
+            if (!createResult.IsValid)
+            {
+                if (createResult.OriginalException != null)
+                {
+                    throw createResult.OriginalException;
+                }
+                else
+                {
+                    throw new Exception("Invalid Elasticsearch response during create. " + createResult.ServerError?.ToString());
+                }
+            }
+            user.Id = createResult.Id;
+            user.Password = null;
+
+            return user;
         }
     }
 }
