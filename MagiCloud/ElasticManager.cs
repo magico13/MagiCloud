@@ -7,6 +7,7 @@ using Nest;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MagiCloud
@@ -22,6 +23,7 @@ namespace MagiCloud
         Task UpdateFileAttributesAsync(ElasticFileInfo file);
 
         Task<User> CreateUserAsync(User user);
+        Task<string> LoginUserAsync(User user);
     }
 
 
@@ -255,6 +257,46 @@ namespace MagiCloud
             user.Password = null;
 
             return user;
+        }
+
+        public async Task<string> LoginUserAsync(User user)
+        {
+            User found = null;
+            if (!string.IsNullOrWhiteSpace(user.Id))
+            {
+                //if they gave us the id then we can check that first
+                var response = await Client.GetAsync<User>(user.Id);
+                if (response.IsValid)
+                {
+                    found = response.Source;
+                }
+            }
+            if (found is null)
+            {
+                var result = await Client.SearchAsync<User>(s =>
+                    s.Query(q =>
+                        q.Match(m =>
+                            m.Field(f => f.Username)
+                            .Query(user.Username)
+                        )
+                    )
+                );
+                if (result.IsValid && result.Total > 0)
+                {
+                    found = result.Hits.FirstOrDefault()?.Source;
+                }
+            }
+
+            //verification
+            var valid = found != null && string.Equals(found.Username, user.Username, StringComparison.Ordinal)
+                && string.Equals(found.Password, user.Password, StringComparison.Ordinal);
+
+            if (valid)
+            {
+                return Guid.NewGuid().ToString(); // TODO: store guid in db, then require/check it on all API calls
+            }
+            return null;
+
         }
     }
 }

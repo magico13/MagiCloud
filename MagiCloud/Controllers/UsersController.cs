@@ -50,6 +50,25 @@ namespace MagiCloud.Controllers
             return Ok(createdUser);
         }
 
+        [HttpPost]
+        [Route("login")]
+        public async Task<IActionResult> LoginAsync(User user)
+        {
+            await _elastic.SetupIndicesAsync();
+            if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+            {
+                return BadRequest(new { Message = "Invalid username or password." });
+            }
+
+            // hash their password
+            user.Password = _hashService.GeneratePasswordHash(user.Password);
+            string token = await _elastic.LoginUserAsync(user);
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                return new JsonResult(new { token });
+            }
+            return Unauthorized();
+        }
         
     }
 }
