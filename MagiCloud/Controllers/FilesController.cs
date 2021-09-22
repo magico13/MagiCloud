@@ -27,8 +27,13 @@ namespace MagiCloud.Controllers
         {
             try
             {
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 await _elastic.SetupIndicesAsync();
-                var docs = await _elastic.GetDocumentsAsync();
+                var docs = await _elastic.GetDocumentsAsync(token.LinkedUserId);
                 return Json(docs);
             }
             catch (Exception ex)
@@ -44,8 +49,13 @@ namespace MagiCloud.Controllers
         {
             try
             {
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 await _elastic.SetupIndicesAsync();
-                var file = await _elastic.GetDocumentAsync(id);
+                var file = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
                 return Json(file);
             }
             catch (Exception ex)
@@ -61,9 +71,14 @@ namespace MagiCloud.Controllers
         {
             try
             {
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 await _elastic.SetupIndicesAsync();
-                var docId = await _elastic.IndexDocumentAsync(file);
-                var doc = await _elastic.GetDocumentAsync(docId);
+                var docId = await _elastic.IndexDocumentAsync(token.LinkedUserId, file);
+                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, docId);
                 doc.Id = docId;
                 return Json(doc);
             }
@@ -81,8 +96,13 @@ namespace MagiCloud.Controllers
         {
             try
             {
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 _dataManager.DeleteFile(id);
-                if (await _elastic.DeleteFileAsync(new ElasticFileInfo { Id = id }))
+                if (await _elastic.DeleteFileAsync(token.LinkedUserId, new ElasticFileInfo { Id = id }))
                 {
                     return NoContent();
                 }

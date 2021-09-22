@@ -7,6 +7,8 @@ namespace MagiConsole
     {
         public DbSet<FileData> Files { get; set; }
 
+        public DbSet<UserData> Users { get; set; }
+
         public MagiContext(DbContextOptions<MagiContext> options) : base(options) { }
     }
 
@@ -32,5 +34,12 @@ namespace MagiConsole
         New = 1, //file is new, upload it
         Removed = 2, //file has been deleted locally, remove it from server
         Updated = 3 //file has been updated, sync to server
+    }
+
+    public class UserData
+    {
+        public string Id { get; set; }
+        public string Username { get; set; }
+        public string Token { get; set; }
     }
 }

@@ -33,6 +33,8 @@ namespace MagiConsole
             // get files from server
             // compare local to remote, pull down then push up
 
+            Directory.CreateDirectory(Settings.FolderPath);
+
             int uploaded = 0;
             int downloaded = 0;
             int removedRemote = 0;

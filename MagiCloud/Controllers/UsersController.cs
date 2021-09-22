@@ -62,7 +62,8 @@ namespace MagiCloud.Controllers
 
             // hash their password
             user.Password = _hashService.GeneratePasswordHash(user.Password);
-            string token = await _elastic.LoginUserAsync(user);
+            var fullToken = await _elastic.LoginUserAsync(user);
+            var token = fullToken.Id;
             if (!string.IsNullOrWhiteSpace(token))
             {
                 return new JsonResult(new { token });

@@ -18,6 +18,41 @@ namespace MagiConsole
             var context = host.Services.GetRequiredService<MagiContext>();
             context.Database.Migrate();
 
+            if (!await context.Users.AnyAsync())
+            {
+                Console.WriteLine("No user account saved, please log in.");
+                Console.Write("Username: ");
+                string username = Console.ReadLine().Trim();
+                Console.Write("Password: ");
+                string password = Console.ReadLine().Trim();
+
+                var api = host.Services.GetRequiredService<IMagiCloudAPI>();
+                try
+                {
+                    var token = await api.GetAuthTokenAsync(new MagiCommon.Models.User
+                    {
+                        Username = username,
+                        Password = password
+                    });
+                    context.Users.Add(new UserData
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Token = token,
+                        Username = username
+                    });
+                    await context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    Console.WriteLine("Error while logging in. Does the user exist?");
+                    Console.WriteLine("Press any key to exit.");
+                    Console.ReadKey();
+                    return;
+                }
+                
+            }
+
             var syncManager = host.Services.GetRequiredService<SyncManager>();
             //await syncManager.SyncAsync();
             Timer syncTimer = null;
