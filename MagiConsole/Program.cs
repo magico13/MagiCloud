@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,14 +55,15 @@ namespace MagiConsole
             }
 
             var syncManager = host.Services.GetRequiredService<SyncManager>();
-            //await syncManager.SyncAsync();
+            var settings = host.Services.GetRequiredService<IOptions<Settings>>();
+            int syncSeconds = settings.Value.FullSyncSeconds;
             Timer syncTimer = null;
             syncTimer = new Timer(o =>
             {
                 syncTimer?.Change(TimeSpan.FromDays(1), TimeSpan.FromDays(1));
                 syncManager.SyncAsync().Wait();
-                syncTimer?.Change(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
+                syncTimer?.Change(TimeSpan.FromSeconds(syncSeconds), TimeSpan.FromSeconds(syncSeconds));
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(syncSeconds));
 
             await host.RunAsync();
         }

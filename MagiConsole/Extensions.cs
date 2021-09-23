@@ -24,6 +24,7 @@ namespace MagiConsole
                 Name = fileInfo.Name,
                 Extension = fileInfo.Extension,
                 LastModified = fileInfo.LastModified,
+                LastUpdated = fileInfo.LastUpdated,
                 Hash = fileInfo.Hash
             };
         }

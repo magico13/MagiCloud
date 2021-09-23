@@ -219,6 +219,13 @@ namespace MagiCloud
         {
             if (string.IsNullOrWhiteSpace(file.MimeType))
             {
+                switch (file.Extension.ToLower())
+                { //known overrides
+                    case "py": return "text/x-python";
+                    case "csv": return "text/csv";
+                    case "xcf": return "image/x-xcf";
+                    case "ofx": return "text/plain";
+                }
                 new FileExtensionContentTypeProvider().TryGetContentType($"{file.Name}.{file.Extension}", out string type);
                 if (type is null)
                 {
