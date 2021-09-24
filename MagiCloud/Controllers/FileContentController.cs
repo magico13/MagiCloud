@@ -35,8 +35,13 @@ namespace MagiCloud.Controllers
         {
             try
             {
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 await _elastic.SetupIndicesAsync();
-                var doc = await _elastic.GetDocumentAsync(id);
+                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
                 if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
@@ -78,26 +83,30 @@ namespace MagiCloud.Controllers
 
         [HttpPut]
         [Route("{id}")]
-        [RequestSizeLimit(int.MaxValue)] //About 2GB
+        [RequestSizeLimit(int.MaxValue)] //About 2GB, TODO support streaming/chunking larger files
         [RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = int.MaxValue)]
         public async Task<IActionResult> PutFile(string id, IFormFile file)
         {
             try
             {
                 //get the file info from the db, upload the file data, update the info in the db
-
+                var token = await Request.VerifyAuthToken(_elastic);
+                if (token is null)
+                {
+                    return Unauthorized();
+                }
                 if (file is null || file.Length < 0)
                 {
                     return BadRequest();
                 }
 
                 await _elastic.SetupIndicesAsync();
-                var doc = await _elastic.GetDocumentAsync(id);
+                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
                 if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
                     using var stream = file.OpenReadStream();
-                    var hash = _hashService.GenerateHash(stream, false);
+                    var hash = _hashService.GenerateContentHash(stream, false);
                     doc.Hash = hash;
                     doc.MimeType = file.ContentType ?? doc.MimeType;
                     doc.Size = file.Length;
@@ -105,7 +114,7 @@ namespace MagiCloud.Controllers
                     //write file to data folder
                     await _dataManager.WriteFileAsync(doc.Id, stream);
 
-                    await _elastic.UpdateFileAttributesAsync(doc);
+                    await _elastic.UpdateFileAttributesAsync(token.LinkedUserId, doc);
                     //await _elastic.IndexDocumentAsync(doc); //superfluous?
 
                     return NoContent();

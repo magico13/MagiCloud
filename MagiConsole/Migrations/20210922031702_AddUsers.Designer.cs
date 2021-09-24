@@ -3,14 +3,16 @@ using System;
 using MagiConsole;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace MagiConsole.Migrations
 {
     [DbContext(typeof(MagiContext))]
-    partial class MagiContextModelSnapshot : ModelSnapshot
+    [Migration("20210922031702_AddUsers")]
+    partial class AddUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -6,17 +6,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MagiConsole
 {
     public class SyncManager
     {
-        public ILogger<SyncManager> Logger { get; set; }
-        public MagiContext DbAccess { get; set; }
-        public Settings Settings { get; set; }
-        public IMagiCloudAPI ApiManager { get; set; }
-        public IHashService HashService { get; set; }
+        public ILogger<SyncManager> Logger { get; }
+        public MagiContext DbAccess { get; }
+        public Settings Settings { get; }
+        public IMagiCloudAPI ApiManager { get; }
+        public IHashService HashService { get; }
+        public FileSystemWatcher Watcher { get; }
+        public SemaphoreSlim Semaphore { get; }
 
         public SyncManager(ILogger<SyncManager> logger, MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager, IHashService hashService)
         {
@@ -25,6 +28,88 @@ namespace MagiConsole
             Settings = config.Value;
             ApiManager = apiManager;
             HashService = hashService;
+
+            Directory.CreateDirectory(Settings.FolderPath);
+            Watcher = new FileSystemWatcher(Settings.FolderPath)
+            {
+                NotifyFilter =    NotifyFilters.FileName
+                                | NotifyFilters.DirectoryName
+                                | NotifyFilters.Attributes
+                                | NotifyFilters.Size
+                                | NotifyFilters.LastWrite
+                                | NotifyFilters.CreationTime,
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true
+            };
+            Watcher.Changed += OnChanged;
+            Watcher.Created += OnChanged;
+            Watcher.Renamed += OnRenamed;
+            Watcher.Deleted += OnDeleted;
+            Semaphore = new SemaphoreSlim(1);
+        }
+
+        private async void OnRenamed(object sender, RenamedEventArgs e)
+        {
+            Logger.LogWarning("Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
+            if (Directory.Exists(e.FullPath))
+            { //is directory
+                //remove old files
+                var oldFiles = GetFilesBelowFolder(e.OldName);
+                foreach (var fileData in oldFiles)
+                {
+                    fileData.Status = FileStatus.Removed;
+                    await DoFileUpdateAsync(fileData);
+                }
+                await DbAccess.SaveChangesAsync();
+
+                //add files as new
+                var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    await ProcessIndividualFile(file);
+                }
+            }
+            else
+            {
+                await ProcessIndividualFile(e.OldFullPath, FileStatus.Removed);
+                await ProcessIndividualFile(e.FullPath, FileStatus.New);
+            }
+            Logger.LogWarning("Completed - Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
+        }
+
+        private async void OnDeleted(object sender, FileSystemEventArgs e)
+        {
+            Logger.LogWarning("Deleted: {FullPath}", e.FullPath);
+            //deleted locally means we should delete it remotely
+            //if it was a directory, delete everything that was below it
+            var oldFiles = GetFilesBelowFolder(e.FullPath);
+            foreach (var fileData in oldFiles)
+            {
+                fileData.Status = FileStatus.Removed;
+                await DoFileUpdateAsync(fileData);
+            }
+            await DbAccess.SaveChangesAsync();
+
+            await ProcessIndividualFile(e.FullPath, FileStatus.Removed);
+            Logger.LogWarning("Completed - Deleted: {FullPath}", e.FullPath);
+        }
+
+        private async void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            Logger.LogWarning("{ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
+            if (Directory.Exists(e.FullPath))
+            { //is directory, process all the files inside
+                var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    await ProcessIndividualFile(file);
+                }
+            }
+            else
+            {
+                await ProcessIndividualFile(e.FullPath);
+            }
+            Logger.LogWarning("Completed - {ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
         }
 
         public async Task SyncAsync()
@@ -32,13 +117,12 @@ namespace MagiConsole
             // compare files in folder to db: add new files, mark removed files, check if any files modified (last modified by filesystem)
             // get files from server
             // compare local to remote, pull down then push up
-
             int uploaded = 0;
             int downloaded = 0;
             int removedRemote = 0;
             int removedLocal = 0;
 
-            var knownFiles = EnumerateLocalFiles();
+            var knownFiles = EnumerateLocalFiles(Settings.FolderPath);
             var extraLocalFiles = new List<FileData>(knownFiles.Values);
 
             //check removed files by finding files in the db but not in the folder
@@ -98,29 +182,14 @@ namespace MagiConsole
 
             foreach (var kvp in knownFiles)
             {
-                var info = kvp.Value;
                 //if new, upload as new, if changed, upload as changed
-                if (info.Status == FileStatus.New || info.Status == FileStatus.Updated)
+                (bool up, bool rem) = await DoFileUpdateAsync(kvp.Value);
+                if (up)
                 {
-                    var path = GetPath(info);
-                    using var stream = File.OpenRead(path);
-                    info.Hash = HashService.GenerateHash(stream, true);
-                    var updatedInfo = (await ApiManager.UploadFileAsync(info.ToElasticFileInfo(), stream)).ToFileData();
                     uploaded++;
-                    if (info.Status == FileStatus.New)
-                    { //nothing exists with the new id
-                        DbAccess.Add(updatedInfo);
-                    }
-                    else
-                    { //something already exists with this id
-                        DbAccess.Entry(info).CurrentValues.SetValues(updatedInfo);
-                    }
                 }
-                else if (info.Status == FileStatus.Removed)
+                if (rem)
                 {
-                    // these have been removed locally, remove them from the server
-                    await ApiManager.RemoveFileAsync(info.Id);
-                    DbAccess.Remove(info);
                     removedRemote++;
                 }
             }
@@ -130,41 +199,79 @@ namespace MagiConsole
                 downloaded, uploaded, removedRemote, removedLocal);
         }
 
-        private Dictionary<string, FileData> EnumerateLocalFiles()
+        private Dictionary<string, FileData> EnumerateLocalFiles(string path)
         {
             var knownFiles = new Dictionary<string, FileData>();
-            var folderFiles = Directory.GetFiles(Settings.FolderPath, "*", SearchOption.AllDirectories);
+            var folderFiles = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
             foreach (var file in folderFiles)
             {
-                var relativePath = Path.GetRelativePath(Settings.FolderPath, file); //get relative path from root
-                relativePath = Path.GetDirectoryName(relativePath); //strip off the file info
-                var name = Path.GetFileNameWithoutExtension(file);
-                relativePath = Path.Combine(relativePath, name); //rejoin, minus the extension
-                name = relativePath.Replace(@"\", "/"); //swap to forward slashes
-
-                var ext = Path.GetExtension(file)?.Trim('.');
-                DateTimeOffset lastModified = new DateTimeOffset(File.GetLastWriteTimeUtc(file), TimeSpan.Zero);
-
-                var dbFile = DbAccess.Files.FirstOrDefault(f => f.Name == name && f.Extension == ext);
-                if (dbFile is null)
-                {
-                    dbFile = new FileData
-                    {
-                        Id = $"{name}.{ext}",
-                        Name = name,
-                        Extension = ext,
-                        LastModified = lastModified,
-                        Status = FileStatus.New
-                    };
-                }
-                else if (dbFile.LastModified != lastModified) //could check hash but would be expensive
-                {
-                    dbFile.Status = FileStatus.Updated;
-                    dbFile.LastModified = lastModified;
-                }
+                var dbFile = GetDbFile(file);   
                 knownFiles.Add(dbFile.Id, dbFile);
             }
             return knownFiles;
+        }
+
+        private FileData GetDbFile(string path)
+        {
+            var exists = File.Exists(path);
+            var relativePath = Path.GetRelativePath(Settings.FolderPath, path); //get relative path from root
+            relativePath = Path.GetDirectoryName(relativePath); //strip off the file info
+            var name = Path.GetFileNameWithoutExtension(path);
+            relativePath = Path.Combine(relativePath, name); //rejoin, minus the extension
+            name = relativePath.Replace(@"\", "/"); //swap to forward slashes
+
+            var ext = Path.GetExtension(path)?.Trim('.');
+
+            DateTimeOffset lastModified = exists ? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero) : DateTimeOffset.MinValue;
+
+            var dbFile = DbAccess.Files.FirstOrDefault(f => f.Name == name && f.Extension == ext);
+            if (dbFile is null)
+            {
+                dbFile = new FileData
+                {
+                    Id = $"{name}.{ext}",
+                    Name = name,
+                    Extension = ext,
+                    LastModified = lastModified,
+                    Status = FileStatus.New
+                };
+            }
+            else if (dbFile.LastModified != lastModified) //could check hash but would be expensive
+            {
+                dbFile.Status = FileStatus.Updated;
+                dbFile.LastModified = lastModified;
+            }
+            return dbFile;
+        }
+
+        private async Task<(bool uploaded, bool removed)> DoFileUpdateAsync(FileData file)
+        {
+            bool uploaded = false;
+            bool removed = false;
+            if (file.Status == FileStatus.New || file.Status == FileStatus.Updated)
+            {
+                var path = GetPath(file);
+                using var stream = File.OpenRead(path);
+                file.Hash = HashService.GenerateContentHash(stream, true);
+                var updatedInfo = (await ApiManager.UploadFileAsync(file.ToElasticFileInfo(), stream)).ToFileData();
+                uploaded = true;
+                if (file.Status == FileStatus.New)
+                { //nothing exists with the new id
+                    DbAccess.Add(updatedInfo);
+                }
+                else
+                { //something already exists with this id
+                    DbAccess.Entry(file).CurrentValues.SetValues(updatedInfo);
+                }
+            }
+            else if (file.Status == FileStatus.Removed)
+            {
+                // these have been removed locally, remove them from the server
+                await ApiManager.RemoveFileAsync(file.Id);
+                DbAccess.Remove(file);
+                removed = true;
+            }
+            return (uploaded, removed);
         }
 
         private async Task<bool> DownloadFileAsync(string id)
@@ -214,6 +321,38 @@ namespace MagiConsole
                 filename = $"{info.Name}.{info.Extension}";
             }
             return Path.Combine(Settings.FolderPath, filename);
+        }
+
+        private async Task ProcessIndividualFile(string path, FileStatus? setStatus = null)
+        {
+            try
+            {
+                await Semaphore.WaitAsync();
+                var dbFile = GetDbFile(path);
+                if (dbFile != null)
+                {
+                    if (setStatus.HasValue)
+                    {
+                        if (setStatus.Value == FileStatus.Removed && dbFile.LastUpdated == default)
+                        { // never was uploaded as far as we know, we can just ignore it
+                            return;
+                        }
+                        dbFile.Status = setStatus.Value;
+                    }
+                    await DoFileUpdateAsync(dbFile);
+                    DbAccess.SaveChanges();
+                }
+            }
+            finally
+            {
+                Semaphore.Release();
+            }
+        }
+
+        private List<FileData> GetFilesBelowFolder(string folder)
+        {
+            var relative = Path.GetRelativePath(Settings.FolderPath, folder);
+            return DbAccess.Files.Where(f => f.Name.Contains(relative + "/")).ToList();
         }
     }
 }

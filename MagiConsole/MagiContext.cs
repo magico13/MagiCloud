@@ -7,6 +7,8 @@ namespace MagiConsole
     {
         public DbSet<FileData> Files { get; set; }
 
+        public DbSet<UserData> Users { get; set; }
+
         public MagiContext(DbContextOptions<MagiContext> options) : base(options) { }
     }
 
@@ -16,17 +18,13 @@ namespace MagiConsole
         public string Name { get; set; }
         public string Extension { get; set; }
         public DateTimeOffset LastModified { get; set; }
+        public DateTimeOffset LastUpdated { get; set; }
         public string Hash { get; set; }
         public FileStatus Status { get; set; }
 
-        public override bool Equals(object obj)
+        public override string ToString()
         {
-            return (obj as FileData).Id == Id;
-        }
-
-        public override int GetHashCode()
-        {
-            return Id.GetHashCode();
+            return $"{Name}.{Extension}";
         }
     }
 
@@ -36,5 +34,12 @@ namespace MagiConsole
         New = 1, //file is new, upload it
         Removed = 2, //file has been deleted locally, remove it from server
         Updated = 3 //file has been updated, sync to server
+    }
+
+    public class UserData
+    {
+        public string Id { get; set; }
+        public string Username { get; set; }
+        public string Token { get; set; }
     }
 }
