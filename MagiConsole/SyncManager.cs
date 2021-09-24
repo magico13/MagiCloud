@@ -21,6 +21,8 @@ namespace MagiConsole
         public FileSystemWatcher Watcher { get; }
         public SemaphoreSlim Semaphore { get; }
 
+        private bool Syncing { get; set; }
+
         public SyncManager(ILogger<SyncManager> logger, MagiContext dbContext, IOptions<Settings> config, IMagiCloudAPI apiManager, IHashService hashService)
         {
             Logger = logger;
@@ -50,6 +52,10 @@ namespace MagiConsole
 
         private async void OnRenamed(object sender, RenamedEventArgs e)
         {
+            if (Syncing)
+            {
+                return;
+            }
             Logger.LogWarning("Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
             if (Directory.Exists(e.FullPath))
             { //is directory
@@ -79,6 +85,10 @@ namespace MagiConsole
 
         private async void OnDeleted(object sender, FileSystemEventArgs e)
         {
+            if (Syncing)
+            {
+                return;
+            }
             Logger.LogWarning("Deleted: {FullPath}", e.FullPath);
             //deleted locally means we should delete it remotely
             //if it was a directory, delete everything that was below it
@@ -96,6 +106,10 @@ namespace MagiConsole
 
         private async void OnChanged(object sender, FileSystemEventArgs e)
         {
+            if (Syncing)
+            {
+                return;
+            }
             Logger.LogWarning("{ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
             if (Directory.Exists(e.FullPath))
             { //is directory, process all the files inside
@@ -121,6 +135,13 @@ namespace MagiConsole
             int downloaded = 0;
             int removedRemote = 0;
             int removedLocal = 0;
+
+            if (Syncing)
+            {
+                return;
+            }
+
+            Syncing = true;
 
             var knownFiles = EnumerateLocalFiles(Settings.FolderPath);
             var extraLocalFiles = new List<FileData>(knownFiles.Values);
@@ -195,6 +216,7 @@ namespace MagiConsole
             }
 
             await DbAccess.SaveChangesAsync();
+            Syncing = false;
             Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files from server. Removed {LocalCount} files locally.", 
                 downloaded, uploaded, removedRemote, removedLocal);
         }
