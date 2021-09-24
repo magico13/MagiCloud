@@ -354,3 +354,4 @@ MigrationBackup/
 
 # development runtime settings
 /MagiCloud/appsettings.Development.json
+.vscode/
