@@ -52,18 +52,18 @@ namespace MagiCloud.Controllers
 
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> LoginAsync(User user)
+        public async Task<IActionResult> LoginAsync(LoginRequest request)
         {
             await _elastic.SetupIndicesAsync();
-            if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             {
                 return BadRequest(new { Message = "Invalid username or password." });
             }
 
             // hash their password
-            user.Password = _hashService.GeneratePasswordHash(user.Password);
-            var fullToken = await _elastic.LoginUserAsync(user);
-            var token = fullToken.Id;
+            request.Password = _hashService.GeneratePasswordHash(request.Password);
+            var fullToken = await _elastic.LoginUserAsync(request);
+            var token = fullToken?.Id;
             if (!string.IsNullOrWhiteSpace(token))
             {
                 return new JsonResult(new { token });

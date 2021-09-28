@@ -18,7 +18,7 @@ namespace MagiConsole
         Task RemoveFileAsync(string id);
 
         Task<User> CreateUserAsync(User user);
-        Task<string> GetAuthTokenAsync(User user);
+        Task<string> GetAuthTokenAsync(LoginRequest request);
     }
 
     public class MagiCloudAPI : IMagiCloudAPI
@@ -93,9 +93,9 @@ namespace MagiConsole
             return await response.Content.ReadFromJsonAsync<User>();
         }
 
-        public async Task<string> GetAuthTokenAsync(User user)
+        public async Task<string> GetAuthTokenAsync(LoginRequest request)
         {
-            var response = await Client.PostAsJsonAsync("api/users/login", user);
+            var response = await Client.PostAsJsonAsync("api/users/login", request);
             response.EnsureSuccessStatusCode();
             var temp = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
             return temp["token"];

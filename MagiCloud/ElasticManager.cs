@@ -24,7 +24,7 @@ namespace MagiCloud
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
 
         Task<User> CreateUserAsync(User user);
-        Task<AuthToken> LoginUserAsync(User user);
+        Task<AuthToken> LoginUserAsync(LoginRequest request);
         Task<AuthToken> VerifyTokenAsync(string token);
     }
 
@@ -264,42 +264,29 @@ namespace MagiCloud
             return user;
         }
 
-        public async Task<AuthToken> LoginUserAsync(User user)
+        public async Task<AuthToken> LoginUserAsync(LoginRequest request)
         {
             Setup();
             User found = null;
-            if (!string.IsNullOrWhiteSpace(user.Id))
-            {
-                //if they gave us the id then we can check that first
-                var response = await Client.GetAsync<User>(user.Id);
-                if (response.IsValid)
-                {
-                    found = response.Source;
-                    found.Id = response.Id;
-                }
-            }
-            if (found is null)
-            {
-                var result = await Client.SearchAsync<User>(s =>
-                    s.Query(q =>
-                        q.Match(m =>
-                            m.Field(f => f.Username)
-                            .Query(user.Username)
-                        )
+            var result = await Client.SearchAsync<User>(s =>
+                s.Query(q =>
+                    q.Match(m =>
+                        m.Field(f => f.Username)
+                        .Query(request.Username)
                     )
-                );
-                if (result.IsValid && result.Total > 0)
-                {
-                    var hit = result.Hits.FirstOrDefault();
-                    found = hit.Source;
-                    found.Id = hit.Id;
-                }
+                )
+            );
+            if (result.IsValid && result.Total > 0)
+            {
+                var hit = result.Hits.FirstOrDefault();
+                found = hit.Source;
+                found.Id = hit.Id;
             }
 
             //verification
-            var valid = found != null && string.Equals(found.Username, user.Username, StringComparison.Ordinal)
-                && string.Equals(found.Password, user.Password, StringComparison.Ordinal)
-                && !string.IsNullOrWhiteSpace(found.Id);
+            var valid = !string.IsNullOrWhiteSpace(found?.Id)
+                && string.Equals(found.Username, request.Username, StringComparison.Ordinal)
+                && string.Equals(found.Password, request.Password, StringComparison.Ordinal);
 
             if (valid)
             {
@@ -307,8 +294,11 @@ namespace MagiCloud
                 {
                     Creation = DateTimeOffset.Now,
                     Id = Guid.NewGuid().ToString(),
-                    LinkedUserId = found.Id
-                    //Expiration = null //doesn't expire
+                    LinkedUserId = found.Id,
+                    Name = request.TokenName,
+                    LastUsed = DateTimeOffset.Now,
+                    Timeout = request.DesiredTimeout,
+                    Expiration = request.DesiredExpiration
                 };
                 var storeTokenResult = await Client.IndexDocumentAsync(token);
                 ThrowIfInvalid(storeTokenResult);
@@ -328,7 +318,24 @@ namespace MagiCloud
                 return null;
             }
             ThrowIfInvalid(result);
-            return result.Source;
+            var fullToken = result.Source;
+            if (fullToken.Timeout > 0)
+            {
+                if (DateTimeOffset.Now > fullToken.LastUsed + TimeSpan.FromSeconds(fullToken.Timeout.Value))
+                {
+                    _logger.LogWarning("Token {Id} has expired from inactivity.", token);
+                    return null;
+                }
+            }
+            if (fullToken.Expiration > DateTimeOffset.Now)
+            {
+                _logger.LogWarning("Token {Id} has expired.", token);
+                return null;
+            }
+            fullToken.LastUsed = DateTimeOffset.Now;
+            var updateResult = await Client.IndexDocumentAsync(fullToken);
+            ThrowIfInvalid(updateResult);
+            return fullToken;
         }
 
         private void ThrowIfInvalid(ResponseBase response)

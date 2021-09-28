@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MagiCommon.Models
+﻿namespace MagiCommon.Models
 {
     public class User
     {

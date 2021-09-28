@@ -30,10 +30,14 @@ namespace MagiConsole
                 var api = host.Services.GetRequiredService<IMagiCloudAPI>();
                 try
                 {
-                    var token = await api.GetAuthTokenAsync(new MagiCommon.Models.User
+                    var token = await api.GetAuthTokenAsync(new MagiCommon.Models.LoginRequest
                     {
                         Username = username,
-                        Password = password
+                        Password = password,
+                        DesiredTimeout = 2678400, //31 days
+                        TokenName = $"MagiConsole - {Environment.MachineName}",
+                        DesiredExpiration = null //does not expire at a set time, only from inactivity
+
                     });
                     context.Users.Add(new UserData
                     {
@@ -46,8 +50,7 @@ namespace MagiConsole
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex);
-                    Console.WriteLine("Error while logging in. Does the user exist?");
-                    Console.WriteLine("Press any key to exit.");
+                    Console.WriteLine("Error while logging in. Press any key to exit.");
                     Console.ReadKey();
                     return;
                 }
