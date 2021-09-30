@@ -325,17 +325,24 @@ namespace MagiCloud
             }
             ThrowIfInvalid(result);
             var fullToken = result.Source;
+            var expired = false;
             if (fullToken.Timeout > 0)
             {
                 if (DateTimeOffset.Now > fullToken.LastUpdated + TimeSpan.FromSeconds(fullToken.Timeout.Value))
                 {
                     _logger.LogWarning("Token {Id} has expired from inactivity.", hashedToken);
-                    return null;
+                    expired = true;
                 }
             }
             if (fullToken.Expiration > DateTimeOffset.Now)
             {
                 _logger.LogWarning("Token {Id} has expired.", hashedToken);
+                expired = true;
+            }
+            if (expired)
+            {
+                var response = await Client.DeleteAsync<AuthToken>(hashedToken);
+                ThrowIfInvalid(response);
                 return null;
             }
             fullToken.LastUpdated = DateTimeOffset.Now;
