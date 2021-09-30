@@ -1,4 +1,5 @@
 ﻿using MagiCloud.Configuration;
+using MagiCommon;
 using MagiCommon.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
@@ -39,11 +40,13 @@ namespace MagiCloud
 
         private readonly ElasticSettings _settings;
         private readonly ILogger<ElasticManager> _logger;
-        
-        public ElasticManager(IOptionsSnapshot<ElasticSettings> options, ILogger<ElasticManager> logger)
+        private readonly IHashService _hashService;
+
+        public ElasticManager(IOptionsSnapshot<ElasticSettings> options, ILogger<ElasticManager> logger, IHashService hashService)
         {
             _settings = options.Value;
             _logger = logger;
+            _hashService = hashService;
         }
 
         public void Setup()
@@ -290,18 +293,20 @@ namespace MagiCloud
 
             if (valid)
             {
+                var rawToken = Guid.NewGuid().ToString();
                 var token = new AuthToken
                 {
+                    Id = _hashService.GeneratePasswordHash(rawToken), //we store the hash of the guid, not the guid itself
                     Creation = DateTimeOffset.Now,
-                    Id = Guid.NewGuid().ToString(),
                     LinkedUserId = found.Id,
                     Name = request.TokenName,
-                    LastUsed = DateTimeOffset.Now,
+                    LastUpdated = DateTimeOffset.Now,
                     Timeout = request.DesiredTimeout,
                     Expiration = request.DesiredExpiration
                 };
                 var storeTokenResult = await Client.IndexDocumentAsync(token);
                 ThrowIfInvalid(storeTokenResult);
+                token.Id = rawToken; //callers must pass the original guid as the token so we give it to them here. We cannot retrieve it, only check it
                 return token;
             }
             return null;
@@ -311,28 +316,29 @@ namespace MagiCloud
         public async Task<AuthToken> VerifyTokenAsync(string token)
         {
             Setup();
-            var result = await Client.GetAsync<AuthToken>(token);
+            var hashedToken = _hashService.GeneratePasswordHash(token); //caller passes original guid token, we compare hashes. Never have original token stored.
+            var result = await Client.GetAsync<AuthToken>(hashedToken);
             if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
             {
-                _logger.LogWarning("Token with id {Id} not found.", token);
+                _logger.LogWarning("Token with id {Id} not found.", hashedToken);
                 return null;
             }
             ThrowIfInvalid(result);
             var fullToken = result.Source;
             if (fullToken.Timeout > 0)
             {
-                if (DateTimeOffset.Now > fullToken.LastUsed + TimeSpan.FromSeconds(fullToken.Timeout.Value))
+                if (DateTimeOffset.Now > fullToken.LastUpdated + TimeSpan.FromSeconds(fullToken.Timeout.Value))
                 {
-                    _logger.LogWarning("Token {Id} has expired from inactivity.", token);
+                    _logger.LogWarning("Token {Id} has expired from inactivity.", hashedToken);
                     return null;
                 }
             }
             if (fullToken.Expiration > DateTimeOffset.Now)
             {
-                _logger.LogWarning("Token {Id} has expired.", token);
+                _logger.LogWarning("Token {Id} has expired.", hashedToken);
                 return null;
             }
-            fullToken.LastUsed = DateTimeOffset.Now;
+            fullToken.LastUpdated = DateTimeOffset.Now;
             var updateResult = await Client.IndexDocumentAsync(fullToken);
             ThrowIfInvalid(updateResult);
             return fullToken;

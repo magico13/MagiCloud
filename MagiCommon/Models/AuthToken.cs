@@ -10,6 +10,6 @@ namespace MagiCommon.Models
         public DateTimeOffset Creation { get; set; }
         public DateTimeOffset? Expiration { get; set; }
         public int? Timeout{ get; set; }
-        public DateTimeOffset? LastUsed { get; set; }
+        public DateTimeOffset? LastUpdated { get; set; }
     }
 }
