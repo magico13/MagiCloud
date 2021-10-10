@@ -79,6 +79,7 @@ namespace MagiConsole
 
                     services.Configure<Settings>(hostContext.Configuration.GetSection(nameof(Settings)));
                     services.AddDbContext<MagiContext>(c => c.UseSqlite(connectionString));
+                    services.AddSingleton<ITokenProvider, DBTokenProvider>();
                     services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c => 
                     {
                         c.BaseAddress = new Uri(hostContext.Configuration["Settings:ServerUrl"]);

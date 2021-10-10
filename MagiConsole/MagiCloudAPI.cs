@@ -1,4 +1,5 @@
-﻿using MagiCommon.Models;
+﻿using MagiCommon;
+using MagiCommon.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,32 +25,32 @@ namespace MagiConsole
     public class MagiCloudAPI : IMagiCloudAPI
     {
         public HttpClient Client { get; }
-        public MagiContext DbContext { get; }
+        public ITokenProvider TokenProvider { get; }
 
-        public MagiCloudAPI(HttpClient client, MagiContext dbcontext)
+        public MagiCloudAPI(HttpClient client, ITokenProvider tokenProvider)
         {
             Client = client;
-            DbContext = dbcontext;
+            this.TokenProvider = tokenProvider;
         }
 
-        private void AddAuthToken()
+        private async Task AddAuthTokenAsync()
         {
             if (!Client.DefaultRequestHeaders.Contains("Token"))
             {
-                var user = DbContext.Users.First();
-                Client.DefaultRequestHeaders.Add("Token", user.Token);
+                var token = await TokenProvider.GetTokenAsync();
+                Client.DefaultRequestHeaders.Add("Token", token);
             }
         }
 
         public async Task<FileList> GetFilesAsync()
         {
-            AddAuthToken();
+            await AddAuthTokenAsync();
             return await Client.GetFromJsonAsync<FileList>("api/files");
         }
 
         public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
         {
-            AddAuthToken();
+            await AddAuthTokenAsync();
             var response = await Client.PostAsJsonAsync("api/files", fileInfo);
             response.EnsureSuccessStatusCode();
             var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
@@ -69,19 +70,19 @@ namespace MagiConsole
 
         public async Task<ElasticFileInfo> GetFileInfoAsync(string id)
         {
-            AddAuthToken();
+            await AddAuthTokenAsync();
             return await Client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
         }
 
         public async Task<Stream> GetFileContentAsync(string id)
         {
-            AddAuthToken();
+            await AddAuthTokenAsync();
             return await Client.GetStreamAsync($"api/filecontent/{id}");
         }
 
         public async Task RemoveFileAsync(string id)
         {
-            AddAuthToken();
+            await AddAuthTokenAsync();
             await Client.DeleteAsync($"api/files/{id}");
         }
 
