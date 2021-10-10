@@ -32,7 +32,6 @@ namespace MagiCloud.Controllers
                 {
                     return Unauthorized();
                 }
-                await _elastic.SetupIndicesAsync();
                 var docs = await _elastic.GetDocumentsAsync(token.LinkedUserId);
                 return Json(docs);
             }
@@ -54,7 +53,6 @@ namespace MagiCloud.Controllers
                 {
                     return Unauthorized();
                 }
-                await _elastic.SetupIndicesAsync();
                 var file = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
                 return Json(file);
             }

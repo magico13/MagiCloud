@@ -40,7 +40,6 @@ namespace MagiCloud.Controllers
                 {
                     return Unauthorized();
                 }
-                await _elastic.SetupIndicesAsync();
                 var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
                 if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
