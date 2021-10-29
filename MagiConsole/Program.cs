@@ -87,7 +87,6 @@ namespace MagiConsole
 
                     services.AddSingleton<SyncManager>();
                     services.AddSingleton<IHashService, HashService>();
-
                 });
     }
 }

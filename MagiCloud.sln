@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagiConsole", "MagiConsole\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagiCommon", "MagiCommon\MagiCommon.csproj", "{B43F9F5F-8D6D-49BC-AE90-2DB024A8D25B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagiCloudWeb", "MagiCloudWeb\MagiCloudWeb.csproj", "{EDDE3B28-4895-4077-ADFB-970B95F3A045}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagiCloudWeb", "MagiCloudWeb\MagiCloudWeb.csproj", "{F7E96209-CF4A-495A-8F67-80DB05721471}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,10 @@ Global
 		{B43F9F5F-8D6D-49BC-AE90-2DB024A8D25B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B43F9F5F-8D6D-49BC-AE90-2DB024A8D25B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B43F9F5F-8D6D-49BC-AE90-2DB024A8D25B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EDDE3B28-4895-4077-ADFB-970B95F3A045}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EDDE3B28-4895-4077-ADFB-970B95F3A045}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EDDE3B28-4895-4077-ADFB-970B95F3A045}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EDDE3B28-4895-4077-ADFB-970B95F3A045}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7E96209-CF4A-495A-8F67-80DB05721471}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7E96209-CF4A-495A-8F67-80DB05721471}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7E96209-CF4A-495A-8F67-80DB05721471}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7E96209-CF4A-495A-8F67-80DB05721471}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -18,5 +18,12 @@ namespace MagiConsole
             var user = await DbContext.Users.FirstOrDefaultAsync();
             return user?.Token;
         }
+
+        public async Task StoreTokenAsync(string token)
+        {
+            var user = await DbContext.Users.FirstOrDefaultAsync();
+            user.Token = token;
+            await DbContext.SaveChangesAsync();
+        }
     }
 }

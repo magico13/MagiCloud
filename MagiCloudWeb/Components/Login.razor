@@ -1,0 +1,72 @@
+﻿@using MagiCommon
+@using Microsoft.Extensions.Logging
+
+@inject ITokenProvider TokenProvider
+@inject IMagiCloudAPI MagicApi
+@inject ILogger<Login> Logger
+
+
+@if (string.IsNullOrWhiteSpace(token))
+{
+    <div>
+        <EditForm Model="model" OnValidSubmit="@HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <p>
+                <label>
+                    Username:
+                    <InputText id="username" @bind-Value="model.Username" />
+                </label>
+            </p>
+            <p>
+                <label>
+                    Password:
+                    <InputText id="password" type="password" @bind-Value="model.Password" />
+                </label>
+            </p>
+            <button type="submit">Login</button>
+        </EditForm>
+    </div>
+}
+else
+{
+    <div>
+        <p>
+            Logged in with token @token
+        </p>
+    </div>
+}
+
+@code
+{
+    private LoginModel model = new();
+    private string token = null;
+    private string username = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        token = await TokenProvider.GetTokenAsync();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            // TODO: get user info
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+
+    private async Task HandleSubmit()
+    {
+        token = await MagicApi.GetAuthTokenAsync(new MagiCommon.Models.LoginRequest
+        {
+            Username = model.Username,
+            Password = model.Password,
+            DesiredTimeout = 120, //1 day
+            TokenName = "MagiCloudWeb"
+        });
+        username = model.Username;
+        Logger.LogInformation("Token: {Token}", token);
+
+        await TokenProvider.StoreTokenAsync(token);
+    }
+}

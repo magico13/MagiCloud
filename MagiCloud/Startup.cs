@@ -27,8 +27,15 @@ namespace MagiCloud
             services.AddScoped<IDataManager, FileSystemDataManager>();
             services.AddScoped<IHashService, HashService>();
 
-            services.AddControllers();
+            services.AddCors(options =>
+                options.AddDefaultPolicy(p =>
+                    p.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                )
+            );
 
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -42,6 +49,8 @@ namespace MagiCloud
             //app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseCors();
 
             app.UseAuthorization();
 
