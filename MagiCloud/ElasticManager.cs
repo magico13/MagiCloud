@@ -24,6 +24,7 @@ namespace MagiCloud
         Task<bool> DeleteFileAsync(string userId, ElasticFileInfo file);
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
 
+        Task<User> GetUserAsync(string userId);
         Task<User> CreateUserAsync(User user);
         Task<AuthToken> LoginUserAsync(LoginRequest request);
         Task<AuthToken> VerifyTokenAsync(string token);
@@ -265,6 +266,24 @@ namespace MagiCloud
             user.Password = null;
 
             return user;
+        }
+
+        public async Task<User> GetUserAsync(string userId)
+        {
+            Setup();
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var userResult = await Client.GetAsync<User>(userId);
+                if (!userResult.Found)
+                {
+                    return null;
+                }
+                ThrowIfInvalid(userResult);
+                var user = userResult.Source;
+                user.Password = null;
+                return user;
+            }
+            return null;
         }
 
         public async Task<AuthToken> LoginUserAsync(LoginRequest request)

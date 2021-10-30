@@ -1,3 +1,4 @@
+using BlazorDownloadFile;
 using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
 using MagiCommon;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -18,6 +19,7 @@ namespace MagiCloudWeb
             builder.Services.AddStorage();
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddScoped<ITokenProvider, BlazorStorageTokenProvider>();
+            builder.Services.AddBlazorDownloadFile(ServiceLifetime.Scoped);
             builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c =>
             {
                 c.BaseAddress = new Uri(builder.Configuration["Settings:ServerUrl"]);

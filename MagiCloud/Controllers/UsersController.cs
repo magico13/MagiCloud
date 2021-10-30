@@ -21,6 +21,21 @@ namespace MagiCloud.Controllers
             _hashService = hashService;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetUserAsync()
+        {
+            var token = await Request.VerifyAuthToken(_elastic);
+            if (token is null)
+            {
+                return Unauthorized();
+            }
+            var user = await _elastic.GetUserAsync(token.LinkedUserId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            return new JsonResult(user);
+        }
         
         [HttpPost]
         public async Task<IActionResult> CreateUserAsync(User user)

@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagiConsole", "MagiConsole\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagiCommon", "MagiCommon\MagiCommon.csproj", "{B43F9F5F-8D6D-49BC-AE90-2DB024A8D25B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagiCloudWeb", "MagiCloudWeb\MagiCloudWeb.csproj", "{F7E96209-CF4A-495A-8F67-80DB05721471}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MagiCloudWeb", "MagiCloudWeb\MagiCloudWeb.csproj", "{F7E96209-CF4A-495A-8F67-80DB05721471}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

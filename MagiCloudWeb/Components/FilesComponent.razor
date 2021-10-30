@@ -1,0 +1,19 @@
+﻿@using MagiCommon
+@using Microsoft.Extensions.Logging
+
+@inject ITokenProvider TokenProvider
+@inject IMagiCloudAPI MagicApi
+@inject ILogger<FilesComponent> Logger
+
+
+<h3>Files</h3>
+@if (files?.Files?.Any() == true)
+{
+    @foreach (var file in files.Files)
+    {
+        <p>
+            <button @onclick="@(async () => await GetFileContent(file.Id))">@(file.Name + "." + file.Extension)</button>
+        </p>
+    }
+}
+

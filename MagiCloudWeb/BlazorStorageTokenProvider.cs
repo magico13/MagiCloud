@@ -6,6 +6,7 @@ namespace MagiCloudWeb
 {
     public class BlazorStorageTokenProvider : ITokenProvider
     {
+        const string KEY = "authToken";
         public StorageBase Storage { get; }
 
         public BlazorStorageTokenProvider(LocalStorage storage)
@@ -15,12 +16,19 @@ namespace MagiCloudWeb
 
         public async Task<string> GetTokenAsync()
         {
-            return await Storage.GetItemAsync("authToken");
+            return await Storage.GetItemAsync(KEY);
         }
 
         public async Task StoreTokenAsync(string token)
         {
-            await Storage.SetItemAsync("authToken", token);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                await Storage.RemoveItemAsync(KEY);
+            }
+            else
+            {
+                await Storage.SetItemAsync(KEY, token);
+            }
         }
     }
 }

@@ -32,25 +32,44 @@ else
 {
     <div>
         <p>
-            Logged in with token @token
+            Logged in as @username
         </p>
+        @ChildContent
     </div>
 }
 
 @code
 {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
     private LoginModel model = new();
     private string token = null;
     private string username = null;
 
     protected override async Task OnInitializedAsync()
     {
-        token = await TokenProvider.GetTokenAsync();
-        if (!string.IsNullOrWhiteSpace(token))
+        try
         {
-            // TODO: get user info
+            token = await TokenProvider.GetTokenAsync();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var user = await MagicApi.GetUserAsync();
+                username = user?.Username;
+            }
         }
-
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to check user");
+        }
+        finally
+        {
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(username))
+            {
+                await TokenProvider.StoreTokenAsync(null);
+                token = null;
+            }
+        }
         await base.OnInitializedAsync();
     }
 

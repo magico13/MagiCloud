@@ -16,6 +16,8 @@ namespace MagiCommon
         Task<Stream> GetFileContentAsync(string id);
         Task RemoveFileAsync(string id);
 
+
+        Task<User> GetUserAsync();
         Task<User> CreateUserAsync(User user);
         Task<string> GetAuthTokenAsync(LoginRequest request);
     }
@@ -84,6 +86,17 @@ namespace MagiCommon
             await Client.DeleteAsync($"api/files/{id}");
         }
 
+        public async Task<User> GetUserAsync()
+        {
+            await AddAuthTokenAsync();
+            var response = await Client.GetAsync($"api/users");
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound || response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return null;
+            }
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<User>();
+        }
 
         public async Task<User> CreateUserAsync(User user)
         {
