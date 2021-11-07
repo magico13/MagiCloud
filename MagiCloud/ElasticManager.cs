@@ -19,15 +19,17 @@ namespace MagiCloud
         IElasticClient Client { get; set; }
         Task<bool> SetupIndicesAsync();
         Task<FileList> GetDocumentsAsync(string userId);
-        Task<ElasticFileInfo> GetDocumentAsync(string userId, string id);
+        Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id);
         Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
-        Task<bool> DeleteFileAsync(string userId, ElasticFileInfo file);
+        Task<FileAccessResult> DeleteFileAsync(string userId, ElasticFileInfo file);
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
 
         Task<User> GetUserAsync(string userId);
         Task<User> CreateUserAsync(User user);
         Task<AuthToken> LoginUserAsync(LoginRequest request);
         Task<AuthToken> VerifyTokenAsync(string token);
+
+        FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file);
     }
 
 
@@ -123,23 +125,23 @@ namespace MagiCloud
             return new FileList() { Files = new List<ElasticFileInfo>() };
         }
 
-        public async Task<ElasticFileInfo> GetDocumentAsync(string userId, string id)
+        public async Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id)
         {
             Setup();
             var result = await Client.GetAsync<ElasticFileInfo>(id);
             if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
             {
                 _logger.LogWarning("Document with id {Id} not found.", id);
-                return null;
+                return (FileAccessResult.NotFound, null);
             }
             ThrowIfInvalid(result);
             var source = result.Source;
             source.Id = result.Id;
-            if (string.Equals(result.Source.UserId, userId, StringComparison.Ordinal))
+            if (VerifyFileAccess(userId, source) == FileAccessResult.Success)
             {
-                return source;
+                return (FileAccessResult.Success, source);
             }
-            return null;
+            return (FileAccessResult.NotPermitted, null);
         }
 
         public async Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file)
@@ -155,21 +157,20 @@ namespace MagiCloud
             // if an id is provided, check if that file actually exists, if not throw that out
             if (!string.IsNullOrWhiteSpace(file.Id))
             {
-                var existing = await GetDocumentAsync(userId, file.Id);
-                if (existing is null)
+                var (getResult, existing) = await GetDocumentAsync(userId, file.Id);
+                if (getResult == FileAccessResult.Success) //if existing file (that we can access) overwrite it
                 {
-                    file.Id = null;
+                    EnsureFileAttributes(file, existing);
                 }
                 else
                 {
-                    EnsureFileAttributes(file, existing);
+                    file.Id = null;
                 }
             }
             if (string.IsNullOrEmpty(file.MimeType))
             {
                 file.MimeType = GetMimeType(file);
             }
-            
 
             var result = await Client.IndexDocumentAsync(file);
             ThrowIfInvalid(result);
@@ -177,30 +178,30 @@ namespace MagiCloud
         }
 
 
-        public async Task<bool> DeleteFileAsync(string userId, ElasticFileInfo file)
+        public async Task<FileAccessResult> DeleteFileAsync(string userId, ElasticFileInfo file)
         {
             Setup();
-            var doc = await GetDocumentAsync(userId, file.Id);
-            if (doc is null)
+            var (getResult, doc) = await GetDocumentAsync(userId, file.Id);
+            if (getResult != FileAccessResult.Success || doc is null)
             {
-                return false;
+                return getResult;
             }
             var result = await Client.DeleteAsync<ElasticFileInfo>(file.Id);
             if (result.IsValid)
             {
-                return true;
+                return FileAccessResult.Success;
             }
             else if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
             {
-                return false;
+                return FileAccessResult.NotFound;
             }
             ThrowIfInvalid(result);
-            return false;
+            return FileAccessResult.Unknown;
         }
 
         public async Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file)
         {
-            var existing = await GetDocumentAsync(userId, file.Id);
+            var (_, existing) = await GetDocumentAsync(userId, file.Id);
             if (existing is null)
             {
                 throw new FileNotFoundException("Can not find file with id " + file.Id, file.Id);
@@ -281,6 +282,7 @@ namespace MagiCloud
                 ThrowIfInvalid(userResult);
                 var user = userResult.Source;
                 user.Password = null;
+                user.Id = userId;
                 return user;
             }
             return null;
@@ -368,6 +370,15 @@ namespace MagiCloud
             var updateResult = await Client.IndexDocumentAsync(fullToken);
             ThrowIfInvalid(updateResult);
             return fullToken;
+        }
+
+        public FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
+        {
+            if (string.Equals(file.UserId, userId, StringComparison.Ordinal))
+            {
+                return FileAccessResult.Success;
+            }
+            return FileAccessResult.NotPermitted;
         }
 
         private void ThrowIfInvalid(ResponseBase response)

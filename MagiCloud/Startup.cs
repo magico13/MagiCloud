@@ -35,6 +35,10 @@ namespace MagiCloud
                 )
             );
 
+            services.AddAuthentication(o =>
+                o.DefaultScheme = Constants.TokenAuthenticationScheme
+            ).AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(Constants.TokenAuthenticationScheme, o => { });
+
             services.AddControllers();
         }
 
@@ -46,12 +50,13 @@ namespace MagiCloud
                 app.UseDeveloperExceptionPage();
             }
 
-            //app.UseHttpsRedirection();
+            app.UseHttpsRedirection();
 
             app.UseRouting();
 
             app.UseCors();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

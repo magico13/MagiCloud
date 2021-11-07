@@ -1,5 +1,6 @@
 ﻿using MagiCommon;
 using MagiCommon.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
@@ -22,14 +23,11 @@ namespace MagiCloud.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetUserAsync()
         {
-            var token = await Request.VerifyAuthToken(_elastic);
-            if (token is null)
-            {
-                return Unauthorized();
-            }
-            var user = await _elastic.GetUserAsync(token.LinkedUserId);
+            var userId = User.Identity.Name;
+            var user = await _elastic.GetUserAsync(userId);
             if (user == null)
             {
                 return NotFound();

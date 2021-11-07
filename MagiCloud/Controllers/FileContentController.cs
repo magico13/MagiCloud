@@ -1,5 +1,6 @@
 ﻿using MagiCloud.DataManager;
 using MagiCommon;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 namespace MagiCloud.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class FileContentController : ControllerBase
     {
@@ -35,13 +37,10 @@ namespace MagiCloud.Controllers
         {
             try
             {
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
-                {
-                    return Unauthorized();
-                }
-                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
-                if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                var userId = User.Identity.Name;
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                
+                if (result == FileAccessResult.Success && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
                     if (_dataManager.FileExists(doc.Id))
@@ -64,14 +63,25 @@ namespace MagiCloud.Controllers
                     {
                         return NotFound(new Dictionary<string, object>
                         {
-                            ["message"] = "Document not found on disk."
+                            ["message"] = "Document content not found."
                         });
                     }
                 }
-                return NotFound(new Dictionary<string, object>
+                if (result == FileAccessResult.NotFound)
                 {
-                    ["message"] = "Document not found in database."
-                });
+                    return NotFound(new Dictionary<string, object>
+                    {
+                        ["message"] = "Document not found."
+                    });
+                }
+                else if (result == FileAccessResult.NotPermitted)
+                {
+                    return Forbid();
+                }
+                else
+                {
+                    return NotFound();
+                }
             }
             catch (Exception ex)
             {
@@ -89,19 +99,15 @@ namespace MagiCloud.Controllers
             try
             {
                 //get the file info from the db, upload the file data, update the info in the db
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
-                {
-                    return Unauthorized();
-                }
+                var userId = User.Identity.Name;
                 if (file is null || file.Length < 0)
                 {
                     return BadRequest();
                 }
 
                 await _elastic.SetupIndicesAsync();
-                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
-                if (doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                if (result == FileAccessResult.Success && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
                     using var stream = file.OpenReadStream();
@@ -113,12 +119,19 @@ namespace MagiCloud.Controllers
                     //write file to data folder
                     await _dataManager.WriteFileAsync(doc.Id, stream);
 
-                    await _elastic.UpdateFileAttributesAsync(token.LinkedUserId, doc);
+                    await _elastic.UpdateFileAttributesAsync(userId, doc);
                     //await _elastic.IndexDocumentAsync(doc); //superfluous?
 
                     return NoContent();
                 }
-                return NotFound();
+                if (result == FileAccessResult.NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return Forbid();
+                }
             }
             catch (Exception ex)
             {

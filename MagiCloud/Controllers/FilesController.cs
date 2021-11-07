@@ -1,5 +1,6 @@
 ﻿using MagiCloud.DataManager;
 using MagiCommon.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 namespace MagiCloud.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     public class FilesController : Controller
     {
         private readonly ILogger<FilesController> _logger;
@@ -27,12 +29,8 @@ namespace MagiCloud.Controllers
         {
             try
             {
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
-                {
-                    return Unauthorized();
-                }
-                var docs = await _elastic.GetDocumentsAsync(token.LinkedUserId);
+                var userId = User.Identity.Name;
+                var docs = await _elastic.GetDocumentsAsync(userId);
                 return Json(docs);
             }
             catch (Exception ex)
@@ -48,13 +46,20 @@ namespace MagiCloud.Controllers
         {
             try
             {
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
+                var userId = User.Identity.Name;
+                var (result, file) = await _elastic.GetDocumentAsync(userId, id);
+                if (result == FileAccessResult.Success)
                 {
-                    return Unauthorized();
+                    return Json(file);
                 }
-                var file = await _elastic.GetDocumentAsync(token.LinkedUserId, id);
-                return Json(file);
+                else if (result == FileAccessResult.NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return Forbid();
+                }
             }
             catch (Exception ex)
             {
@@ -69,14 +74,10 @@ namespace MagiCloud.Controllers
         {
             try
             {
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
-                {
-                    return Unauthorized();
-                }
+                var userId = User.Identity.Name;
                 await _elastic.SetupIndicesAsync();
-                var docId = await _elastic.IndexDocumentAsync(token.LinkedUserId, file);
-                var doc = await _elastic.GetDocumentAsync(token.LinkedUserId, docId);
+                var docId = await _elastic.IndexDocumentAsync(userId, file);
+                var (_, doc) = await _elastic.GetDocumentAsync(userId, docId);
                 doc.Id = docId;
                 return Json(doc);
             }
@@ -94,17 +95,21 @@ namespace MagiCloud.Controllers
         {
             try
             {
-                var token = await Request.VerifyAuthToken(_elastic);
-                if (token is null)
-                {
-                    return Unauthorized();
-                }
+                var userId = User.Identity.Name;
                 _dataManager.DeleteFile(id);
-                if (await _elastic.DeleteFileAsync(token.LinkedUserId, new ElasticFileInfo { Id = id }))
+                var result = await _elastic.DeleteFileAsync(userId, new ElasticFileInfo { Id = id });
+                if (result == FileAccessResult.Success)
                 {
                     return NoContent();
                 }
-                return NotFound();
+                else if (result == FileAccessResult.NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return Forbid();
+                }
             }
             catch (Exception ex)
             {
