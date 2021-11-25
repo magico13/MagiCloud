@@ -24,6 +24,7 @@ namespace MagiCloudWeb.Components
             try
             {
                 files = await MagicApi.GetFilesAsync();
+                files?.Files?.Sort(new ElasticFileInfo.NameComparer());
             }
             catch (Exception ex)
             {

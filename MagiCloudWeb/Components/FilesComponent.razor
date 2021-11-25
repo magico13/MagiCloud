@@ -11,9 +11,8 @@
 {
     @foreach (var file in files.Files)
     {
-        <p>
-            <button @onclick="@(async () => await GetFileContent(file.Id))">@(file.Name + "." + file.Extension)</button>
-        </p>
+        <button class="btn btn-link btn-sm" @onclick="@(async () => await GetFileContent(file.Id))">@(file.Name + "." + file.Extension)</button>
+        <br />
     }
 }
 

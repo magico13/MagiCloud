@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MagiCommon.Models
 {
@@ -14,5 +15,29 @@ namespace MagiCommon.Models
         public string Hash { get; set; }
         public string FileText { get; set; }
         public string UserId { get; set; }
-    }
+
+        public class NameComparer : IComparer<ElasticFileInfo>
+        {
+            public int Compare(ElasticFileInfo x, ElasticFileInfo y)
+            {
+                if (x is null && y is null)
+                {
+                    return 0;
+                }
+                return string.Compare(x?.Name, y?.Name, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public class SizeComparer : IComparer<ElasticFileInfo>
+        {
+            public int Compare(ElasticFileInfo x, ElasticFileInfo y)
+            {
+                if (x is null && y is null)
+                {
+                    return 0;
+                }
+                return x?.Size.CompareTo(y?.Size) ?? 0;
+            }
+        }
+    } 
 }
