@@ -1,8 +1,12 @@
 ﻿using MagiCommon;
 using MagiCommon.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -75,9 +79,40 @@ namespace MagiCloud.Controllers
             var token = fullToken?.Id;
             if (!string.IsNullOrWhiteSpace(token))
             {
+                await SignIn(fullToken);
                 return new JsonResult(new { token });
             }
             return Unauthorized();
+        }
+
+
+        private async Task SignIn(AuthToken token)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, token.LinkedUserId),
+                new Claim("Token", token.Id),
+                new Claim(ClaimTypes.NameIdentifier, token.Name)
+            };
+
+            var claimsIdentity = new ClaimsIdentity(
+                claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var authProperties = new AuthenticationProperties
+            {
+                ExpiresUtc = token.Expiration,
+                // The time at which the authentication ticket expires. A 
+                // value set here overrides the ExpireTimeSpan option of 
+                // CookieAuthenticationOptions set with AddCookie.
+
+                IssuedUtc = token.Creation,
+                // The time at which the authentication ticket was issued.
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(claimsIdentity),
+                authProperties);
         }
         
     }

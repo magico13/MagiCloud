@@ -32,11 +32,10 @@ namespace MagiCloudWeb.Components
             }
         }
 
-        private async Task GetFileContent(string id)
+        private string GetFileContentUri(string id)
         {
-            var info = await MagicApi.GetFileInfoAsync(id);
-            var stream = await MagicApi.GetFileContentAsync(id);
-            await Downloader.DownloadFile(info.Name + "." + info.Extension, stream, info.MimeType);
+            var path = MagicApi.GetFileContentUri(id);
+            return path.ToString();
         }
     }
 }

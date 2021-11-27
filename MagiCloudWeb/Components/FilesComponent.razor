@@ -11,7 +11,7 @@
 {
     @foreach (var file in files.Files)
     {
-        <button class="btn btn-link btn-sm" @onclick="@(async () => await GetFileContent(file.Id))">@(file.Name + "." + file.Extension)</button>
+        <a href="@GetFileContentUri(file.Id)" target="_blank">@file.GetFullPath() (@((file.Size/1024.0).ToString("N1")) kiB - @file.MimeType)</a>
         <br />
     }
 }

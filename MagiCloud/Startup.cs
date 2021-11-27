@@ -1,6 +1,7 @@
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
 using MagiCommon;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -29,15 +30,18 @@ namespace MagiCloud
 
             services.AddCors(options =>
                 options.AddDefaultPolicy(p =>
-                    p.AllowAnyOrigin()
+                    p.SetIsOriginAllowed(s =>
+                    {
+                        return s.Contains("https://localhost") || s.Contains("https://magico13.net");
+                    })
                     .AllowAnyMethod()
                     .AllowAnyHeader()
+                    .AllowCredentials()
                 )
             );
 
-            services.AddAuthentication(o =>
-                o.DefaultScheme = Constants.TokenAuthenticationScheme
-            ).AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(Constants.TokenAuthenticationScheme, o => { });
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie();
 
             services.AddControllers();
         }

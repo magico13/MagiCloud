@@ -57,7 +57,7 @@ namespace MagiCloud.Controllers
                             _logger.LogWarning("MimeType data missing for document {DocId}, using type {ContentType}", doc.Id, doc.MimeType);
 
                         }
-                        return File(stream, doc.MimeType, doc.LastModified, new EntityTagHeaderValue($"\"{doc.Hash}\""));
+                        return File(stream, contentType: doc.MimeType, lastModified: doc.LastModified, entityTag: new EntityTagHeaderValue($"\"{doc.Hash}\""));
                     }
                     else
                     {

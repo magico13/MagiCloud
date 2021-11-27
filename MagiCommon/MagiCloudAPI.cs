@@ -1,4 +1,5 @@
 ﻿using MagiCommon.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -14,6 +15,7 @@ namespace MagiCommon
         Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
+        Uri GetFileContentUri(string id);
         Task RemoveFileAsync(string id);
 
 
@@ -78,6 +80,11 @@ namespace MagiCommon
         {
             await AddAuthTokenAsync();
             return await Client.GetStreamAsync($"api/filecontent/{id}");
+        }
+
+        public Uri GetFileContentUri(string id)
+        {
+            return new Uri(Client.BaseAddress, $"api/filecontent/{id}");
         }
 
         public async Task RemoveFileAsync(string id)

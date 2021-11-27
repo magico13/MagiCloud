@@ -21,13 +21,11 @@
 @code {
     private long maxFileSize = 1024 * 1024 * 8;
     private int maxAllowedFiles = 10;
-    private bool isLoading;
     private int uploaded = 0;
     private int totalUpload = 0;
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
     {
-        isLoading = true;
         uploaded = 0;
         var files = e.GetMultipleFiles(maxAllowedFiles);
         totalUpload = files.Count;
@@ -54,7 +52,5 @@
 
             uploaded++;
         }
-
-        isLoading = false;
     }
 }

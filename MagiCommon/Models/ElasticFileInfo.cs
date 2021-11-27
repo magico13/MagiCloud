@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace MagiCommon.Models
 {
@@ -24,7 +25,7 @@ namespace MagiCommon.Models
                 {
                     return 0;
                 }
-                return string.Compare(x?.Name, y?.Name, StringComparison.OrdinalIgnoreCase);
+                return string.Compare(x?.GetFullPath(), y?.GetFullPath(), StringComparison.OrdinalIgnoreCase);
             }
         }
 
@@ -37,6 +38,23 @@ namespace MagiCommon.Models
                     return 0;
                 }
                 return x?.Size.CompareTo(y?.Size) ?? 0;
+            }
+        }
+
+        public string GetFullPath()
+        {
+            return Path.GetDirectoryName(Name) + "/" + GetFileName();
+        }
+
+        public string GetFileName()
+        {
+            if (!string.IsNullOrWhiteSpace(Extension))
+            {
+                return Path.GetFileName(Name) + "." + Extension;
+            }
+            else
+            {
+                return Path.GetFileName(Name);
             }
         }
     } 

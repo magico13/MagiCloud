@@ -4,7 +4,6 @@ using MagiCommon;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace MagiCloudWeb
@@ -16,14 +15,15 @@ namespace MagiCloudWeb
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
+            builder.Services.AddHttpClient();
             builder.Services.AddStorage();
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddScoped<ITokenProvider, BlazorStorageTokenProvider>();
+            builder.Services.AddScoped<CustomHttpHandler>();
             builder.Services.AddBlazorDownloadFile(ServiceLifetime.Scoped);
             builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c =>
             {
                 c.BaseAddress = new Uri(builder.Configuration["Settings:ServerUrl"]);
-            });
+            }).ConfigurePrimaryHttpMessageHandler<CustomHttpHandler>();
 
             await builder.Build().RunAsync();
         }
