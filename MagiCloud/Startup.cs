@@ -41,7 +41,7 @@ namespace MagiCloud
             );
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie();
+                .AddCookie(o => o.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None);
 
             services.AddControllers();
         }

@@ -6,7 +6,6 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-
 namespace MagiCommon
 {
     public interface IMagiCloudAPI
@@ -35,24 +34,13 @@ namespace MagiCommon
             this.TokenProvider = tokenProvider;
         }
 
-        private async Task AddAuthTokenAsync()
-        {
-            if (!Client.DefaultRequestHeaders.Contains("Token"))
-            {
-                var token = await TokenProvider.GetTokenAsync();
-                Client.DefaultRequestHeaders.Add("Token", token);
-            }
-        }
-
         public async Task<FileList> GetFilesAsync()
         {
-            await AddAuthTokenAsync();
             return await Client.GetFromJsonAsync<FileList>("api/files");
         }
 
         public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
         {
-            await AddAuthTokenAsync();
             var response = await Client.PostAsJsonAsync("api/files", fileInfo);
             response.EnsureSuccessStatusCode();
             var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
@@ -72,13 +60,11 @@ namespace MagiCommon
 
         public async Task<ElasticFileInfo> GetFileInfoAsync(string id)
         {
-            await AddAuthTokenAsync();
             return await Client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
         }
 
         public async Task<Stream> GetFileContentAsync(string id)
         {
-            await AddAuthTokenAsync();
             return await Client.GetStreamAsync($"api/filecontent/{id}");
         }
 
@@ -89,13 +75,11 @@ namespace MagiCommon
 
         public async Task RemoveFileAsync(string id)
         {
-            await AddAuthTokenAsync();
             await Client.DeleteAsync($"api/files/{id}");
         }
 
         public async Task<User> GetUserAsync()
         {
-            await AddAuthTokenAsync();
             var response = await Client.GetAsync($"api/users");
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound || response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
