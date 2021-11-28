@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Threading;
@@ -15,11 +16,36 @@ namespace MagiConsole
         public static async Task Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
+            var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
             var context = host.Services.GetRequiredService<MagiContext>();
             context.Database.Migrate();
 
-            if (!await context.Users.AnyAsync())
+            var api = host.Services.GetRequiredService<IMagiCloudAPI>();
+
+            var user = await context.Users.SingleOrDefaultAsync();
+            if (user is not null)
+            {
+                try
+                {
+                    var fullToken = await api.ReauthTokenAsync(user.Token);
+                    if (fullToken is null)
+                    {
+                        user = null;
+                    }
+                    else
+                    {
+                        logger.LogInformation("Reauthenticated with stored token for user {User}", user.Username);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Error while reauthenticating existing token, continuing.");
+                    user = null;
+                }
+            }
+
+            if (user is null)
             {
                 Console.WriteLine("No user account saved, please log in.");
                 Console.Write("Username: ");
@@ -27,7 +53,6 @@ namespace MagiConsole
                 Console.Write("Password: ");
                 string password = Console.ReadLine().Trim();
 
-                var api = host.Services.GetRequiredService<IMagiCloudAPI>();
                 try
                 {
                     var token = await api.GetAuthTokenAsync(new MagiCommon.Models.LoginRequest
@@ -42,14 +67,14 @@ namespace MagiConsole
                     context.Users.Add(new UserData
                     {
                         Id = Guid.NewGuid().ToString(),
-                        Token = token,
+                        Token = token.Id,
                         Username = username
                     });
                     await context.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    logger.LogCritical(ex, "Error while logging in.");
                     Console.WriteLine("Error while logging in. Press any key to exit.");
                     Console.ReadKey();
                     return;

@@ -80,7 +80,27 @@ namespace MagiCloud.Controllers
             if (!string.IsNullOrWhiteSpace(token))
             {
                 await SignIn(fullToken);
-                return new JsonResult(new { token });
+                return Ok(fullToken);
+            }
+            return Unauthorized();
+        }
+
+        [HttpPut]
+        [Route("reauth")]
+        public async Task<IActionResult> ReauthAsync(string token)
+        {
+            await _elastic.SetupIndicesAsync();
+            if (string.IsNullOrWhiteSpace(token) )
+            {
+                return BadRequest(new { Message = "Invalid token." });
+            }
+
+            var fullToken = await _elastic.VerifyTokenAsync(token);
+            
+            if (!string.IsNullOrWhiteSpace(fullToken?.Id))
+            {
+                await SignIn(fullToken);
+                return Ok(fullToken);
             }
             return Unauthorized();
         }

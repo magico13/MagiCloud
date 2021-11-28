@@ -76,13 +76,14 @@ else
 
     private async Task HandleSubmit()
     {
-        token = await MagicApi.GetAuthTokenAsync(new MagiCommon.Models.LoginRequest
+        var fullToken = await MagicApi.GetAuthTokenAsync(new MagiCommon.Models.LoginRequest
         {
             Username = model.Username,
             Password = model.Password,
             DesiredTimeout = 86400, //1 day
             TokenName = "MagiCloudWeb"
         });
+        token = fullToken.Id;
         username = model.Username;
         Logger.LogInformation("Token: {Token}", token);
 

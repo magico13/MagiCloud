@@ -1,6 +1,5 @@
 ﻿using MagiCommon.Models;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -20,7 +19,8 @@ namespace MagiCommon
 
         Task<User> GetUserAsync();
         Task<User> CreateUserAsync(User user);
-        Task<string> GetAuthTokenAsync(LoginRequest request);
+        Task<AuthToken> GetAuthTokenAsync(LoginRequest request);
+        Task<AuthToken> ReauthTokenAsync(string token);
     }
 
     public class MagiCloudAPI : IMagiCloudAPI
@@ -96,12 +96,18 @@ namespace MagiCommon
             return await response.Content.ReadFromJsonAsync<User>();
         }
 
-        public async Task<string> GetAuthTokenAsync(LoginRequest request)
+        public async Task<AuthToken> GetAuthTokenAsync(LoginRequest request)
         {
             var response = await Client.PostAsJsonAsync("api/users/login", request);
             response.EnsureSuccessStatusCode();
-            var temp = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            return temp["token"];
+            return await response.Content.ReadFromJsonAsync<AuthToken>();
+        }
+
+        public async Task<AuthToken> ReauthTokenAsync(string token)
+        {
+            var response = await Client.PutAsync($"api/users/reauth?token={token}", null);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<AuthToken>();
         }
     }
 }
