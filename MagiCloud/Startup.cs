@@ -51,10 +51,15 @@ namespace MagiCloud
         {
             if (env.IsDevelopment())
             {
+                app.UseWebAssemblyDebugging();
                 app.UseDeveloperExceptionPage();
             }
 
             app.UseHttpsRedirection();
+
+            app.UseDefaultFiles();
+            app.UseBlazorFrameworkFiles();
+            app.UseStaticFiles();
 
             app.UseRouting();
 

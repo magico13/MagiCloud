@@ -1,6 +1,4 @@
-﻿using BlazorDownloadFile;
-using MagiCommon.Models;
-using Microsoft.AspNetCore.Components;
+﻿using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
@@ -9,8 +7,6 @@ namespace MagiCloudWeb.Components
 {
     public partial class FilesComponent
     {
-        [Inject]
-        IBlazorDownloadFileService Downloader { get; set; }
         FileList files;
 
         protected override async Task OnInitializedAsync()
