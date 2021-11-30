@@ -15,18 +15,41 @@
 
 @if (totalUpload > 0)
 {
-    <p>Uploaded... @uploaded / @totalUpload</p>
+    @if (!finished)
+    {
+        <p>Uploaded... @uploaded / @totalUpload</p>
+    }
+    else
+    {
+        <p>Upload complete!</p>
+    }
+}
+@if (errorMessages.Any())
+{
+    <ul>
+    @foreach (var msg in errorMessages)
+    {
+        <li style="color:red">@msg</li>
+    }
+    </ul>
 }
 
 @code {
-    private long maxFileSize = 1024 * 1024 * 8;
-    private int maxAllowedFiles = 10;
+    private long maxFileSize = 1024 * 1024 * 256; //256 MiB/0.25 GiB
+    private int maxAllowedFiles = 50;
     private int uploaded = 0;
     private int totalUpload = 0;
+    private bool finished = false;
+    private List<string> errorMessages = new();
+
+    [Parameter]
+    public EventCallback OnUploadComplete { get; set; }
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
     {
         uploaded = 0;
+        finished = false;
+        errorMessages.Clear();
         var files = e.GetMultipleFiles(maxAllowedFiles);
         totalUpload = files.Count;
 
@@ -43,14 +66,16 @@
                     Size = file.Size
                 };
                 await MagicApi.UploadFileAsync(info, file.OpenReadStream(maxFileSize));
+                uploaded++;
             }
             catch (Exception ex)
             {
                 Logger.LogError("File: {Filename} Error: {Error}", 
                     file.Name, ex.Message);
+                errorMessages.Add($"{file.Name}: Error {ex.Message}");
             }
-
-            uploaded++;
         }
+        finished = true;
+        await OnUploadComplete.InvokeAsync();
     }
 }

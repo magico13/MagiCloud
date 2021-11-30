@@ -5,6 +5,7 @@
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<FilesComponent> Logger
 
+<Upload OnUploadComplete="@FilesChanged" />
 
 <h3>Files</h3>
 @if (files?.Files?.Any() == true)

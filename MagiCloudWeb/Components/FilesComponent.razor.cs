@@ -33,5 +33,10 @@ namespace MagiCloudWeb.Components
             var path = MagicApi.GetFileContentUri(id);
             return path.ToString();
         }
+
+        public async Task FilesChanged()
+        {
+            await GetFilesAsync();
+        }
     }
 }
