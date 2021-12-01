@@ -31,13 +31,14 @@ pipeline {
             steps {
                 echo 'Deploying....'
                 sh 'mv MagiCloud/bin/Release/net6.0/linux-x64/publish zMagiCloud'
-                sh 'mv MagiCloudWeb/bin/Release/net6.0/publish zMagiCloud/wwwroot'
-                sh 'zip -r MagiCloud.zip zMagiCloud'
+                sh 'mv MagiCloudWeb/bin/Release/net6.0/publish/wwwroot zMagiCloud/wwwroot'
+                sh 'cd zMagiCloud && zip -r MagiCloud.zip .'
 
                 sh 'mv MagiConsole/bin/Release/net6.0/publish zMagiConsole'
-                sh 'zip -r MagiConsole.zip zMagiConsole'
+                sh 'cd zMagiConsole && zip -r MagiConsole.zip .'
+
                 
-                archiveArtifacts artifacts: '*.zip'
+                archiveArtifacts artifacts: '*/*.zip'
             }
         }
     }
