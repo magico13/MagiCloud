@@ -27,11 +27,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying....'
-                mv -r 'MagiCloud/bin/Release/net6.0/linux-x64/publish/* zMagiCloud/*'
-                mv -r 'MagiCloudWeb/bin/Release/net6.0/publish/* zMagiCloud/wwwroot/*'
+                sh 'mv -r MagiCloud/bin/Release/net6.0/linux-x64/publish/* zMagiCloud/*'
+                sh 'mv -r MagiCloudWeb/bin/Release/net6.0/publish/* zMagiCloud/wwwroot/*'
                 sh 'zip -r MagiCloud.zip zMagiCloud'
 
-                mv -r 'MagiConsole/bin/Release/net6.0/publish/* zMagiConsole/*'
+                sh 'mv -r MagiConsole/bin/Release/net6.0/publish/* zMagiConsole/*'
                 sh 'zip -r MagiConsole.zip zMagiConsole'
                 
                 archiveArtifacts artifacts: '*.zip'
