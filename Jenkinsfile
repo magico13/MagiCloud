@@ -15,18 +15,26 @@ pipeline {
             steps {
                 echo 'Building..'
                 dotnetPublish configuration: 'Release', project: 'MagiCloud.csproj', runtime: 'linux-x64', sdk: "${sdk}", selfContained: false, workDirectory: 'MagiCloud' 
-                dotnetPublish configuration: 'Release', project: 'MagiCloudWeb.csproj', runtime: 'linux-x64', sdk: "${sdk}", selfContained: false, workDirectory: 'MagiCloudWeb' 
+                dotnetPublish configuration: 'Release', project: 'MagiCloudWeb.csproj', runtime: 'browser-wasm', sdk: "${sdk}", selfContained: true, workDirectory: 'MagiCloudWeb' 
                 dotnetPublish configuration: 'Release', project: 'MagiConsole.csproj', sdk: "${sdk}", selfContained: false, workDirectory: 'MagiConsole' 
             }
         }
         stage('Test') {
             steps {
-                echo 'Testing..'
+                echo 'Testing...'
             }
         }
         stage('Deploy') {
             steps {
                 echo 'Deploying....'
+                mv -r 'MagiCloud/bin/Release/net6.0/linux-x64/publish/* zMagiCloud/*'
+                mv -r 'MagiCloudWeb/bin/Release/net6.0/publish/* zMagiCloud/wwwroot/*'
+                sh 'zip -r MagiCloud.zip zMagiCloud'
+
+                mv -r 'MagiConsole/bin/Release/net6.0/publish/* zMagiConsole/*'
+                sh 'zip -r MagiConsole.zip zMagiConsole'
+                
+                archiveArtifacts artifacts: '*.zip'
             }
         }
     }
