@@ -1,3 +1,6 @@
+using Blazorise;
+using Blazorise.Bootstrap5;
+using Blazorise.Icons.FontAwesome;
 using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
 using MagiCommon;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -12,6 +15,15 @@ namespace MagiCloudWeb
         public static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+            builder.Services
+                .AddBlazorise(options =>
+                {
+                    options.ChangeTextOnKeyPress = true;
+                })
+                .AddBootstrap5Providers()
+                .AddFontAwesomeIcons();
+
             builder.RootComponents.Add<App>("#app");
 
             builder.Services.AddHttpClient();

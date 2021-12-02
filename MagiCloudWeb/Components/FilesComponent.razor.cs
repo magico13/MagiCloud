@@ -1,4 +1,5 @@
-﻿using MagiCommon.Models;
+﻿using Blazorise.DataGrid.Configuration;
+using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
@@ -8,6 +9,11 @@ namespace MagiCloudWeb.Components
     public partial class FilesComponent
     {
         FileList files;
+        readonly VirtualizeOptions virtualizeOptions = new()
+        {
+            DataGridHeight = "600px",
+            DataGridMaxHeight = "600px"
+        };
 
         protected override async Task OnInitializedAsync()
         {

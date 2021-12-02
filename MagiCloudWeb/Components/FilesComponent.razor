@@ -1,4 +1,6 @@
-﻿@using MagiCommon
+﻿@using Blazorise.DataGrid.Configuration
+@using MagiCommon
+@using MagiCommon.Models
 @using Microsoft.Extensions.Logging
 
 @inject ITokenProvider TokenProvider
@@ -10,10 +12,23 @@
 <h3>Files</h3>
 @if (files?.Files?.Any() == true)
 {
-    @foreach (var file in files.Files)
-    {
-        <a href="@GetFileContentUri(file.Id)" target="_blank">@file.GetFullPath() (@((file.Size/1024.0).ToString("N1")) kiB - @file.MimeType)</a>
-        <br />
-    }
+    <DataGrid TItem="ElasticFileInfo" 
+                Data="@files.Files" 
+                Sortable="true" 
+                Virtualize="true" 
+                VirtualizeOptions="@virtualizeOptions">
+        <DataGridColumns>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="Name" >
+                <DisplayTemplate>
+                     <a href="@GetFileContentUri(context.Id)" target="_blank">@context.GetFullPath()</a>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Size)" Caption="File Size">
+                <DisplayTemplate>
+                    @((context.Size/1024.0).ToString("N1")) kiB
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
+        </DataGridColumns>
+    </DataGrid>
 }
-
