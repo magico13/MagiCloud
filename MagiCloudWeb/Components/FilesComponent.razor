@@ -1,4 +1,4 @@
-﻿@using Blazorise.DataGrid.Configuration
+﻿@using Blazorise
 @using MagiCommon
 @using MagiCommon.Models
 @using Microsoft.Extensions.Logging
@@ -16,9 +16,24 @@
                 Data="@files.Files" 
                 Sortable="true" 
                 Virtualize="true" 
-                VirtualizeOptions="@virtualizeOptions">
+                VirtualizeOptions="@virtualizeOptions"
+                SelectionMode="DataGridSelectionMode.Single"
+                CommandMode="DataGridCommandMode.Default"
+                FixedHeader="true"
+                Editable
+                EditMode="DataGridEditMode.Inline"
+                RowRemoved="@RowRemoved"
+                RowUpdated="@RowUpdated">
         <DataGridColumns>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="Name" >
+            <DataGridCommandColumn TItem="ElasticFileInfo" NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
+                <SaveCommandTemplate>
+                    <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked">Save</Button>
+                </SaveCommandTemplate>
+                <CancelCommandTemplate>
+                    <Button ElementId="btnCancel" Color="Color.Secondary" Clicked="@context.Clicked">Cancel</Button>
+                </CancelCommandTemplate>
+            </DataGridCommandColumn>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="Name" Editable="true">
                 <DisplayTemplate>
                      <a href="@GetFileContentUri(context.Id)" target="_blank">@context.GetFullPath()</a>
                 </DisplayTemplate>
@@ -30,5 +45,9 @@
             </DataGridColumn>
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
         </DataGridColumns>
+        <ButtonRowTemplate>
+            <Button Color="Color.Primary" Clicked="@context.EditCommand.Clicked" Disabled="@(selectedRow is null)">Edit</Button>
+            <Button Color="Color.Danger" Clicked="@context.DeleteCommand.Clicked" Disabled="@(selectedRow is null)">Delete</Button>
+        </ButtonRowTemplate>
     </DataGrid>
 }
