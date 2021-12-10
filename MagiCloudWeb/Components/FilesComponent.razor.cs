@@ -45,18 +45,22 @@ namespace MagiCloudWeb.Components
 
         public async Task FilesChanged()
         {
+            await Task.Delay(1000); //takes time to propagate
             await GetFilesAsync();
         }
 
-        public void RowRemoved(ElasticFileInfo file)
+        public async Task RowRemoved(ElasticFileInfo file)
         {
-            Logger.LogInformation("Removing file {Name}", file.Name);
-            //await MagicApi.RemoveFileAsync(file.Id);
+            Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
+            await MagicApi.RemoveFileAsync(file.Id);
+            await FilesChanged();
         }
 
-        public void RowUpdated(SavedRowItem<ElasticFileInfo, Dictionary<string, object>> saved)
+        public async Task RowUpdated(SavedRowItem<ElasticFileInfo, Dictionary<string, object>> saved)
         {
-            Logger.LogInformation("Updating file {Name}", saved.Item.Name);
+            Logger.LogInformation("Updating file {Name} ({Id})", saved.Item.Name, saved.Item.Id);
+            await MagicApi.UpdateFileAsync(saved.Item);
+            await FilesChanged();
         }
     }
 }

@@ -11,6 +11,7 @@ namespace MagiCommon
     {
         Task<FileList> GetFilesAsync();
         Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
+        Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
         Uri GetFileContentUri(string id);
@@ -56,6 +57,13 @@ namespace MagiCommon
             }
             
             return await GetFileInfoAsync(returnedInfo.Id);
+        }
+
+        public async Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo)
+        {
+            var response = await Client.PostAsJsonAsync("api/files", fileInfo);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
         }
 
         public async Task<ElasticFileInfo> GetFileInfoAsync(string id)

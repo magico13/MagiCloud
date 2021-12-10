@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
 {
-    [Route("/")]
+    [Route("api/")]
     [ApiController]
     public class DefaultController : ControllerBase
     {

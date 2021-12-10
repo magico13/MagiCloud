@@ -67,6 +67,7 @@
                 };
                 await MagicApi.UploadFileAsync(info, file.OpenReadStream(maxFileSize));
                 uploaded++;
+                this.StateHasChanged();
             }
             catch (Exception ex)
             {
