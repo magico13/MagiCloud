@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -32,15 +31,17 @@ namespace MagiCloud.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         [Route("{id}")]
         public async Task<IActionResult> GetFile(string id)
         {
             try
             {
-                var userId = User.Identity.Name;
+                var userId = User?.Identity?.Name;
                 var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
                 
-                if (result == FileAccessResult.Success && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+                    && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
                     if (_dataManager.FileExists(doc.Id))
@@ -61,17 +62,17 @@ namespace MagiCloud.Controllers
                     }
                     else
                     {
-                        return NotFound(new Dictionary<string, object>
+                        return NotFound(new
                         {
-                            ["message"] = "Document content not found."
+                            message = "Document content not found."
                         });
                     }
                 }
                 if (result == FileAccessResult.NotFound)
                 {
-                    return NotFound(new Dictionary<string, object>
+                    return NotFound(new
                     {
-                        ["message"] = "Document not found."
+                        message = "Document not found."
                     });
                 }
                 else if (result == FileAccessResult.NotPermitted)
@@ -107,7 +108,7 @@ namespace MagiCloud.Controllers
 
                 await _elastic.SetupIndicesAsync();
                 var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
-                if (result == FileAccessResult.Success && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                if (result == FileAccessResult.FullAccess && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     // document exists in db, pull from file system
                     using var stream = file.OpenReadStream();

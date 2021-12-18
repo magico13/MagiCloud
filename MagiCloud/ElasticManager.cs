@@ -137,11 +137,12 @@ namespace MagiCloud
             ThrowIfInvalid(result);
             var source = result.Source;
             source.Id = result.Id;
-            if (VerifyFileAccess(userId, source) == FileAccessResult.Success)
+            var accessLevel = VerifyFileAccess(userId, source);
+            return accessLevel switch
             {
-                return (FileAccessResult.Success, source);
-            }
-            return (FileAccessResult.NotPermitted, null);
+                FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
+                _ => (FileAccessResult.NotPermitted, null),
+            };
         }
 
         public async Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file)
@@ -158,7 +159,7 @@ namespace MagiCloud
             if (!string.IsNullOrWhiteSpace(file.Id))
             {
                 var (getResult, existing) = await GetDocumentAsync(userId, file.Id);
-                if (getResult == FileAccessResult.Success) //if existing file (that we can access) overwrite it
+                if (getResult == FileAccessResult.FullAccess) //if existing file (that we can access) overwrite it
                 {
                     EnsureFileAttributes(file, existing);
                 }
@@ -182,14 +183,14 @@ namespace MagiCloud
         {
             Setup();
             var (getResult, doc) = await GetDocumentAsync(userId, file.Id);
-            if (getResult != FileAccessResult.Success || doc is null)
+            if (getResult != FileAccessResult.FullAccess || doc is null)
             {
                 return getResult;
             }
             var result = await Client.DeleteAsync<ElasticFileInfo>(file.Id);
             if (result.IsValid)
             {
-                return FileAccessResult.Success;
+                return FileAccessResult.FullAccess;
             }
             else if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
             {
@@ -376,7 +377,11 @@ namespace MagiCloud
         {
             if (string.Equals(file.UserId, userId, StringComparison.Ordinal))
             {
-                return FileAccessResult.Success;
+                return FileAccessResult.FullAccess;
+            }
+            else if (file.IsPublic)
+            {
+                return FileAccessResult.ReadOnly;
             }
             return FileAccessResult.NotPermitted;
         }

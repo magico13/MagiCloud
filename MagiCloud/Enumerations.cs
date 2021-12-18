@@ -3,8 +3,9 @@
     public enum FileAccessResult
     {
         Unknown,
-        Success,
+        FullAccess,
         NotFound,
-        NotPermitted
+        NotPermitted,
+        ReadOnly
     }
 }

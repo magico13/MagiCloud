@@ -42,13 +42,14 @@ namespace MagiCloud.Controllers
 
         [HttpGet]
         [Route("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAsync(string id)
         {
             try
             {
-                var userId = User.Identity.Name;
+                var userId = User?.Identity?.Name;
                 var (result, file) = await _elastic.GetDocumentAsync(userId, id);
-                if (result == FileAccessResult.Success)
+                if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
                 {
                     return Json(file);
                 }
@@ -98,7 +99,7 @@ namespace MagiCloud.Controllers
                 var userId = User.Identity.Name;
                 _dataManager.DeleteFile(id);
                 var result = await _elastic.DeleteFileAsync(userId, new ElasticFileInfo { Id = id });
-                if (result == FileAccessResult.Success)
+                if (result == FileAccessResult.FullAccess)
                 {
                     return NoContent();
                 }
