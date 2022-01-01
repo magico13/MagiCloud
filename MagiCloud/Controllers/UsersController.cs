@@ -107,7 +107,7 @@ namespace MagiCloud.Controllers
 
         [HttpGet]
         [Route("reauth")]
-        public async Task<IActionResult> ReauthCookieAsync(string returnUrl)
+        public async Task<IActionResult> ReauthCookieAsync([FromQuery]string returnUrl)
         {
             string token = User.FindFirst("Token").Value;
             if (string.IsNullOrWhiteSpace(token))
@@ -120,7 +120,11 @@ namespace MagiCloud.Controllers
             if (!string.IsNullOrWhiteSpace(fullToken?.Id))
             {
                 await SignIn(fullToken);
-                return Redirect(returnUrl);
+                if (!string.IsNullOrWhiteSpace(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return Ok(fullToken);
             }
             return Unauthorized();
         }
