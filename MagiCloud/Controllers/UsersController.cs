@@ -105,34 +105,10 @@ namespace MagiCloud.Controllers
             return Unauthorized();
         }
 
-        [HttpGet]
-        [Route("reauth")]
-        public async Task<IActionResult> ReauthCookieAsync([FromQuery]string returnUrl)
-        {
-            await _elastic.SetupIndicesAsync();
-            string token = User?.FindFirst("Token")?.Value;
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return BadRequest(new { Message = "Invalid token." });
-            }
-
-            var fullToken = await _elastic.VerifyTokenAsync(token);
-
-            if (!string.IsNullOrWhiteSpace(fullToken?.Id))
-            {
-                await SignIn(fullToken);
-                if (!string.IsNullOrWhiteSpace(returnUrl))
-                {
-                    return Redirect(returnUrl);
-                }
-                return Ok(fullToken);
-            }
-            return Unauthorized();
-        }
-
-
         private async Task SignIn(AuthToken token)
         {
+            var expiration = token.Expiration ?? System.DateTimeOffset.Now.AddSeconds(token.Timeout ?? 0);
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, token.LinkedUserId),
@@ -145,7 +121,7 @@ namespace MagiCloud.Controllers
 
             var authProperties = new AuthenticationProperties
             {
-                ExpiresUtc = token.Expiration,
+                ExpiresUtc = expiration,
                 // The time at which the authentication ticket expires. A 
                 // value set here overrides the ExpireTimeSpan option of 
                 // CookieAuthenticationOptions set with AddCookie.
