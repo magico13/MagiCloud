@@ -45,7 +45,7 @@ namespace MagiCloud
                 {
                     //o.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
                     o.SlidingExpiration = true;
-                    o.LoginPath = "/api";
+                    o.LoginPath = "/api/users/reauth";
                 });
 
             services.AddControllers();

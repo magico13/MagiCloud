@@ -105,6 +105,26 @@ namespace MagiCloud.Controllers
             return Unauthorized();
         }
 
+        [HttpGet]
+        [Route("reauth")]
+        public async Task<IActionResult> ReauthCookieAsync(string returnUrl)
+        {
+            string token = User.FindFirst("Token").Value;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return BadRequest(new { Message = "Invalid token." });
+            }
+
+            var fullToken = await _elastic.VerifyTokenAsync(token);
+
+            if (!string.IsNullOrWhiteSpace(fullToken?.Id))
+            {
+                await SignIn(fullToken);
+                return Redirect(returnUrl);
+            }
+            return Unauthorized();
+        }
+
 
         private async Task SignIn(AuthToken token)
         {
