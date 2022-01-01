@@ -109,7 +109,8 @@ namespace MagiCloud.Controllers
         [Route("reauth")]
         public async Task<IActionResult> ReauthCookieAsync([FromQuery]string returnUrl)
         {
-            string token = User.FindFirst("Token").Value;
+            await _elastic.SetupIndicesAsync();
+            string token = User?.FindFirst("Token")?.Value;
             if (string.IsNullOrWhiteSpace(token))
             {
                 return BadRequest(new { Message = "Invalid token." });
