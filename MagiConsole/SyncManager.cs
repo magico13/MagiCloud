@@ -56,31 +56,38 @@ namespace MagiConsole
             {
                 return;
             }
-            Logger.LogWarning("Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
-            if (Directory.Exists(e.FullPath))
-            { //is directory
-                //remove old files
-                var oldFiles = GetFilesBelowFolder(e.OldName);
-                foreach (var fileData in oldFiles)
-                {
-                    fileData.Status = FileStatus.Removed;
-                    await DoFileUpdateAsync(fileData);
-                }
-                await DbAccess.SaveChangesAsync();
-
-                //add files as new
-                var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
-                foreach (var file in files)
-                {
-                    await ProcessIndividualFile(file);
-                }
-            }
-            else
+            try
             {
-                await ProcessIndividualFile(e.OldFullPath, FileStatus.Removed);
-                await ProcessIndividualFile(e.FullPath, FileStatus.New);
+                Logger.LogDebug("Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
+                if (Directory.Exists(e.FullPath))
+                { //is directory
+                  //remove old files
+                    var oldFiles = GetFilesBelowFolder(e.OldName);
+                    foreach (var fileData in oldFiles)
+                    {
+                        fileData.Status = FileStatus.Removed;
+                        await DoFileUpdateAsync(fileData);
+                    }
+                    await DbAccess.SaveChangesAsync();
+
+                    //add files as new
+                    var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
+                    foreach (var file in files)
+                    {
+                        await ProcessIndividualFile(file);
+                    }
+                }
+                else
+                {
+                    await ProcessIndividualFile(e.OldFullPath, FileStatus.Removed);
+                    await ProcessIndividualFile(e.FullPath, FileStatus.New);
+                }
+                Logger.LogDebug("Completed - Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
             }
-            Logger.LogWarning("Completed - Renamed {OldPath} to {FullPath}", e.OldFullPath, e.FullPath);
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error while processing file rename, skipping for now.");
+            }
         }
 
         private async void OnDeleted(object sender, FileSystemEventArgs e)
@@ -89,19 +96,26 @@ namespace MagiConsole
             {
                 return;
             }
-            Logger.LogWarning("Deleted: {FullPath}", e.FullPath);
-            //deleted locally means we should delete it remotely
-            //if it was a directory, delete everything that was below it
-            var oldFiles = GetFilesBelowFolder(e.FullPath);
-            foreach (var fileData in oldFiles)
+            try
             {
-                fileData.Status = FileStatus.Removed;
-                await DoFileUpdateAsync(fileData);
-            }
-            await DbAccess.SaveChangesAsync();
+                Logger.LogDebug("Deleted: {FullPath}", e.FullPath);
+                //deleted locally means we should delete it remotely
+                //if it was a directory, delete everything that was below it
+                var oldFiles = GetFilesBelowFolder(e.FullPath);
+                foreach (var fileData in oldFiles)
+                {
+                    fileData.Status = FileStatus.Removed;
+                    await DoFileUpdateAsync(fileData);
+                }
+                await DbAccess.SaveChangesAsync();
 
-            await ProcessIndividualFile(e.FullPath, FileStatus.Removed);
-            Logger.LogWarning("Completed - Deleted: {FullPath}", e.FullPath);
+                await ProcessIndividualFile(e.FullPath, FileStatus.Removed);
+                Logger.LogDebug("Completed - Deleted: {FullPath}", e.FullPath);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error while processing file deletion, skipping for now.");
+            }
         }
 
         private async void OnChanged(object sender, FileSystemEventArgs e)
@@ -110,20 +124,27 @@ namespace MagiConsole
             {
                 return;
             }
-            Logger.LogWarning("{ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
-            if (Directory.Exists(e.FullPath))
-            { //is directory, process all the files inside
-                var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
-                foreach (var file in files)
-                {
-                    await ProcessIndividualFile(file);
-                }
-            }
-            else
+            try
             {
-                await ProcessIndividualFile(e.FullPath);
+                Logger.LogDebug("{ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
+                if (Directory.Exists(e.FullPath))
+                { //is directory, process all the files inside
+                    var files = Directory.GetFiles(e.FullPath, "*", SearchOption.AllDirectories);
+                    foreach (var file in files)
+                    {
+                        await ProcessIndividualFile(file);
+                    }
+                }
+                else
+                {
+                    await ProcessIndividualFile(e.FullPath);
+                }
+                Logger.LogDebug("Completed - {ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
             }
-            Logger.LogWarning("Completed - {ChangeType}: {FullPath}", e.ChangeType, e.FullPath);
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error while processing file change, skipping for now.");
+            }
         }
 
         public async Task SyncAsync()
@@ -194,10 +215,18 @@ namespace MagiConsole
                 if (file.Status == FileStatus.Unmodified)
                 {
                     //this is an extra file, remove it locally
-                    DbAccess.Remove(file);
-                    var path = GetPath(file);
-                    File.Delete(path);
-                    removedLocal++;
+                    try
+                    {
+                        DbAccess.Remove(file);
+                        var path = GetPath(file);
+                        File.Delete(path);
+                        removedLocal++;
+                        Logger.LogInformation("Deleted local file: {Path}", file);
+                    }
+                    catch (Exception ex) 
+                    { 
+                        Logger.LogError(ex, "Error while processing file deletion for file {Path}, skipping for now.", file); 
+                    }
                 }
             }
 
@@ -280,10 +309,12 @@ namespace MagiConsole
                 if (file.Status == FileStatus.New)
                 { //nothing exists with the new id
                     DbAccess.Add(updatedInfo);
+                    Logger.LogInformation("Uploaded new file: {Path}", updatedInfo);
                 }
                 else
                 { //something already exists with this id
                     DbAccess.Entry(file).CurrentValues.SetValues(updatedInfo);
+                    Logger.LogInformation("Updated remote file: {Path}", updatedInfo);
                 }
             }
             else if (file.Status == FileStatus.Removed)
@@ -292,6 +323,7 @@ namespace MagiConsole
                 await ApiManager.RemoveFileAsync(file.Id);
                 DbAccess.Remove(file);
                 removed = true;
+                Logger.LogInformation("Removed file from server: {Path}", file);
             }
             return (uploaded, removed);
         }
@@ -307,7 +339,7 @@ namespace MagiConsole
                 {
                     return false;
                 }
-                string path = Path.Combine(Settings.FolderPath, $"{info.Name}.{info.Extension}");
+                string path = Path.Combine(Settings.FolderPath, info.GetFullPath());
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
 
                 using (var filestream = new FileStream(path, FileMode.Create))
@@ -326,6 +358,7 @@ namespace MagiConsole
                 {
                     existing = info.ToFileData();
                 }
+                Logger.LogInformation("Downloaded remote file: {File}", info.GetFileName());
                 return true;
             }
             catch (HttpRequestException ex)
@@ -337,6 +370,7 @@ namespace MagiConsole
 
         private string GetPath(FileData info)
         {
+            //return info.ToElasticFileInfo().GetFullPath();
             var filename = info.Name;
             if (!string.IsNullOrWhiteSpace(info.Extension))
             {

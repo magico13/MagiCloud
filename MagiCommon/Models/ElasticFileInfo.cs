@@ -51,7 +51,7 @@ namespace MagiCommon.Models
         {
             if (!string.IsNullOrWhiteSpace(Extension))
             {
-                return Path.GetFileName(Name) + "." + Extension;
+                return $"{Path.GetFileName(Name)}.{Extension}";
             }
             else
             {
