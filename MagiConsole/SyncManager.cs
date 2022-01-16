@@ -163,91 +163,101 @@ namespace MagiConsole
             }
 
             Syncing = true;
-
-            var knownFiles = EnumerateLocalFiles(Settings.FolderPath);
-            var extraLocalFiles = new List<FileData>(knownFiles.Values);
-
-            //check removed files by finding files in the db but not in the folder
-            var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
-            foreach (var file in removedFiles)
+            try
             {
-                file.Status = FileStatus.Removed;
-                file.LastModified = DateTimeOffset.Now;
-                knownFiles[file.Id] = file;
-            }
+                var knownFiles = EnumerateLocalFiles(Settings.FolderPath);
+                var extraLocalFiles = new List<FileData>(knownFiles.Values);
 
-            // server files
-            var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData()).ToList();
-            
-            //loop through remotes, if lastmodified is newer or not known locally then download it
-
-            foreach (var remote in remoteFiles)
-            {
-                bool foundLocally = knownFiles.TryGetValue(remote.Id, out FileData known);
-                if (foundLocally)
+                //check removed files by finding files in the db but not in the folder
+#pragma warning disable CA1841 // Prefer Dictionary.Contains methods. Justification: EFCore cannot translate ContainsKey but can translate Keys.Contains
+                var removedFiles = DbAccess.Files.Where(f => !knownFiles.Keys.Contains(f.Id));
+#pragma warning restore CA1841 // Prefer Dictionary.Contains methods
+                foreach (var file in removedFiles)
                 {
-                    extraLocalFiles.Remove(known);
+                    file.Status = FileStatus.Removed;
+                    file.LastModified = DateTimeOffset.Now;
+                    knownFiles[file.Id] = file;
                 }
-                if (!foundLocally || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
+
+                // server files
+                var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData());
+
+                //loop through remotes, if lastmodified is newer or not known locally then download it
+
+                foreach (var remote in remoteFiles)
                 {
-                    //download it
-                    var success = await DownloadFileAsync(remote.Id);
-                    if (!success)
-                    { //not found on the server, likely invalid/incomplete upload
-                        // Tell it to upload current data instead, if we can find it locally
-                        if (known != null || knownFiles.TryGetValue($"{remote.Name}.{remote.Extension}", out known))
+                    bool foundLocally = knownFiles.TryGetValue(remote.Id, out FileData known);
+                    if (foundLocally)
+                    {
+                        extraLocalFiles.Remove(known);
+                    }
+                    if (!foundLocally || remote.LastModified > known.LastModified) //todo, check for different hashes (if no, just update lastmodified, else CONFLICT)
+                    {
+                        //download it
+                        var success = await DownloadFileAsync(remote.Id);
+                        if (!success)
+                        { //not found on the server, likely invalid/incomplete upload
+                          // Tell it to upload current data instead, if we can find it locally
+                            if (known != null || knownFiles.TryGetValue($"{remote.Name}.{remote.Extension}", out known))
+                            {
+                                remote.Status = FileStatus.New;
+                                knownFiles.Remove(known.Id);
+                                remote.LastModified = known.LastModified;
+                                knownFiles[remote.Id] = remote;
+                            }
+                        }
+                        else
                         {
-                            remote.Status = FileStatus.New;
-                            knownFiles.Remove(known.Id);
-                            remote.LastModified = known.LastModified;
-                            knownFiles[remote.Id] = remote;
+                            downloaded++;
                         }
                     }
-                    else
+                }
+
+                foreach (var file in extraLocalFiles)
+                {
+                    if (file.Status == FileStatus.Unmodified)
                     {
-                        downloaded++;
+                        //this is an extra file, remove it locally
+                        try
+                        {
+                            var path = GetPath(file);
+                            File.Delete(path);
+                            DbAccess.Remove(file);
+                            removedLocal++;
+                            Logger.LogInformation("Deleted local file: {Path}", file);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError(ex, "Error while processing file deletion for file {Path}, skipping for now.", file);
+                        }
                     }
                 }
-            }
 
-            foreach (var file in extraLocalFiles)
-            {
-                if (file.Status == FileStatus.Unmodified)
+                foreach (var kvp in knownFiles)
                 {
-                    //this is an extra file, remove it locally
-                    try
+                    //if new, upload as new, if changed, upload as changed
+                    (bool up, bool rem) = await DoFileUpdateAsync(kvp.Value);
+                    if (up)
                     {
-                        DbAccess.Remove(file);
-                        var path = GetPath(file);
-                        File.Delete(path);
-                        removedLocal++;
-                        Logger.LogInformation("Deleted local file: {Path}", file);
+                        uploaded++;
                     }
-                    catch (Exception ex) 
-                    { 
-                        Logger.LogError(ex, "Error while processing file deletion for file {Path}, skipping for now.", file); 
+                    if (rem)
+                    {
+                        removedRemote++;
                     }
                 }
             }
-
-            foreach (var kvp in knownFiles)
+            catch (Exception ex)
             {
-                //if new, upload as new, if changed, upload as changed
-                (bool up, bool rem) = await DoFileUpdateAsync(kvp.Value);
-                if (up)
-                {
-                    uploaded++;
-                }
-                if (rem)
-                {
-                    removedRemote++;
-                }
+                Logger.LogError(ex, "Unhandled error while syncing data. Will attempt again later.");
             }
-
-            await DbAccess.SaveChangesAsync();
-            Syncing = false;
-            Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files from server. Removed {LocalCount} files locally.", 
-                downloaded, uploaded, removedRemote, removedLocal);
+            finally
+            {
+                Logger.LogInformation("Downloaded {DownloadCount} files. Uploaded {UploadCount} files. Removed {RemoveCount} files from server. Removed {LocalCount} files locally.",
+                    downloaded, uploaded, removedRemote, removedLocal);
+                await DbAccess.SaveChangesAsync();
+                Syncing = false;
+            }
         }
 
         private Dictionary<string, FileData> EnumerateLocalFiles(string path)
@@ -358,7 +368,7 @@ namespace MagiConsole
                 {
                     existing = info.ToFileData();
                 }
-                Logger.LogInformation("Downloaded remote file: {File}", info.GetFileName());
+                Logger.LogInformation("Downloaded remote file: {File}", info.GetFullPath());
                 return true;
             }
             catch (HttpRequestException ex)
