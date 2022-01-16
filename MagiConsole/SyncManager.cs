@@ -339,7 +339,7 @@ namespace MagiConsole
                 {
                     return false;
                 }
-                string path = Path.Combine(Settings.FolderPath, info.GetFullPath());
+                string path = Path.Combine(Settings.FolderPath, info.GetFullPath()?.TrimStart('/'));
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
 
                 using (var filestream = new FileStream(path, FileMode.Create))

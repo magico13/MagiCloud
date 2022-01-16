@@ -100,8 +100,8 @@ namespace MagiConsole
             Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 {
-                    var connectionString = hostContext.Configuration.GetConnectionString("data");
-
+                    var connectionString = hostContext.Configuration.GetConnectionString("data") 
+                        ?? throw new NullReferenceException("Missing Connection String");
                     services.Configure<Settings>(hostContext.Configuration.GetSection(nameof(Settings)));
                     services.AddDbContext<MagiContext>(c => c.UseSqlite(connectionString));
                     services.AddSingleton<ITokenProvider, DBTokenProvider>();
