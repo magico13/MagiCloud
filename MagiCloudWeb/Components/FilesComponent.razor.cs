@@ -35,7 +35,7 @@ namespace MagiCloudWeb.Components
                 if (fileList?.Files?.Any() == true)
                 {
                     fileList.Files.Sort(new NameComparer());
-                    files = fileList.Files;
+                    files = fileList.Files.Where(f => !f.IsDeleted);
                 }
             }
             catch (Exception ex)

@@ -14,7 +14,7 @@
 @if (files?.Any() == true)
 {
     <DataGrid TItem="ElasticFileInfo" 
-                Data="@files.Where(f => !f.IsDeleted)"
+                Data="@files"
                 Sortable="true" 
                 Virtualize="true" 
                 VirtualizeOptions="@virtualizeOptions"
