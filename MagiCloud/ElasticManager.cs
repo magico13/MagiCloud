@@ -21,7 +21,7 @@ namespace MagiCloud
         Task<FileList> GetDocumentsAsync(string userId);
         Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id);
         Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
-        Task<FileAccessResult> DeleteFileAsync(string userId, ElasticFileInfo file);
+        Task<FileAccessResult> DeleteFileAsync(string userId, string id);
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
 
         Task<User> GetUserAsync(string userId);
@@ -179,16 +179,15 @@ namespace MagiCloud
             return result.Id;
         }
 
-
-        public async Task<FileAccessResult> DeleteFileAsync(string userId, ElasticFileInfo file)
+        public async Task<FileAccessResult> DeleteFileAsync(string userId, string id)
         {
             Setup();
-            var (getResult, doc) = await GetDocumentAsync(userId, file.Id);
+            var (getResult, doc) = await GetDocumentAsync(userId, id);
             if (getResult != FileAccessResult.FullAccess || doc is null)
             {
                 return getResult;
             }
-            var result = await Client.DeleteAsync<ElasticFileInfo>(file.Id);
+            var result = await Client.DeleteAsync<ElasticFileInfo>(id);
             if (result.IsValid)
             {
                 return FileAccessResult.FullAccess;

@@ -1,5 +1,6 @@
 ﻿@using Blazorise
 @using MagiCommon
+@using MagiCommon.Extensions
 @using MagiCommon.Models
 @using Microsoft.Extensions.Logging
 
@@ -10,10 +11,10 @@
 <Upload OnUploadComplete="@FilesChanged" />
 
 <h3>Files</h3>
-@if (files?.Files?.Any() == true)
+@if (files?.Any() == true)
 {
     <DataGrid TItem="ElasticFileInfo" 
-                Data="@files.Files" 
+                Data="@files.Where(f => !f.IsDeleted)"
                 Sortable="true" 
                 Virtualize="true" 
                 VirtualizeOptions="@virtualizeOptions"
@@ -47,8 +48,8 @@
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" Editable/>
         </DataGridColumns>
         <ButtonRowTemplate>
-            <Button Color="Color.Primary" Clicked="@context.EditCommand.Clicked" Disabled="@(selectedRow is null)">Edit</Button>
-            <Button Color="Color.Danger" Clicked="@context.DeleteCommand.Clicked" Disabled="@(selectedRow is null)">Delete</Button>
+            <Button Color="Color.Primary" Clicked="@context.EditCommand.Clicked">Edit</Button>
+            <Button Color="Color.Danger" Clicked="@context.DeleteCommand.Clicked">Delete</Button>
         </ButtonRowTemplate>
     </DataGrid>
 }

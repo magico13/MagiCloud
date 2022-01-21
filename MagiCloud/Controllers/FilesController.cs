@@ -97,10 +97,12 @@ namespace MagiCloud.Controllers
             try
             {
                 var userId = User.Identity.Name;
-                _dataManager.DeleteFile(id);
-                var result = await _elastic.DeleteFileAsync(userId, new ElasticFileInfo { Id = id });
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
                 if (result == FileAccessResult.FullAccess)
                 {
+                    // Mark file as deleted but don't permanently delete the file
+                    doc.IsDeleted = true;
+                    await _elastic.IndexDocumentAsync(userId, doc);
                     return NoContent();
                 }
                 else if (result == FileAccessResult.NotFound)

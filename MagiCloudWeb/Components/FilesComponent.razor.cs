@@ -1,17 +1,18 @@
 ﻿using Blazorise.DataGrid;
 using Blazorise.DataGrid.Configuration;
+using MagiCommon.Comparers.ElasticFileInfoComparers;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MagiCloudWeb.Components
 {
     public partial class FilesComponent
     {
-        ElasticFileInfo selectedRow;
-        FileList files;
+        private IEnumerable<ElasticFileInfo> files;
         readonly VirtualizeOptions virtualizeOptions = new()
         {
             DataGridHeight = "600px",
@@ -28,8 +29,13 @@ namespace MagiCloudWeb.Components
         {
             try
             {
-                files = await MagicApi.GetFilesAsync();
-                files?.Files?.Sort(new ElasticFileInfo.NameComparer());
+                files = null;
+                var fileList = await MagicApi.GetFilesAsync();
+                if (fileList?.Files?.Any() == true)
+                {
+                    fileList.Files.Sort(new NameComparer());
+                    files = fileList.Files;
+                }
             }
             catch (Exception ex)
             {
@@ -52,6 +58,7 @@ namespace MagiCloudWeb.Components
         public async Task RowRemoved(ElasticFileInfo file)
         {
             Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
+            file.IsDeleted = true;
             await MagicApi.RemoveFileAsync(file.Id);
             await FilesChanged();
         }

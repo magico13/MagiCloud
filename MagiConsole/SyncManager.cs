@@ -1,4 +1,5 @@
 ﻿using MagiCommon;
+using MagiCommon.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -180,7 +181,10 @@ namespace MagiConsole
                 }
 
                 // server files
-                var remoteFiles = (await ApiManager.GetFilesAsync()).Files.Select(f => f.ToFileData());
+                var remoteFiles = (await ApiManager.GetFilesAsync())
+                    .Files
+                    .Where(f => !f.IsDeleted)
+                    .Select(f => f.ToFileData());
 
                 //loop through remotes, if lastmodified is newer or not known locally then download it
 
@@ -319,12 +323,12 @@ namespace MagiConsole
                 if (file.Status == FileStatus.New)
                 { //nothing exists with the new id
                     DbAccess.Add(updatedInfo);
-                    Logger.LogInformation("Uploaded new file: {Path}", updatedInfo);
+                    Logger.LogInformation("Uploaded new file: {Path} ({DocId})", updatedInfo, updatedInfo.Id);
                 }
                 else
                 { //something already exists with this id
                     DbAccess.Entry(file).CurrentValues.SetValues(updatedInfo);
-                    Logger.LogInformation("Updated remote file: {Path}", updatedInfo);
+                    Logger.LogInformation("Updated remote file: {Path} ({DocId})", updatedInfo, updatedInfo.Id);
                 }
             }
             else if (file.Status == FileStatus.Removed)
@@ -333,7 +337,7 @@ namespace MagiConsole
                 await ApiManager.RemoveFileAsync(file.Id);
                 DbAccess.Remove(file);
                 removed = true;
-                Logger.LogInformation("Removed file from server: {Path}", file);
+                Logger.LogInformation("Removed file from server: {Path} ({DocId})", file, file.Id);
             }
             return (uploaded, removed);
         }
@@ -368,7 +372,7 @@ namespace MagiConsole
                 {
                     existing = info.ToFileData();
                 }
-                Logger.LogInformation("Downloaded remote file: {File}", info.GetFullPath());
+                Logger.LogInformation("Downloaded remote file: {File} ({DocId})", info.GetFullPath(), info.Id);
                 return true;
             }
             catch (HttpRequestException ex)
