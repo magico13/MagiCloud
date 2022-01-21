@@ -12,6 +12,7 @@ namespace MagiCloudWeb.Components
 {
     public partial class FilesComponent
     {
+        private ElasticFileInfo selectedRow;
         private IEnumerable<ElasticFileInfo> files;
         readonly VirtualizeOptions virtualizeOptions = new()
         {
