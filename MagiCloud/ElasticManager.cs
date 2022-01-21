@@ -28,6 +28,7 @@ namespace MagiCloud
         Task<User> CreateUserAsync(User user);
         Task<AuthToken> LoginUserAsync(LoginRequest request);
         Task<AuthToken> VerifyTokenAsync(string token);
+        Task RemoveExpiredTokensAsync();
 
         FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file);
     }
@@ -356,7 +357,7 @@ namespace MagiCloud
                     expired = true;
                 }
             }
-            if (fullToken.Expiration > DateTimeOffset.Now)
+            if (DateTimeOffset.Now > fullToken.Expiration)
             {
                 _logger.LogWarning("Token {Id} has expired.", hashedToken);
                 expired = true;
@@ -384,6 +385,54 @@ namespace MagiCloud
                 return FileAccessResult.ReadOnly;
             }
             return FileAccessResult.NotPermitted;
+        }
+
+        public async Task RemoveExpiredTokensAsync()
+        {
+            Setup();
+            var result = await Client.SearchAsync<AuthToken>(s =>
+            {
+                return s.Size(10000)
+                .Query(q => q
+                    .DateRange(c => c
+                        .Name("date_expiration")
+                        .Field(f => f.Expiration)
+                        .GreaterThan("2000-01-01")
+                        .LessThan(DateMath.Now)
+                    ) || q
+                    .LongRange(e => e
+                        .Name("timeout_exists")
+                        .Field(f => f.Timeout)
+                        .GreaterThan(0)
+                    )
+                );
+            });
+            if (result.IsValid)
+            {
+                var list = new List<AuthToken>();
+                foreach (var hit in result.Hits)
+                {
+                    var fullToken = hit.Source;
+                    var expired = false;
+                    if (fullToken.Timeout > 0)
+                    {
+                        if (DateTimeOffset.Now > fullToken.LastUpdated + TimeSpan.FromSeconds(fullToken.Timeout.Value))
+                        {
+                            _logger.LogWarning("Token {Id} has expired from inactivity.", fullToken.Id);
+                            expired = true;
+                        }
+                    }
+                    if (DateTimeOffset.Now > fullToken.Expiration)
+                    {
+                        _logger.LogWarning("Token {Id} has expired.", fullToken.Id);
+                        expired = true;
+                    }
+                    if (expired)
+                    {
+                        var response = await Client.DeleteAsync<AuthToken>(fullToken.Id);
+                    }
+                }
+            }
         }
 
         private void ThrowIfInvalid(ResponseBase response)
