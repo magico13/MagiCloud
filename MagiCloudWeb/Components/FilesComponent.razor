@@ -51,7 +51,11 @@
                 </DisplayTemplate>
             </DataGridColumn>
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Update" />
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Update">
+                <DisplayTemplate>
+                    @(context.LastUpdated.LocalDateTime)
+                </DisplayTemplate>
+            </DataGridColumn>
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" Editable/>
         </DataGridColumns>
     </DataGrid>
