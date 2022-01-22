@@ -75,7 +75,7 @@ namespace MagiCloud
             app.UseAuthorization();
 
             //rewrite /login to /index.html to let blazor handle it
-            var rwOptions = new RewriteOptions().AddRewrite("/login", "/index.html", false);
+            var rwOptions = new RewriteOptions().AddRewrite(".*/login", "/index.html", false);
             app.UseRewriter(rwOptions);
 
             app.UseEndpoints(endpoints =>
