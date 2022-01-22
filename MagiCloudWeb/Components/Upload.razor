@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <FileEdit Changed="@LoadFiles" Multiple />
+    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" Progressed="@OnProgressed" AutoReset="false" />
 </p>
 
 @if (totalUpload > 0)
@@ -40,6 +40,7 @@
     private int totalUpload = 0;
     private bool finished = false;
     private List<string> errorMessages = new();
+    private FileEdit fileEdit;
 
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
@@ -49,10 +50,9 @@
         uploaded = 0;
         finished = false;
         errorMessages.Clear();
-        var files = e.Files;
-        totalUpload = files.Length;
+        totalUpload = e.Files.Length;
 
-        foreach (var file in files)
+        foreach (var file in e.Files)
         {
             try
             {
@@ -76,6 +76,17 @@
             }
         }
         finished = true;
+        //await fileEdit.Reset().AsTask();
         await OnUploadComplete.InvokeAsync();
+    }
+
+    void OnWritten( FileWrittenEventArgs e )
+    {
+        Console.WriteLine( $"File: {e.File.Name} Position: {e.Position}" );
+    }
+
+    void OnProgressed( FileProgressedEventArgs e )
+    {
+        Console.WriteLine( $"File: {e.File.Name} Progress: {e.Percentage}" );
     }
 }
