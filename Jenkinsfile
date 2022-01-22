@@ -35,7 +35,7 @@ pipeline {
                 sh 'mv MagiCloudWeb/bin/Release/net6.0/publish/wwwroot zMagiCloud/wwwroot'
                 sh 'cd zMagiCloud && zip -r MagiCloud.zip .'
 
-                sh 'mv MagiConsole/bin/Release/net6.0/publish/win-x64 zMagiConsoleWin'
+                sh 'mv MagiConsole/bin/Release/net6.0/win-x64/publish zMagiConsoleWin'
                 sh 'cd zMagiConsoleWin && zip -r MagiConsole-win.zip .'
 
                 sh 'mv MagiConsole/bin/Release/net6.0/publish zMagiConsole'
