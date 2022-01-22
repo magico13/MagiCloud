@@ -54,19 +54,17 @@ namespace MagiCloud
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseRouting();
+            app.UseHttpsRedirection();
+            app.UseDefaultFiles();
+
             if (env.IsDevelopment())
             {
                 app.UseWebAssemblyDebugging();
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
-
-            app.UseDefaultFiles();
             app.UseBlazorFrameworkFiles();
-            app.UseStaticFiles();
-
-            app.UseRouting();
 
             app.UseCors();
 
