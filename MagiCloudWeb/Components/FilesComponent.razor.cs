@@ -1,5 +1,4 @@
 ﻿using Blazorise.DataGrid;
-using Blazorise.DataGrid.Configuration;
 using MagiCommon.Comparers.ElasticFileInfoComparers;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
@@ -12,13 +11,7 @@ namespace MagiCloudWeb.Components
 {
     public partial class FilesComponent
     {
-        private ElasticFileInfo selectedRow;
         private List<ElasticFileInfo> files;
-        readonly VirtualizeOptions virtualizeOptions = new()
-        {
-            DataGridHeight = "600px",
-            DataGridMaxHeight = "600px"
-        };
 
         protected override async Task OnInitializedAsync()
         {
