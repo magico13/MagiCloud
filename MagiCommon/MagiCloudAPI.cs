@@ -9,7 +9,7 @@ namespace MagiCommon
 {
     public interface IMagiCloudAPI
     {
-        Task<FileList> GetFilesAsync();
+        Task<FileList> GetFilesAsync(bool? deleted);
         Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
         Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
@@ -35,9 +35,14 @@ namespace MagiCommon
             this.TokenProvider = tokenProvider;
         }
 
-        public async Task<FileList> GetFilesAsync()
+        public async Task<FileList> GetFilesAsync(bool? deleted = null)
         {
-            return await Client.GetFromJsonAsync<FileList>("api/files");
+            var builder = new UriBuilder("api/files");
+            if (deleted.HasValue)
+            {
+                builder.Query = $"deleted={deleted}";
+            }
+            return await Client.GetFromJsonAsync<FileList>(builder.Uri);
         }
 
         public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)

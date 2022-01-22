@@ -13,7 +13,7 @@ namespace MagiCloudWeb.Components
     public partial class FilesComponent
     {
         private ElasticFileInfo selectedRow;
-        private IEnumerable<ElasticFileInfo> files;
+        private List<ElasticFileInfo> files;
         readonly VirtualizeOptions virtualizeOptions = new()
         {
             DataGridHeight = "600px",
@@ -31,11 +31,11 @@ namespace MagiCloudWeb.Components
             try
             {
                 files = null;
-                var fileList = await MagicApi.GetFilesAsync();
+                var fileList = await MagicApi.GetFilesAsync(false);
                 if (fileList?.Files?.Any() == true)
                 {
                     fileList.Files.Sort(new NameComparer());
-                    files = fileList.Files.Where(f => !f.IsDeleted);
+                    files = fileList.Files;
                 }
             }
             catch (Exception ex)

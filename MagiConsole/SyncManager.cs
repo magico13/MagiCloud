@@ -181,10 +181,7 @@ namespace MagiConsole
                 }
 
                 // server files
-                var remoteFiles = (await ApiManager.GetFilesAsync())
-                    .Files
-                    .Where(f => !f.IsDeleted)
-                    .Select(f => f.ToFileData());
+                var remoteFiles = (await ApiManager.GetFilesAsync(false)).Files.Select(f => f.ToFileData());
 
                 //loop through remotes, if lastmodified is newer or not known locally then download it
 

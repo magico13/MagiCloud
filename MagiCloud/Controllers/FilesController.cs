@@ -25,12 +25,12 @@ namespace MagiCloud.Controllers
 
         [HttpGet]
         [Route("")]
-        public async Task<IActionResult> GetAsync()
+        public async Task<IActionResult> GetAsync([FromQuery] bool? deleted)
         {
             try
             {
                 var userId = User.Identity.Name;
-                var docs = await _elastic.GetDocumentsAsync(userId);
+                var docs = await _elastic.GetDocumentsAsync(userId, deleted);
                 return Json(docs);
             }
             catch (Exception ex)

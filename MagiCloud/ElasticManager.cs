@@ -18,7 +18,7 @@ namespace MagiCloud
     {
         IElasticClient Client { get; set; }
         Task<bool> SetupIndicesAsync();
-        Task<FileList> GetDocumentsAsync(string userId);
+        Task<FileList> GetDocumentsAsync(string userId, bool? deleted);
         Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id);
         Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
         Task<FileAccessResult> DeleteFileAsync(string userId, string id);
@@ -98,18 +98,41 @@ namespace MagiCloud
             return true;
         }
 
-        public async Task<FileList> GetDocumentsAsync(string userId)
+        public async Task<FileList> GetDocumentsAsync(string userId, bool? deleted = null)
         {
             Setup();
             var result = await Client.SearchAsync<ElasticFileInfo>(s =>
             {
                 return s.Size(10000) //10k items currently supported, TODO paginate
-                .Query(q => q
-                    .Match(m => m
-                        .Field(f => f.UserId)
-                        .Query(userId)
-                        )
-                    );
+                .Query(q =>
+                {
+                    var qc = q
+                        .Match(m => m
+                            .Field(f => f.UserId)
+                            .Query(userId)
+                        );
+                    if (deleted != null)
+                    {
+                        // if deleted is passed, include it in the query
+                        var subq = q
+                            .Term(t => t
+                                .Field(f => f.IsDeleted)
+                                .Value(deleted)
+                            );
+
+                        // if deleted is false then also include files where not yet set
+                        if (deleted == false)
+                        {
+                            subq |= !q.
+                                Exists(t => t
+                                    .Field(f => f.IsDeleted)
+                                );
+                        }
+                        qc &= subq;
+                    }
+                    return qc;
+                });
+            
             });
             if (result.IsValid)
             {
