@@ -4,6 +4,7 @@ using MagiCommon;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -72,6 +73,10 @@ namespace MagiCloud
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            //rewrite /login to /index.html to let blazor handle it
+            var rwOptions = new RewriteOptions().AddRewrite("/login", "/index.html", false);
+            app.UseRewriter(rwOptions);
 
             app.UseEndpoints(endpoints =>
             {
