@@ -9,7 +9,7 @@
 
 @if (string.IsNullOrWhiteSpace(token))
 {
-    <div>
+    <Container>
         <EditForm Model="model" OnValidSubmit="@HandleSubmit">
             <DataAnnotationsValidator />
             <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
@@ -27,14 +27,14 @@
             </p>
             <Button Type="ButtonType.Submit" Color="Color.Primary">Login</Button>
         </EditForm>
-    </div>
+    </Container>
 }
 else
 {
     <div>
-        <p>
+        <Paragraph>
             Logged in as @username
-        </p>
+        </Paragraph>
         @ChildContent
     </div>
 }
