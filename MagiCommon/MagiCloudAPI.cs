@@ -37,12 +37,12 @@ namespace MagiCommon
 
         public async Task<FileList> GetFilesAsync(bool? deleted = null)
         {
-            var builder = new UriBuilder("api/files");
+            var url = "api/files";
             if (deleted.HasValue)
             {
-                builder.Query = $"deleted={deleted}";
+                url += $"?deleted={deleted}";
             }
-            return await Client.GetFromJsonAsync<FileList>(builder.Uri);
+            return await Client.GetFromJsonAsync<FileList>(url);
         }
 
         public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)

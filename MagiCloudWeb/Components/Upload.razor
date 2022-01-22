@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <InputFile OnChange="@LoadFiles" multiple />
+    <FileEdit Changed="@LoadFiles" Multiple />
 </p>
 
 @if (totalUpload > 0)
@@ -45,13 +45,13 @@
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
 
-    private async Task LoadFiles(InputFileChangeEventArgs e)
+    private async Task LoadFiles(FileChangedEventArgs e)
     {
         uploaded = 0;
         finished = false;
         errorMessages.Clear();
-        var files = e.GetMultipleFiles(maxAllowedFiles);
-        totalUpload = files.Count;
+        var files = e.Files;
+        totalUpload = files.Length;
 
         foreach (var file in files)
         {
@@ -61,7 +61,7 @@
                 {
                     Name =  Path.GetFileNameWithoutExtension(file.Name),
                     Extension = Path.GetExtension(file.Name).TrimStart('.'),
-                    MimeType = file.ContentType,
+                    //MimeType = file.,
                     LastModified = file.LastModified,
                     Size = file.Size
                 };
