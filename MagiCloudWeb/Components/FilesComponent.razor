@@ -15,11 +15,12 @@
 {
     <DataGrid TItem="ElasticFileInfo" 
                 Data="@files"
-                Sortable="true" 
-                Virtualize="true" 
+                Sortable
                 SelectionMode="DataGridSelectionMode.Single"
                 CommandMode="DataGridCommandMode.Default"
-                FixedHeader="true"
+                PageSize=10
+                ShowPager
+                ShowPageSizes
                 Editable
                 EditMode="DataGridEditMode.Inline"
                 RowRemoved="@RowRemoved"
@@ -58,4 +59,10 @@
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" Editable/>
         </DataGridColumns>
     </DataGrid>
+}
+else
+{
+    <Paragraph>
+        No files found...
+    </Paragraph>
 }

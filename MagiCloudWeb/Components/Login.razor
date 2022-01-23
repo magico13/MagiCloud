@@ -9,7 +9,7 @@
 
 @if (string.IsNullOrWhiteSpace(token))
 {
-    <Container>
+    <Container Margin="Margin.Is1">
         <EditForm Model="model" OnValidSubmit="@HandleSubmit">
             <DataAnnotationsValidator />
             <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
