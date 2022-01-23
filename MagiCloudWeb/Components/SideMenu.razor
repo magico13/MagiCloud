@@ -11,13 +11,27 @@
     </BarBrand>
     <BarMenu>
         <BarStart>
-            @*<BarItem>
-                <BarLink To="">
-                        <BarIcon IconName="IconName.Dashboard" />
-                        Home
-                    </BarLink>
-            </BarItem>*@
+            <BarItem>
+                <BarLink To="/trash">
+                    <BarIcon IconName="IconName.Delete" />
+                    Trash Can
+                </BarLink>
+            </BarItem>
         </BarStart>
+        <BarEnd>
+            <BarItem>
+                <BarLink To="http://magico13.net:8080/job/MagiCloud/job/main/lastSuccessfulBuild/" Target="Target.Blank">
+                    <BarIcon IconName="IconName.Desktop" />
+                    Desktop App
+                </BarLink>
+            </BarItem>
+            <BarItem>
+                <BarLink To="https://github.com/magico13/MagiCloud" Target="Target.Blank">
+                    <BarIcon IconName="IconName.Code" />
+                    Source Code
+                </BarLink>
+            </BarItem>
+        </BarEnd>
     </BarMenu>
 </Bar>
 

@@ -89,10 +89,10 @@ namespace MagiCloud.Controllers
             }
         }
 
-        // DELETE: files/5
+        // DELETE: files/5?permanent=true
         [HttpDelete]
         [Route("{id}")]
-        public async Task<IActionResult> DeleteAsync(string id)
+        public async Task<IActionResult> DeleteAsync(string id, [FromQuery]bool permanent=false)
         {
             try
             {
@@ -101,8 +101,16 @@ namespace MagiCloud.Controllers
                 if (result == FileAccessResult.FullAccess)
                 {
                     // Mark file as deleted but don't permanently delete the file
-                    doc.IsDeleted = true;
-                    await _elastic.IndexDocumentAsync(userId, doc);
+                    if (!permanent)
+                    {
+                        doc.IsDeleted = true;
+                        await _elastic.IndexDocumentAsync(userId, doc);
+                    }
+                    else
+                    {
+                        _dataManager.DeleteFile(id);
+                        await _elastic.DeleteFileAsync(userId, id);
+                    }
                     return NoContent();
                 }
                 else if (result == FileAccessResult.NotFound)

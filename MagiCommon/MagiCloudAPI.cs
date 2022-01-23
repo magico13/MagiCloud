@@ -15,7 +15,7 @@ namespace MagiCommon
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
         Uri GetFileContentUri(string id);
-        Task RemoveFileAsync(string id);
+        Task RemoveFileAsync(string id, bool permanent);
 
 
         Task<User> GetUserAsync();
@@ -86,9 +86,9 @@ namespace MagiCommon
             return new Uri(Client.BaseAddress, $"api/filecontent/{id}");
         }
 
-        public async Task RemoveFileAsync(string id)
+        public async Task RemoveFileAsync(string id, bool permanent)
         {
-            await Client.DeleteAsync($"api/files/{id}");
+            await Client.DeleteAsync($"api/files/{id}?permanent={permanent}");
         }
 
         public async Task<User> GetUserAsync()

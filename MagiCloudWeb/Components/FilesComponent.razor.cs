@@ -53,7 +53,7 @@ namespace MagiCloudWeb.Components
         {
             Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
             file.IsDeleted = true;
-            await MagicApi.RemoveFileAsync(file.Id);
+            await MagicApi.RemoveFileAsync(file.Id, false);
             await FilesChanged();
         }
 

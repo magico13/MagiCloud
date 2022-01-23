@@ -331,7 +331,7 @@ namespace MagiConsole
             else if (file.Status == FileStatus.Removed)
             {
                 // these have been removed locally, remove them from the server
-                await ApiManager.RemoveFileAsync(file.Id);
+                await ApiManager.RemoveFileAsync(file.Id, false);
                 DbAccess.Remove(file);
                 removed = true;
                 Logger.LogInformation("Removed file from server: {Path} ({DocId})", file, file.Id);

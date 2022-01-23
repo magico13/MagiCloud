@@ -1,0 +1,50 @@
+﻿@page "/trash"
+@using MagiCommon
+@using MagiCommon.Extensions
+@using MagiCommon.Models
+@using Microsoft.Extensions.Logging
+
+
+@inject ITokenProvider TokenProvider
+@inject IMagiCloudAPI MagicApi
+@inject ILogger<TrashCan> Logger
+
+<h3>Trash Can</h3>
+
+@if (files?.Any() == true)
+{
+    <DataGrid
+            TItem="ElasticFileInfo"
+            Data="@files"
+            PageSize=10
+            ShowPager
+            ShowPageSizes
+            Sortable
+            SelectionMode="DataGridSelectionMode.Single">
+        <DataGridColumns>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="Name">
+                <DisplayTemplate>
+                     @context.GetFullPath()
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Updated">
+                <DisplayTemplate>
+                    @(context.LastUpdated.LocalDateTime)
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ElasticFileInfo" Sortable="false">
+                <DisplayTemplate>
+                    <Button Color="Color.Primary" Clicked="@(async () => await UndeleteAsync(context))">Restore</Button>
+                    <Button Color="Color.Danger" Clicked="@(async () => await PermanentlyDeleteAsync(context.Id))">Perma-Delete</Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+    </DataGrid>
+}
+else
+{
+    <Paragraph>
+        No files in trash...
+    </Paragraph>
+}
