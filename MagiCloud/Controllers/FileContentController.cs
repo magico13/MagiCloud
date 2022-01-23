@@ -41,7 +41,7 @@ namespace MagiCloud.Controllers
                 var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
                 
                 if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
-                    && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                    && doc != null && !string.IsNullOrWhiteSpace(doc.Id) && !doc.IsDeleted)
                 {
                     // document exists in db, pull from file system
                     if (_dataManager.FileExists(doc.Id))
