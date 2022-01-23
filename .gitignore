@@ -353,6 +353,6 @@ MigrationBackup/
 /MagiCloud/data
 
 # development runtime settings
-/MagiCloud/appsettings.Development.json
+appsettings.Development.json
 .vscode/
 /MagiCloud/wwwroot
