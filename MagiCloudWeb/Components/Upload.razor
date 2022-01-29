@@ -18,7 +18,7 @@
     @if (!finished)
     {
         <p>Uploaded... @uploaded / @totalUpload</p>
-        <Progress Value="@progress" Color="Color.Success"/>
+        <Progress Value="@progress" Color="Color.Success">@uploadedBytes / @totalBytes</Progress>
     }
     else
     {
@@ -40,6 +40,8 @@
     private int uploaded = 0;
     private int totalUpload = 0;
     private int? progress;
+    private int? totalBytes = 0;
+    private int? uploadedBytes = 0;
     private bool finished = false;
     private List<string> errorMessages = new();
     private FileEdit fileEdit;
@@ -67,7 +69,9 @@
                     LastModified = file.LastModified,
                     Size = file.Size
                 };
+                progress = 0;
                 await MagicApi.UploadFileAsync(info, file.OpenReadStream(maxFileSize));
+                progress = 100;
                 uploaded++;
                 this.StateHasChanged();
             }
@@ -86,9 +90,11 @@
 
     void OnWritten( FileWrittenEventArgs e )
     {
-        progress = (int)(100.0 * e.Position / e.File.Size);
+        uploadedBytes = e.Position;
+        totalBytes = e.File.Size;
+        progress = (int)(100.0 * uploadedBytes / totalBytes);
         this.StateHasChanged();
-        Console.WriteLine( $"File: {e.File.Name} Position: {e.Position}" );
+        Console.WriteLine( $"File: {e.File.Name} {uploadedBytes} / {totalBytes} ({progress} %)" );
     }
 
     void OnProgressed( FileProgressedEventArgs e )
