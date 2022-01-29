@@ -51,7 +51,7 @@ namespace MagiCloudWeb.Pages
 
         private async Task EmptyTrash()
         {
-            foreach (var file in files ?? new())
+            foreach (var file in new List<ElasticFileInfo>(files) ?? new())
             {
                 await MagicApi.RemoveFileAsync(file.Id, true);
                 files.Remove(file);
