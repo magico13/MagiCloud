@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" Progressed="@OnProgressed" AutoReset="false" MaxMessageSize=1048576 />
+    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" Progressed="@OnProgressed" AutoReset="false" MaxMessageSize=102400 />
 </p>
 
 @if (totalUpload > 0)
@@ -87,6 +87,7 @@
     void OnWritten( FileWrittenEventArgs e )
     {
         progress = (int)(100.0 * e.Position / e.File.Size);
+        this.StateHasChanged();
         Console.WriteLine( $"File: {e.File.Name} Position: {e.Position}" );
     }
 
