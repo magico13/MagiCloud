@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" Progressed="@OnProgressed" AutoReset="false" MaxMessageSize=102400 />
+    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=102400 />
 </p>
 
 @if (totalUpload > 0)
@@ -61,6 +61,9 @@
         {
             try
             {
+                progress = 0;
+                uploadedBytes = 0;
+                totalBytes = file.Size;
                 var info = new MagiCommon.Models.ElasticFileInfo
                 {
                     Name =  Path.GetFileNameWithoutExtension(file.Name),
@@ -69,9 +72,7 @@
                     LastModified = file.LastModified,
                     Size = file.Size
                 };
-                progress = 0;
                 await MagicApi.UploadFileAsync(info, file.OpenReadStream(maxFileSize));
-                progress = 100;
                 uploaded++;
                 this.StateHasChanged();
             }
@@ -93,12 +94,7 @@
         uploadedBytes = e.Position;
         totalBytes = e.File.Size;
         progress = (int)(100.0 * uploadedBytes / totalBytes);
-        this.StateHasChanged();
+        //this.StateHasChanged();
         Console.WriteLine( $"File: {e.File.Name} {uploadedBytes} / {totalBytes} ({progress} %)" );
-    }
-
-    void OnProgressed( FileProgressedEventArgs e )
-    {
-        Console.WriteLine( $"File: {e.File.Name} Progress: {e.Percentage}" );
     }
 }
