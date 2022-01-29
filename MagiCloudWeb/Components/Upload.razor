@@ -94,7 +94,7 @@
         uploadedBytes = e.Position;
         totalBytes = e.File.Size;
         progress = (int)(100.0 * uploadedBytes / totalBytes);
-        //this.StateHasChanged();
+        this.StateHasChanged();
         Console.WriteLine( $"File: {e.File.Name} {uploadedBytes} / {totalBytes} ({progress} %)" );
     }
 }
