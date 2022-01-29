@@ -40,7 +40,6 @@ namespace MagiCloudWeb.Pages
         {
             await MagicApi.RemoveFileAsync(id, true);
             files.RemoveAll(f => f.Id == id);
-            //await GetFilesAsync();
         }
 
         private async Task UndeleteAsync(ElasticFileInfo fileInfo)
@@ -48,7 +47,6 @@ namespace MagiCloudWeb.Pages
             fileInfo.IsDeleted = false;
             await MagicApi.UpdateFileAsync(fileInfo);
             files.Remove(fileInfo);
-            //await GetFilesAsync();
         }
 
         private async Task EmptyTrash()
@@ -56,8 +54,8 @@ namespace MagiCloudWeb.Pages
             foreach (var file in files ?? new())
             {
                 await MagicApi.RemoveFileAsync(file.Id, true);
+                files.Remove(file);
             }
-            await GetFilesAsync();
         }
     }
 }

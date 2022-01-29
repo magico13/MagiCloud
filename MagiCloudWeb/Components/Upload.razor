@@ -18,6 +18,7 @@
     @if (!finished)
     {
         <p>Uploaded... @uploaded / @totalUpload</p>
+        <Progress Value="@progress" Color="Color.Success"/>
     }
     else
     {
@@ -38,6 +39,7 @@
     private long maxFileSize = 1024 * 1024 * 256; //256 MiB/0.25 GiB
     private int uploaded = 0;
     private int totalUpload = 0;
+    private int? progress;
     private bool finished = false;
     private List<string> errorMessages = new();
     private FileEdit fileEdit;
@@ -49,6 +51,7 @@
     {
         uploaded = 0;
         finished = false;
+        progress = null;
         errorMessages.Clear();
         totalUpload = e.Files.Length;
 
@@ -76,12 +79,14 @@
             }
         }
         finished = true;
+        progress = null;
         //await fileEdit.Reset().AsTask();
         await OnUploadComplete.InvokeAsync();
     }
 
     void OnWritten( FileWrittenEventArgs e )
     {
+        progress = (int)(100.0 * e.Position / e.File.Size);
         Console.WriteLine( $"File: {e.File.Name} Position: {e.Position}" );
     }
 
