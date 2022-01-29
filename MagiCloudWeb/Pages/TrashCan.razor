@@ -13,10 +13,12 @@
 
 @if (files?.Any() == true)
 {
+    <Button Color="Color.Danger" Clicked="@EmptyTrash">Empty Trash</Button>
     <DataGrid
             TItem="ElasticFileInfo"
             Data="@files"
             PageSize=10
+            Responsive
             ShowPager
             ShowPageSizes
             Sortable

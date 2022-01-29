@@ -39,13 +39,24 @@ namespace MagiCloudWeb.Pages
         private async Task PermanentlyDeleteAsync(string id)
         {
             await MagicApi.RemoveFileAsync(id, true);
-            await GetFilesAsync();
+            files.RemoveAll(f => f.Id == id);
+            //await GetFilesAsync();
         }
 
         private async Task UndeleteAsync(ElasticFileInfo fileInfo)
         {
             fileInfo.IsDeleted = false;
             await MagicApi.UpdateFileAsync(fileInfo);
+            files.Remove(fileInfo);
+            //await GetFilesAsync();
+        }
+
+        private async Task EmptyTrash()
+        {
+            foreach (var file in files ?? new())
+            {
+                await MagicApi.RemoveFileAsync(file.Id, true);
+            }
             await GetFilesAsync();
         }
     }
