@@ -4,8 +4,8 @@
     {
         /// <summary>
         /// Size of each chunk uploaded to the server.
-        /// 5MB
+        /// 1MB
         /// </summary>
-        public const int UPLOAD_CHUNK_SIZE = 5242880;
+        public const int UPLOAD_CHUNK_SIZE = 1024*1024;
     }
 }
