@@ -29,21 +29,26 @@
         <DataGridColumns>
             <DataGridCommandColumn TItem="ElasticFileInfo" NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
                 <SaveCommandTemplate>
-                    <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked">Save</Button>
+                    <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Save"/> </Button>
                 </SaveCommandTemplate>
                 <CancelCommandTemplate>
-                    <Button ElementId="btnCancel" Color="Color.Secondary" Clicked="@context.Clicked">Cancel</Button>
+                    <Button ElementId="btnCancel" Color="Color.Secondary" Clicked="@context.Clicked"> <Icon Name="IconName.Times"/> </Button>
                 </CancelCommandTemplate>
                 <EditCommandTemplate>
-                    <Button ElementId="btnEdit" Color="Color.Primary" Clicked="@context.Clicked">Edit</Button>
+                    <Button ElementId="btnEdit" Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Edit"/> </Button>
                 </EditCommandTemplate>
                 <DeleteCommandTemplate>
-                    <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked">Delete</Button>
+                    <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked"> <Icon Name="IconName.Delete"/> </Button>
                 </DeleteCommandTemplate>
             </DataGridCommandColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="Name" Editable>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="File" Editable>
                 <DisplayTemplate>
-                     <a href="@GetFileContentUri(context.Id)" target="_blank">@context.GetFullPath()</a>
+                    <Button Type="ButtonType.Link" To="@GetFileContentUri(context.Id, true)" Target="Target.Self">
+                         <Icon Name="IconName.Download" />
+                     </Button>
+                     <Anchor To="@GetFileContentUri(context.Id, false)" Target="Target.Blank">
+                         @context.GetFullPath()
+                     </Anchor>
                 </DisplayTemplate>
             </DataGridColumn>
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Size)" Caption="File Size">
@@ -57,7 +62,22 @@
                     @(context.LastUpdated.LocalDateTime)
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" Editable/>
+            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" >
+                <DisplayTemplate>
+                    @if(context.IsPublic)
+                    {
+                        <Button Clicked="@(() => UpdateVisibility(context, false))">
+                            <Icon Name="IconName.Eye"/>
+                        </Button>
+                    }
+                    else
+                    {
+                        <Button Clicked="@(() => UpdateVisibility(context, true))">
+                            <Icon Name="IconName.EyeSlash"/>
+                        </Button>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
         </DataGridColumns>
     </DataGrid>
 }

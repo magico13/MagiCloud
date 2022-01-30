@@ -37,9 +37,9 @@ namespace MagiCloudWeb.Components
             }
         }
 
-        private string GetFileContentUri(string id)
+        private string GetFileContentUri(string id, bool download=false)
         {
-            var path = MagicApi.GetFileContentUri(id);
+            var path = MagicApi.GetFileContentUri(id, download);
             return path.ToString();
         }
 
@@ -63,6 +63,13 @@ namespace MagiCloudWeb.Components
             Logger.LogInformation("Updating file {Name} ({Id})", saved.Item.Name, saved.Item.Id);
             await MagicApi.UpdateFileAsync(saved.Item);
             //await FilesChanged();
+        }
+
+        public async Task UpdateVisibility(ElasticFileInfo file, bool visible)
+        {
+            Logger.LogInformation("Setting visibility of {Name} ({Id}) to {Visibility}", file.Name, file.Id, visible);
+            file.IsPublic = visible;
+            await MagicApi.UpdateFileAsync(file);
         }
     }
 }

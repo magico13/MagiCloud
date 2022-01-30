@@ -14,7 +14,7 @@ namespace MagiCommon
         Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
-        Uri GetFileContentUri(string id);
+        Uri GetFileContentUri(string id, bool download);
         Task RemoveFileAsync(string id, bool permanent);
 
 
@@ -111,9 +111,13 @@ namespace MagiCommon
             return await Client.GetStreamAsync($"api/filecontent/{id}");
         }
 
-        public Uri GetFileContentUri(string id)
+        public Uri GetFileContentUri(string id, bool download)
         {
-            return new Uri(Client.BaseAddress, $"api/filecontent/{id}");
+            var builder = new UriBuilder(new Uri(Client.BaseAddress, $"api/filecontent/{id}"))
+            {
+                Query = $"download={download}"
+            };
+            return builder.Uri;
         }
 
         public async Task RemoveFileAsync(string id, bool permanent)
