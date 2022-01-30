@@ -1,5 +1,6 @@
 ﻿using MagiCloud.DataManager;
 using MagiCommon;
+using MagiCommon.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -33,8 +35,9 @@ namespace MagiCloud.Controllers
         [HttpGet]
         [AllowAnonymous]
         [Route("{id}")]
-        public async Task<IActionResult> GetFile(string id)
+        public async Task<IActionResult> GetFile(string id, [FromQuery] bool download = false)
         {
+            Stream stream = null;
             try
             {
                 var userId = User?.Identity?.Name;
@@ -46,7 +49,7 @@ namespace MagiCloud.Controllers
                     // document exists in db, pull from file system
                     if (_dataManager.FileExists(doc.Id))
                     {
-                        var stream = _dataManager.GetFile(doc.Id);
+                        stream = _dataManager.GetFile(doc.Id);
                         if (string.IsNullOrWhiteSpace(doc.MimeType))
                         {
                             new FileExtensionContentTypeProvider().TryGetContentType($"{doc.Name}.{doc.Extension}", out string type);
@@ -58,7 +61,14 @@ namespace MagiCloud.Controllers
                             _logger.LogWarning("MimeType data missing for document {DocId}, using type {ContentType}", doc.Id, doc.MimeType);
 
                         }
-                        return File(stream, contentType: doc.MimeType, lastModified: doc.LastModified, entityTag: new EntityTagHeaderValue($"\"{doc.Hash}\""));
+                        if (download)
+                        {
+                            return File(stream, contentType: doc.MimeType, fileDownloadName: doc.GetFileName(), enableRangeProcessing: true);
+                        }
+                        else
+                        {
+                            return File(stream, contentType: doc.MimeType, lastModified: doc.LastModified, entityTag: new EntityTagHeaderValue($"\"{doc.Hash}\""));
+                        }
                     }
                     else
                     {
@@ -86,6 +96,7 @@ namespace MagiCloud.Controllers
             }
             catch (Exception ex)
             {
+                stream?.Close();
                 _logger.LogError(ex, "Exception while getting content for document {DocId}.", id);
                 return StatusCode(500);
             }
@@ -93,7 +104,7 @@ namespace MagiCloud.Controllers
 
         [HttpPut]
         [Route("{id}")]
-        [RequestSizeLimit(int.MaxValue)] //About 2GB, TODO support streaming/chunking larger files
+        [RequestSizeLimit(int.MaxValue)] //About 2GB, chunk larger files through PutFilePart
         [RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = int.MaxValue)]
         public async Task<IActionResult> PutFile(string id, IFormFile file)
         {
@@ -137,6 +148,61 @@ namespace MagiCloud.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Exception while uploading content for document {DocId}.", id);
+                return StatusCode(500);
+            }
+        }
+
+        [HttpPut]
+        [Route("{id}/{part}")]
+        [RequestSizeLimit(104857600)] // 100MB limit
+        [RequestFormLimits(ValueLengthLimit = 104857600, MultipartBodyLengthLimit = 104857600)]
+        public async Task<IActionResult> PutFilePart(string id, int part, IFormFile file, [FromQuery] bool final = false)
+        {
+            try
+            {
+                //get the file info from the db, upload the file data, update the info in the db
+                var userId = User.Identity.Name;
+                if (file is null || file.Length < 0)
+                {
+                    return BadRequest();
+                }
+
+                await _elastic.SetupIndicesAsync();
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                if (result == FileAccessResult.FullAccess && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                {
+                    _logger.LogInformation("Writing part {Part} of file {DocId}. Final? {Final}", part, id, final);
+                    // document exists in db, pull from file system
+                    using var stream = file.OpenReadStream();
+
+                    //write file to data folder
+                    await _dataManager.WriteFilePartAsync(doc.Id, stream);
+
+                    if (final)
+                    {
+                        using var fullFile = _dataManager.GetFile(id);
+                        var hash = _hashService.GenerateContentHash(fullFile, false);
+                        doc.Hash = hash;
+                        doc.MimeType = file.ContentType ?? doc.MimeType;
+                        doc.Size = fullFile.Length;
+
+                        await _elastic.UpdateFileAttributesAsync(userId, doc);
+                    }
+
+                    return NoContent();
+                }
+                if (result == FileAccessResult.NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return Forbid();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception while uploading Part {Part} content for document {DocId}.", part, id);
                 return StatusCode(500);
             }
         }

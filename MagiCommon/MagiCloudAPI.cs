@@ -52,13 +52,43 @@ namespace MagiCommon
             var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
             if (fileInfo.Hash != returnedInfo.Hash || string.IsNullOrWhiteSpace(returnedInfo.Hash))
             {
-                var content = new MultipartFormDataContent
+                // if file is less than 1 MB, upload it all at once
+                var fileSize = fileStream.Length;
+                var chunkSize = 1024 * 1024;
+                var chunks = fileSize / chunkSize + 1;
+                if (chunks == 1)
                 {
-                    { new StreamContent(fileStream), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
-                };
+                    var content = new MultipartFormDataContent
+                    {
+                        { new StreamContent(fileStream), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
+                    };
 
-                response = await Client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
-                response.EnsureSuccessStatusCode();
+                    response = await Client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
+                    response.EnsureSuccessStatusCode();
+                }
+                else
+                {
+                    // If > chunksize upload in parts of chunksize each
+                    for (var i = 0; i < chunks; i++)
+                    {
+                        var final = i + 1 == chunks;
+
+                        using (var partialStream = new MemoryStream(chunkSize))
+                        {
+                            var buffer = new byte[chunkSize];
+                            int actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
+                            var content = new MultipartFormDataContent
+                            {
+                                { new ByteArrayContent(buffer, 0, actual), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
+                            };
+
+
+                            response = await Client.PutAsync($"api/filecontent/{returnedInfo.Id}/{i}?final={final}", content);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                }
+                
             }
             
             return await GetFileInfoAsync(returnedInfo.Id);

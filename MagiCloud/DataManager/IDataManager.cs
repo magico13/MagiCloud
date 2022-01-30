@@ -8,6 +8,7 @@ namespace MagiCloud.DataManager
         bool FileExists(string id);
         Stream GetFile(string id);
         Task WriteFileAsync(string id, Stream file);
+        Task WriteFilePartAsync(string id, Stream file);
         void DeleteFile(string id);
 
     }

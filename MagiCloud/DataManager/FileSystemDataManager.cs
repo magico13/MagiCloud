@@ -40,6 +40,16 @@ namespace MagiCloud.DataManager
             await file.CopyToAsync(filestream);
         }
 
+        public async Task WriteFilePartAsync(string id, Stream filePart)
+        {
+            Directory.CreateDirectory(ROOT);
+            var path = GetPath(id);
+            using var filestream = File.OpenWrite(path);
+            filestream.Seek(0, SeekOrigin.End);
+            filePart.Seek(0, SeekOrigin.Begin);
+            await filePart.CopyToAsync(filestream);
+        }
+
         private string GetPath(string id)
         {
             return Path.Combine(ROOT, id);

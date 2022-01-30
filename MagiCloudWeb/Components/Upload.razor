@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=102400 />
+    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=1048576 />
 </p>
 
 @if (totalUpload > 0)
@@ -18,7 +18,7 @@
     @if (!finished)
     {
         <p>Uploaded... @uploaded / @totalUpload</p>
-        <Progress Value="@progress" Color="Color.Success">@uploadedBytes / @totalBytes</Progress>
+        <Progress Value="@progress" Color="Color.Success">@progress %</Progress>
     }
     else
     {
@@ -36,7 +36,7 @@
 }
 
 @code {
-    private long maxFileSize = 1024 * 1024 * 256; //256 MiB/0.25 GiB
+    private long maxFileSize = 1024 * 1024 * 1024 * 2L; //2 GB
     private int uploaded = 0;
     private int totalUpload = 0;
     private int? progress;
@@ -64,15 +64,17 @@
                 progress = 0;
                 uploadedBytes = 0;
                 totalBytes = file.Size;
+                Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
                 var info = new MagiCommon.Models.ElasticFileInfo
                 {
                     Name =  Path.GetFileNameWithoutExtension(file.Name),
                     Extension = Path.GetExtension(file.Name).TrimStart('.'),
-                    //MimeType = file.,
+                    MimeType = file.Type,
                     LastModified = file.LastModified,
                     Size = file.Size
                 };
-                await MagicApi.UploadFileAsync(info, file.OpenReadStream(maxFileSize));
+                using var fileStream = file.OpenReadStream(maxFileSize);
+                await MagicApi.UploadFileAsync(info, fileStream);
                 uploaded++;
                 this.StateHasChanged();
             }
@@ -85,7 +87,6 @@
         }
         finished = true;
         progress = null;
-        //await fileEdit.Reset().AsTask();
         await OnUploadComplete.InvokeAsync();
     }
 
