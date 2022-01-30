@@ -54,7 +54,7 @@ namespace MagiCommon
             {
                 // if file is less than 1 MB, upload it all at once
                 var fileSize = fileStream.Length;
-                var chunkSize = 1024 * 1024;
+                var chunkSize = 1024 * 1024 * 100;
                 var chunks = fileSize / chunkSize + 1;
                 if (chunks == 1)
                 {

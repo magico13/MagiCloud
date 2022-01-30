@@ -43,7 +43,7 @@
             </DataGridCommandColumn>
             <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="File" Editable>
                 <DisplayTemplate>
-                    <Button Type="ButtonType.Link" To="@GetFileContentUri(context.Id, true)" Target="Target.Self">
+                    <Button Type="ButtonType.Link" To="@GetFileContentUri(context.Id, true)" Target="Target.Blank">
                          <Icon Name="IconName.Download" />
                      </Button>
                      <Anchor To="@GetFileContentUri(context.Id, false)" Target="Target.Blank">
