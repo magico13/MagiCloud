@@ -55,14 +55,12 @@ namespace MagiCloudWeb.Components
             file.IsDeleted = true;
             files.Remove(file);
             await MagicApi.RemoveFileAsync(file.Id, false);
-            //await FilesChanged();
         }
 
         public async Task RowUpdated(SavedRowItem<ElasticFileInfo, Dictionary<string, object>> saved)
         {
             Logger.LogInformation("Updating file {Name} ({Id})", saved.Item.Name, saved.Item.Id);
             await MagicApi.UpdateFileAsync(saved.Item);
-            //await FilesChanged();
         }
 
         public async Task UpdateVisibility(ElasticFileInfo file, bool visible)

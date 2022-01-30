@@ -10,7 +10,7 @@
 <h3>Upload Files</h3>
 
 <p>
-    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=1048576 />
+    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=Constants.UPLOAD_CHUNK_SIZE />
 </p>
 
 @if (totalUpload > 0)

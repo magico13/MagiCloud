@@ -52,9 +52,9 @@ namespace MagiCommon
             var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
             if (fileInfo.Hash != returnedInfo.Hash || string.IsNullOrWhiteSpace(returnedInfo.Hash))
             {
-                // if file is less than 1 MB, upload it all at once
+                // if file is less than the chunk size, upload it all at once
                 var fileSize = fileStream.Length;
-                var chunkSize = 1024 * 1024 * 100;
+                var chunkSize = Constants.UPLOAD_CHUNK_SIZE;
                 var chunks = fileSize / chunkSize + 1;
                 if (chunks == 1)
                 {
