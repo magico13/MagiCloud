@@ -1,20 +1,23 @@
 ﻿@using Blazorise
+@using Humanizer
 @using MagiCommon
 @using MagiCommon.Extensions
 @using MagiCommon.Models
 @using Microsoft.Extensions.Logging
+@using System.IO
 
 @inject ITokenProvider TokenProvider
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<FilesComponent> Logger
 
-<Upload OnUploadComplete="@FilesChanged" />
+<Upload OnUploadComplete="@FilesChanged" CurrentDirectory="@currentFolder"/>
 
 <h3>Files</h3>
-@if (files?.Any() == true)
+@if (allFiles?.Any() == true)
 {
-    <DataGrid TItem="ElasticFileInfo" 
-                Data="@files"
+    <Paragraph>@currentFolder</Paragraph>
+    <DataGrid TItem="FileWrapper" 
+                Data="@Files"
                 Sortable
                 SelectionMode="DataGridSelectionMode.Single"
                 CommandMode="DataGridCommandMode.Default"
@@ -27,7 +30,7 @@
                 RowRemoved="@RowRemoved"
                 RowUpdated="@RowUpdated">
         <DataGridColumns>
-            <DataGridCommandColumn TItem="ElasticFileInfo" NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
+            <DataGridCommandColumn TItem="FileWrapper" NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
                 <SaveCommandTemplate>
                     <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Save"/> </Button>
                 </SaveCommandTemplate>
@@ -35,42 +38,62 @@
                     <Button ElementId="btnCancel" Color="Color.Secondary" Clicked="@context.Clicked"> <Icon Name="IconName.Times"/> </Button>
                 </CancelCommandTemplate>
                 <EditCommandTemplate>
-                    <Button ElementId="btnEdit" Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Edit"/> </Button>
+                    <Button ElementId="btnEdit" Color="Color.Primary" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Edit"/> </Button>
                 </EditCommandTemplate>
                 <DeleteCommandTemplate>
-                    <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked"> <Icon Name="IconName.Delete"/> </Button>
+                    <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Delete"/> </Button>
                 </DeleteCommandTemplate>
             </DataGridCommandColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Name)" Caption="File" Editable>
+            <DataGridColumn TItem="FileWrapper" Field="Name" Caption="File Name" Editable>
                 <DisplayTemplate>
-                    <Button Type="ButtonType.Link" To="@GetFileContentUri(context.Id, true)" Target="Target.Blank">
-                         <Icon Name="IconName.Download" />
-                     </Button>
-                     <Anchor To="@GetFileContentUri(context.Id, false)" Target="Target.Blank">
-                         @context.GetFullPath()
-                     </Anchor>
+                    @if(context.BackingFileInfo != null)
+                    {
+                        <Button Type="ButtonType.Link" To="@GetFileContentUri(context.BackingFileInfo.Id, true)" Target="Target.Blank">
+                            <Icon Name="IconName.Download" />
+                        </Button>
+                        <Anchor To="@GetFileContentUri(context.BackingFileInfo.Id, false)" Target="Target.Blank">
+                            @context.BackingFileInfo.GetFileName()
+                        </Anchor>
+                    }
+                    else
+                    {
+                        <Button Clicked="@(() => FilterToFolder(Path.Combine(currentFolder, context.Name)))">
+                            @context.Name
+                        </Button>
+                    }
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.Size)" Caption="File Size">
+            <DataGridColumn TItem="FileWrapper" Field="Size" Caption="File Size">
                 <DisplayTemplate>
-                    @((context.Size/1024.0).ToString("N1")) kiB
+                    @if (context.Size.HasValue)
+                    {
+                        <Span>
+                            @((context.Size).Value.Bytes().ToString("#.##"))
+                        </Span>
+                    }
+                    else
+                    {
+                        @string.Empty
+                    }
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Update">
+            <DataGridColumn TItem="FileWrapper" Field="MimeType" Caption="File Type" />
+            <DataGridColumn TItem="FileWrapper" Field="LastUpdated" Caption="Last Update">
                 <DisplayTemplate>
-                    @(context.LastUpdated.LocalDateTime)
+                    <Tooltip Text="@(context.LastUpdated?.LocalDateTime.ToString())">
+                        @(context.LastUpdated?.LocalDateTime.Humanize())
+                    </Tooltip>
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="ElasticFileInfo" Field="@nameof(ElasticFileInfo.IsPublic)" Caption="Public?" >
+            <DataGridColumn TItem="FileWrapper" Field="IsPublic" Caption="Public?" >
                 <DisplayTemplate>
-                    @if(context.IsPublic)
+                    @if (context.IsPublic == true)
                     {
                         <Button Clicked="@(() => UpdateVisibility(context, false))">
                             <Icon Name="IconName.Eye"/>
                         </Button>
                     }
-                    else
+                    else if (context.IsPublic == false)
                     {
                         <Button Clicked="@(() => UpdateVisibility(context, true))">
                             <Icon Name="IconName.EyeSlash" IconStyle="IconStyle.Regular"/>

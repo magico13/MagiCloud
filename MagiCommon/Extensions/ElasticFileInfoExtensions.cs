@@ -12,7 +12,7 @@ namespace MagiCommon.Extensions
         /// <returns>The full path with extension.</returns>
         public static string GetFullPath(this ElasticFileInfo file)
         {
-            return Path.GetDirectoryName(file.Name) + "/" + GetFileName(file);
+            return Path.Combine(Path.GetDirectoryName(file.Name), GetFileName(file));
         }
 
         /// <summary>

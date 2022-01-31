@@ -48,6 +48,8 @@
 
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
+    [Parameter]
+    public string CurrentDirectory { get; set; }
 
     private async Task LoadFiles(FileChangedEventArgs e)
     {
@@ -67,7 +69,7 @@
                 Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
                 var info = new MagiCommon.Models.ElasticFileInfo
                 {
-                    Name =  Path.GetFileNameWithoutExtension(file.Name),
+                    Name = Path.Combine(CurrentDirectory, Path.GetFileNameWithoutExtension(file.Name)),
                     Extension = Path.GetExtension(file.Name).TrimStart('.'),
                     MimeType = file.Type,
                     LastModified = file.LastModified,

@@ -79,6 +79,8 @@ namespace MagiCloud.Controllers
             var token = fullToken?.Id;
             if (!string.IsNullOrWhiteSpace(token))
             {
+                // Remove old tokens as a clean up step
+                await _elastic.RemoveExpiredTokensAsync();
                 await SignIn(fullToken);
                 return Ok(fullToken);
             }
