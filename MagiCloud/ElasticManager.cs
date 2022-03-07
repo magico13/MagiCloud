@@ -333,11 +333,36 @@ namespace MagiCloud
 
             //verification
             var valid = !string.IsNullOrWhiteSpace(found?.Id)
+                && !found.IsLocked
                 && string.Equals(found.Username, request.Username, StringComparison.Ordinal)
                 && string.Equals(found.Password, request.Password, StringComparison.Ordinal);
 
-            if (valid)
+            if (!valid)
             {
+                _logger.LogInformation("Invalid login for username {Username}", request.Username);
+            }
+
+            if (!valid && found?.IsLocked == false)
+            {
+                // If there is an account, increase the failed login counter
+                // If failed logins > 3, lock the account
+                found.LoginFailures++;
+                if (found.LoginFailures > 3)
+                {
+                    _logger.LogWarning("Locking account {Id} due to login failures.", found.Id);
+                    found.IsLocked = true;
+                    ThrowIfInvalid(await Client.IndexDocumentAsync(found));
+                }
+            }
+            else if (valid)
+            {
+                if (found.LoginFailures > 0)
+                {
+                    _logger.LogInformation("Resetting login failures for account {Id}. Previous Failures: {Count}", found.Id, found.LoginFailures);
+                    found.LoginFailures = 0;
+                    ThrowIfInvalid(await Client.IndexDocumentAsync(found));
+                }
+
                 var rawToken = Guid.NewGuid().ToString();
                 var token = new AuthToken
                 {
