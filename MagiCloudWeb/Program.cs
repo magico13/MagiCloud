@@ -19,7 +19,7 @@ namespace MagiCloudWeb
             builder.Services
                 .AddBlazorise(options =>
                 {
-                    options.ChangeTextOnKeyPress = true;
+                    options.Immediate = true;
                 })
                 .AddBootstrap5Providers()
                 .AddFontAwesomeIcons();
