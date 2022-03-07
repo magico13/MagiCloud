@@ -351,8 +351,8 @@ namespace MagiCloud
                 {
                     _logger.LogWarning("Locking account {Id} due to login failures.", found.Id);
                     found.IsLocked = true;
-                    ThrowIfInvalid(await Client.IndexDocumentAsync(found));
                 }
+                ThrowIfInvalid(await Client.IndexDocumentAsync(found));
             }
             else if (valid)
             {
