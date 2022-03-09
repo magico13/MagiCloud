@@ -226,14 +226,20 @@ namespace MagiCloud.Controllers
                 fileStream.Seek(0, SeekOrigin.Begin);
             }
             var hash = _hashService.GenerateContentHash(fileStream, true);
-            var hashesChanged = hash != doc.Hash;
+            var oldHash = doc.Hash;
+            var hashesChanged = hash != oldHash;
             doc.Hash = hash;
             doc.MimeType = contentType;
             doc.Size = fileStream.Length;
+            _logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
             if (hashesChanged)
             {
                 var extractor = _textExtractors.FirstOrDefault(e => e.IsValidForMimeType(contentType));
-                doc.Text = await extractor?.ExtractTextAsync(fileStream);
+                if (extractor is not null)
+                {
+                    _logger.LogInformation("Found suitable extractor {Class} for mimetype {MimeType}", extractor.GetType(), contentType);
+                    doc.Text = await extractor.ExtractTextAsync(fileStream);
+                }
             }
 
             await _elastic.UpdateFileAttributesAsync(userId, doc);
