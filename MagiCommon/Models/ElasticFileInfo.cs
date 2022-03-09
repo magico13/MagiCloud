@@ -12,7 +12,7 @@ namespace MagiCommon.Models
         public DateTimeOffset LastModified { get; set; }
         public DateTimeOffset LastUpdated { get; set; }
         public string Hash { get; set; }
-        public string FileText { get; set; }
+        public string Text { get; set; }
         public string UserId { get; set; }
         public bool IsPublic { get; set; }
         public bool IsDeleted { get; set; }

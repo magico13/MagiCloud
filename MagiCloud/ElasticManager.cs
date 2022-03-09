@@ -1,5 +1,6 @@
 ﻿using MagiCloud.Configuration;
 using MagiCommon;
+using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
@@ -255,14 +256,14 @@ namespace MagiCloud
                     case "xcf": return "image/x-xcf";
                     case "ofx": return "text/plain";
                 }
-                new FileExtensionContentTypeProvider().TryGetContentType($"{file.Name}.{file.Extension}", out string type);
+                new FileExtensionContentTypeProvider().TryGetContentType(file.GetFileName(), out string type);
                 if (type is null)
                 {
                     type = "application/octet-stream";
                 }
                 return type;
             }
-            return null;
+            return file.MimeType;
         }
 
         public async Task<User> CreateUserAsync(User user)

@@ -1,5 +1,6 @@
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
+using MagiCloud.TextExtraction;
 using MagiCommon;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -28,6 +29,7 @@ namespace MagiCloud
             services.AddScoped<IElasticManager, ElasticManager>();
             services.AddScoped<IDataManager, FileSystemDataManager>();
             services.AddScoped<IHashService, HashService>();
+            services.AddScoped<ITextExtractor, PlainTextExtractor>();
 
             services.AddCors(options =>
                 options.AddDefaultPolicy(p =>

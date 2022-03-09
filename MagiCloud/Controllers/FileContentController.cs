@@ -1,6 +1,8 @@
 ﻿using MagiCloud.DataManager;
+using MagiCloud.TextExtraction;
 using MagiCommon;
 using MagiCommon.Extensions;
+using MagiCommon.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,9 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -22,13 +26,20 @@ namespace MagiCloud.Controllers
         private readonly IElasticManager _elastic;
         private readonly IDataManager _dataManager;
         private readonly IHashService _hashService;
+        private readonly IEnumerable<ITextExtractor> _textExtractors;
 
-        public FileContentController(ILogger<FileContentController> logger, IElasticManager elastic, IDataManager dataManager, IHashService hashService)
+        public FileContentController(
+            ILogger<FileContentController> logger,
+            IElasticManager elastic,
+            IDataManager dataManager,
+            IHashService hashService,
+            IEnumerable<ITextExtractor> textExtractors)
         {
             _logger = logger;
             _elastic = elastic;
             _dataManager = dataManager;
             _hashService = hashService;
+            _textExtractors = textExtractors;
         }
 
 
@@ -52,7 +63,7 @@ namespace MagiCloud.Controllers
                         stream = _dataManager.GetFile(doc.Id);
                         if (string.IsNullOrWhiteSpace(doc.MimeType))
                         {
-                            new FileExtensionContentTypeProvider().TryGetContentType($"{doc.Name}.{doc.Extension}", out string type);
+                            new FileExtensionContentTypeProvider().TryGetContentType(doc.GetFileName(), out string type);
                             if (type is null)
                             {
                                 type = "application/octet-stream";
@@ -63,11 +74,17 @@ namespace MagiCloud.Controllers
                         }
                         if (download)
                         {
-                            return File(stream, contentType: doc.MimeType, fileDownloadName: doc.GetFileName(), enableRangeProcessing: true);
+                            return File(stream,
+                                contentType: doc.MimeType,
+                                fileDownloadName: doc.GetFileName(),
+                                enableRangeProcessing: true);
                         }
                         else
                         {
-                            return File(stream, contentType: doc.MimeType, lastModified: doc.LastModified, entityTag: new EntityTagHeaderValue($"\"{doc.Hash}\""));
+                            return File(stream,
+                                contentType: doc.MimeType,
+                                lastModified: doc.LastModified,
+                                entityTag: new EntityTagHeaderValue($"\"{doc.Hash}\""));
                         }
                     }
                     else
@@ -119,21 +136,17 @@ namespace MagiCloud.Controllers
 
                 await _elastic.SetupIndicesAsync();
                 var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
-                if (result == FileAccessResult.FullAccess && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
+                if (result == FileAccessResult.FullAccess
+                    && doc != null
+                    && !string.IsNullOrWhiteSpace(doc.Id))
                 {
-                    // document exists in db, pull from file system
+                    // document exists in db, write data to filesystem
                     using var stream = file.OpenReadStream();
-                    var hash = _hashService.GenerateContentHash(stream, false);
-                    doc.Hash = hash;
-                    doc.MimeType = file.ContentType ?? doc.MimeType;
-                    doc.Size = file.Length;
-
-                    //write file to data folder
                     await _dataManager.WriteFileAsync(doc.Id, stream);
 
-                    await _elastic.UpdateFileAttributesAsync(userId, doc);
-                    //await _elastic.IndexDocumentAsync(doc); //superfluous?
-
+                    // Update indexed document
+                    await UpdateFileAttributesAsync(
+                        stream, userId, doc, doc.MimeType ?? file.ContentType);
                     return NoContent();
                 }
                 if (result == FileAccessResult.NotFound)
@@ -181,12 +194,8 @@ namespace MagiCloud.Controllers
                     if (final)
                     {
                         using var fullFile = _dataManager.GetFile(id);
-                        var hash = _hashService.GenerateContentHash(fullFile, false);
-                        doc.Hash = hash;
-                        doc.MimeType = file.ContentType ?? doc.MimeType;
-                        doc.Size = fullFile.Length;
-
-                        await _elastic.UpdateFileAttributesAsync(userId, doc);
+                        await UpdateFileAttributesAsync(
+                            fullFile, userId, doc, doc.MimeType ?? file.ContentType);
                     }
 
                     return NoContent();
@@ -205,6 +214,29 @@ namespace MagiCloud.Controllers
                 _logger.LogError(ex, "Exception while uploading Part {Part} content for document {DocId}.", part, id);
                 return StatusCode(500);
             }
+        }
+
+        private async Task UpdateFileAttributesAsync(Stream fileStream,
+            string userId,
+            ElasticFileInfo doc,
+            string contentType)
+        {
+            if (fileStream.CanSeek)
+            {
+                fileStream.Seek(0, SeekOrigin.Begin);
+            }
+            var hash = _hashService.GenerateContentHash(fileStream, true);
+            var hashesChanged = hash != doc.Hash;
+            doc.Hash = hash;
+            doc.MimeType = contentType;
+            doc.Size = fileStream.Length;
+            if (hashesChanged)
+            {
+                var extractor = _textExtractors.FirstOrDefault(e => e.IsValidForMimeType(contentType));
+                doc.Text = await extractor?.ExtractTextAsync(fileStream);
+            }
+
+            await _elastic.UpdateFileAttributesAsync(userId, doc);
         }
     }
 }
