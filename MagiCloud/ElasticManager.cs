@@ -234,6 +234,7 @@ namespace MagiCloud
             existing.Hash = file.Hash;
             existing.Size = file.Size;
             existing.MimeType = file.MimeType;
+            existing.Text = file.Text;
             var result = await Client.IndexDocumentAsync(existing);
             ThrowIfInvalid(result);
         }
