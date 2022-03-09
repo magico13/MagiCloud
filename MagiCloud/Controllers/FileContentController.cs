@@ -52,7 +52,7 @@ namespace MagiCloud.Controllers
             try
             {
                 var userId = User?.Identity?.Name;
-                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
                 
                 if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
                     && doc != null && !string.IsNullOrWhiteSpace(doc.Id) && !doc.IsDeleted)
@@ -135,7 +135,7 @@ namespace MagiCloud.Controllers
                 }
 
                 await _elastic.SetupIndicesAsync();
-                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
                 if (result == FileAccessResult.FullAccess
                     && doc != null
                     && !string.IsNullOrWhiteSpace(doc.Id))
@@ -181,7 +181,7 @@ namespace MagiCloud.Controllers
                 }
 
                 await _elastic.SetupIndicesAsync();
-                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
                 if (result == FileAccessResult.FullAccess && doc != null && !string.IsNullOrWhiteSpace(doc.Id))
                 {
                     _logger.LogInformation("Writing part {Part} of file {DocId}. Final? {Final}", part, id, final);

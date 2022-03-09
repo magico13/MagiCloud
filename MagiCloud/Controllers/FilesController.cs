@@ -48,7 +48,7 @@ namespace MagiCloud.Controllers
             try
             {
                 var userId = User?.Identity?.Name;
-                var (result, file) = await _elastic.GetDocumentAsync(userId, id);
+                var (result, file) = await _elastic.GetDocumentAsync(userId, id, false);
                 if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
                 {
                     return Json(file);
@@ -78,7 +78,7 @@ namespace MagiCloud.Controllers
                 var userId = User.Identity.Name;
                 await _elastic.SetupIndicesAsync();
                 var docId = await _elastic.IndexDocumentAsync(userId, file);
-                var (_, doc) = await _elastic.GetDocumentAsync(userId, docId);
+                var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
                 doc.Id = docId;
                 return Json(doc);
             }
@@ -97,7 +97,7 @@ namespace MagiCloud.Controllers
             try
             {
                 var userId = User.Identity.Name;
-                var (result, doc) = await _elastic.GetDocumentAsync(userId, id);
+                var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
                 if (result == FileAccessResult.FullAccess)
                 {
                     // Mark file as deleted but don't permanently delete the file

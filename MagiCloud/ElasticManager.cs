@@ -20,7 +20,7 @@ namespace MagiCloud
         IElasticClient Client { get; set; }
         Task<bool> SetupIndicesAsync();
         Task<FileList> GetDocumentsAsync(string userId, bool? deleted);
-        Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id);
+        Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText);
         Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
         Task<FileAccessResult> DeleteFileAsync(string userId, string id);
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
@@ -105,6 +105,7 @@ namespace MagiCloud
             var result = await Client.SearchAsync<ElasticFileInfo>(s =>
             {
                 return s.Size(10000) //10k items currently supported, TODO paginate
+                .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
                 .Query(q =>
                 {
                     var qc = q
@@ -142,6 +143,9 @@ namespace MagiCloud
                 {
                     var source = hit.Source;
                     source.Id = hit.Id;
+                    // omit the text from the result returned to the web
+                    // TODO: make this optional?
+                    source.Text = null;
                     list.Add(source);
                 }
                 return new FileList { Files = list };
@@ -150,10 +154,15 @@ namespace MagiCloud
             return new FileList() { Files = new List<ElasticFileInfo>() };
         }
 
-        public async Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id)
+        public async Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText)
         {
             Setup();
-            var result = await Client.GetAsync<ElasticFileInfo>(id);
+            var getRequest = new GetRequest<ElasticFileInfo>(id);
+            if (!includeText)
+            {
+                getRequest.SourceExcludes = new Field(nameof(ElasticFileInfo.Text));
+            }
+            var result = await Client.GetAsync<ElasticFileInfo>(getRequest);
             if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
             {
                 _logger.LogWarning("Document with id {Id} not found.", id);
@@ -183,7 +192,7 @@ namespace MagiCloud
             // if an id is provided, check if that file actually exists, if not throw that out
             if (!string.IsNullOrWhiteSpace(file.Id))
             {
-                var (getResult, existing) = await GetDocumentAsync(userId, file.Id);
+                var (getResult, existing) = await GetDocumentAsync(userId, file.Id, false);
                 if (getResult == FileAccessResult.FullAccess) //if existing file (that we can access) overwrite it
                 {
                     EnsureFileAttributes(file, existing);
@@ -206,7 +215,7 @@ namespace MagiCloud
         public async Task<FileAccessResult> DeleteFileAsync(string userId, string id)
         {
             Setup();
-            var (getResult, doc) = await GetDocumentAsync(userId, id);
+            var (getResult, doc) = await GetDocumentAsync(userId, id, false);
             if (getResult != FileAccessResult.FullAccess || doc is null)
             {
                 return getResult;
@@ -226,7 +235,7 @@ namespace MagiCloud
 
         public async Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file)
         {
-            var (_, existing) = await GetDocumentAsync(userId, file.Id);
+            var (_, existing) = await GetDocumentAsync(userId, file.Id, true);
             if (existing is null)
             {
                 throw new FileNotFoundException("Can not find file with id " + file.Id, file.Id);
@@ -234,7 +243,10 @@ namespace MagiCloud
             existing.Hash = file.Hash;
             existing.Size = file.Size;
             existing.MimeType = file.MimeType;
-            existing.Text = file.Text;
+            if (!string.IsNullOrEmpty(file.Text))
+            {
+                existing.Text = file.Text;
+            }
             var result = await Client.IndexDocumentAsync(existing);
             ThrowIfInvalid(result);
         }
