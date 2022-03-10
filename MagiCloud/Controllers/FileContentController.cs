@@ -238,7 +238,15 @@ namespace MagiCloud.Controllers
                 if (extractor is not null)
                 {
                     _logger.LogInformation("Found suitable extractor {Class} for mimetype {MimeType}", extractor.GetType(), contentType);
-                    doc.Text = await extractor.ExtractTextAsync(fileStream);
+                    try
+                    {
+                        doc.Text = await extractor.ExtractTextAsync(fileStream);
+                        _logger.LogInformation("Text extraction complete. Length: {Count}", doc.Text.Length);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to extract text for file {Id}", doc.Id);
+                    }
                 }
             }
 
