@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using IronOcr;
 
 namespace MagiCloud.TextExtraction
 {
@@ -24,13 +23,7 @@ namespace MagiCloud.TextExtraction
             {
                 try
                 {
-                    var Ocr = new IronTesseract();
-                    using (var input = new OcrInput())
-                    {
-                        input.AddImage(stream);
-                        var Result = Ocr.Read(input);
-                        return Result.Text;
-                    }
+                    return string.Empty;
                 }
                 catch (Exception ex)
                 {
