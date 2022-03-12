@@ -6,7 +6,7 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-RUN apt-get update && apt-get install -y libgif7 libjpeg62 libopenjp2-7 libpng16-16 libtiff5 libwebp6
+RUN apt-get update && apt-get install -y libtesseract-dev libgif7 libjpeg62 libopenjp2-7 libpng16-16 libtiff5 libwebp6
 
 COPY . .
 ENTRYPOINT ["dotnet", "MagiCloud.dll"]
