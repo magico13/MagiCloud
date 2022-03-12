@@ -1,5 +1,7 @@
-﻿using MagiCloud.DataManager;
+﻿using MagiCloud.Configuration;
+using MagiCloud.DataManager;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,17 +13,20 @@ namespace MagiCloud.TextExtraction
     {
         private readonly ILogger _logger;
         private readonly IEnumerable<ITextExtractor> _extractors;
+        private readonly ExtractionSettings _extractionSettings;
         private readonly IElasticManager _elasticManager;
         private readonly IDataManager _dataManager;
 
         public ExtractionHelper(
             ILogger<ExtractionHelper> logger,
             IEnumerable<ITextExtractor> extractors,
+            IOptionsSnapshot<ExtractionSettings> settings,
             IElasticManager elasticManager,
             IDataManager dataManager)
         {
             _logger = logger;
             _extractors = extractors;
+            _extractionSettings = settings.Value;
             _elasticManager = elasticManager;
             _dataManager = dataManager;
         }
@@ -34,7 +39,8 @@ namespace MagiCloud.TextExtraction
             }
             foreach (var extractor in _extractors)
             {
-                if (extractor.IsValidForMimeType(contentType))
+                if (extractor.IsValidForMimeType(contentType) 
+                    && (_extractionSettings.EnableOCR || !extractor.UsesOCR))
                 {
                     _logger.LogInformation(
                         "Found suitable extractor {Class} for mimetype {MimeType}",
@@ -52,6 +58,12 @@ namespace MagiCloud.TextExtraction
                         {
                             _logger.LogInformation("Text extraction complete. Length: {Count}", text.Length);
                             // If it succeeded, return the text. Otherwise maybe a later extractor in the list will work (eg PDF by text or by OCR)
+                            var maxLength = _extractionSettings.MaxTextLength;
+                            if (maxLength > 0 && text.Length > maxLength)
+                            {
+                                _logger.LogInformation("Trimming text to {Count} characters.", maxLength);
+                                return text[..maxLength];
+                            }
                             return text;
                         }
                     }

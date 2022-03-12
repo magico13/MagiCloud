@@ -62,7 +62,6 @@ namespace MagiCloud.Controllers
                         doc.Text = text;
                         updatedDocs.Add(doc.Id);
                         await _elastic.UpdateFileAttributesAsync(userId, doc);
-
                     }
                     else
                     {

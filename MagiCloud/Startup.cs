@@ -1,5 +1,6 @@
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
+using MagiCloud.OCR;
 using MagiCloud.TextExtraction;
 using MagiCommon;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -25,12 +26,14 @@ namespace MagiCloud
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<ElasticSettings>(Configuration.GetSection(nameof(ElasticSettings)));
+            services.Configure<ExtractionSettings>(Configuration.GetSection(nameof(ExtractionSettings)));
 
             services.AddScoped<IElasticManager, ElasticManager>();
             services.AddScoped<IDataManager, FileSystemDataManager>();
             services.AddScoped<IHashService, HashService>();
 
             // Add text extractors
+            services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
             services.AddScoped<ExtractionHelper>();
             services.AddScoped<ITextExtractor, PlainTextExtractor>();
             services.AddScoped<ITextExtractor, PdfExtractor>();

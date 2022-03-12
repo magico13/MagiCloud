@@ -7,5 +7,6 @@ namespace MagiCloud.TextExtraction
     {
         Task<string> ExtractTextAsync(Stream stream);
         bool IsValidForMimeType(string mimeType);
+        bool UsesOCR => false;
     }
 }

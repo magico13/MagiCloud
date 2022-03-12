@@ -1,40 +1,32 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using MagiCloud.OCR;
 using Microsoft.Extensions.Logging;
-using Tesseract;
 
 namespace MagiCloud.TextExtraction
 {
     public class ImageExtractor : ITextExtractor
     {
-        private ILogger<ImageExtractor> _logger;
+        private readonly ILogger<ImageExtractor> _logger;
+        private readonly IOcrEngine _ocrEngine;
 
-        public ImageExtractor(ILogger<ImageExtractor> logger)
+        public ImageExtractor(ILogger<ImageExtractor> logger, IOcrEngine ocrEngine)
         {
             _logger = logger;
+            _ocrEngine = ocrEngine;
         }
 
         public bool IsValidForMimeType(string mimeType)
             => mimeType?.StartsWith("image/") == true;
 
+        public bool UsesOCR => true;
+
         public async Task<string> ExtractTextAsync(Stream stream)
         {
             try
             {
-                // TODO: Move engine to Singleton and DI it
-                using (var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default))
-                {
-                    byte[] imageBytes = new byte[stream.Length];
-                    await stream.ReadAsync(imageBytes, 0, imageBytes.Length);
-                    using (var img = Pix.LoadFromMemory(imageBytes))
-                    {
-                        using (var page = engine.Process(img))
-                        {
-                            return page.GetText();
-                        }
-                    }
-                }
+                return await _ocrEngine.OcrStreamAsync(stream);
             }
             catch (Exception ex)
             {
