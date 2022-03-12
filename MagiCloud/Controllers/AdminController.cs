@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers
@@ -36,18 +37,24 @@ namespace MagiCloud.Controllers
 
         [HttpPost]
         [Route("extractText")]
-        public async Task<IActionResult> ExtractText([FromQuery] bool force = false)
+        public async Task<IActionResult> ExtractText([FromQuery] bool force = false, [FromQuery] string mimeTypes = null)
         {
             // run text extraction on all docs that are missing text
             // if force is true then do it for docs that already have text as well
             var userId = User.Identity.Name;
             var docList = await _elastic.GetDocumentsAsync(userId, false); //TODO: Do it for all docs, not just ours
+            var filteredList = docList.Files;
+            if (!string.IsNullOrWhiteSpace(mimeTypes))
+            {
+                var split = mimeTypes.Split(';');
+                filteredList = docList.Files.FindAll(f => split.Contains(f.MimeType));
+            }
             _logger.LogInformation(
                 "Performing text extraction on up to {Count} documents. Force is {Flag}",
-                docList.Files.Count,
+                filteredList.Count,
                 force);
             var updatedDocs = new List<string>();
-            foreach (var doc in docList.Files)
+            foreach (var doc in filteredList)
             {
                 var (updated, text) = await _extractionHelper.ExtractTextAsync(userId, doc.Id, force);
                 if (updated)

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using MagiCloud.OCR;
 using Microsoft.Extensions.Logging;
@@ -26,7 +28,22 @@ namespace MagiCloud.TextExtraction
         {
             try
             {
-                return await _ocrEngine.OcrStreamAsync(stream);
+                var rawText = await _ocrEngine.OcrStreamAsync(stream);
+                if (string.IsNullOrWhiteSpace(rawText))
+                {
+                    return null;
+                }
+                // Remove any lines that are completely empty
+                var lines = rawText.Split();
+                StringBuilder builder = new();
+                foreach (var line in lines)
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        builder.Append(line);
+                    }
+                }
+                return builder.ToString();
             }
             catch (Exception ex)
             {
