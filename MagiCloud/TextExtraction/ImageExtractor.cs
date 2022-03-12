@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Tesseract;
 
 namespace MagiCloud.TextExtraction
 {
@@ -19,18 +20,27 @@ namespace MagiCloud.TextExtraction
 
         public async Task<string> ExtractTextAsync(Stream stream)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                // TODO: Move engine to Singleton and DI it
+                using (var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default))
                 {
-                    return string.Empty;
+                    byte[] imageBytes = new byte[stream.Length];
+                    await stream.ReadAsync(imageBytes, 0, imageBytes.Length);
+                    using (var img = Pix.LoadFromMemory(imageBytes))
+                    {
+                        using (var page = engine.Process(img))
+                        {
+                            return page.GetText();
+                        }
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to extract text from image");
-                    return null;
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to extract text from image");
+                return null;
+            }
         }
     }
 }
