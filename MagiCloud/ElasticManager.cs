@@ -160,7 +160,7 @@ namespace MagiCloud
             var getRequest = new GetRequest<ElasticFileInfo>(id);
             if (!includeText)
             {
-                getRequest.SourceExcludes = new Field(nameof(ElasticFileInfo.Text));
+                getRequest.SourceExcludes = new Field("text");
             }
             var result = await Client.GetAsync<ElasticFileInfo>(getRequest);
             if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
