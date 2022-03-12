@@ -21,5 +21,6 @@
   <ItemGroup>
     <Folder Include="data\"/>
     <Folder Include="wwwroot\"/>
+    <Folder Include="tessdata\" CopyToOutputDirectory="Always" />
   </ItemGroup>
 </Project>
