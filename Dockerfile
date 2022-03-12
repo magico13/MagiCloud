@@ -14,8 +14,8 @@ COPY . .
 
 WORKDIR /app/x64
 RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 liblept.so.5
-RUN ln -s /usr/lib/x86_64-linux-gnu/libleptonica-1.80.0 libleptonica-1.80.0.so
-RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 libtesseract41.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libleptonica.so libleptonica-1.80.0.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so libtesseract41.so
 
 WORKDIR /app
 ENTRYPOINT ["dotnet", "MagiCloud.dll"]
