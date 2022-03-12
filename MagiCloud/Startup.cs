@@ -29,8 +29,9 @@ namespace MagiCloud
             services.AddScoped<IElasticManager, ElasticManager>();
             services.AddScoped<IDataManager, FileSystemDataManager>();
             services.AddScoped<IHashService, HashService>();
-            
+
             // Add text extractors
+            services.AddScoped<ExtractionHelper>();
             services.AddScoped<ITextExtractor, PlainTextExtractor>();
             services.AddScoped<ITextExtractor, PdfExtractor>();
             services.AddScoped<ITextExtractor, ImageExtractor>();

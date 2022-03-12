@@ -26,20 +26,20 @@ namespace MagiCloud.Controllers
         private readonly IElasticManager _elastic;
         private readonly IDataManager _dataManager;
         private readonly IHashService _hashService;
-        private readonly IEnumerable<ITextExtractor> _textExtractors;
+        private readonly ExtractionHelper _extractionHelper;
 
         public FileContentController(
             ILogger<FileContentController> logger,
             IElasticManager elastic,
             IDataManager dataManager,
             IHashService hashService,
-            IEnumerable<ITextExtractor> textExtractors)
+            ExtractionHelper extractionHelper)
         {
             _logger = logger;
             _elastic = elastic;
             _dataManager = dataManager;
             _hashService = hashService;
-            _textExtractors = textExtractors;
+            _extractionHelper = extractionHelper;
         }
 
 
@@ -234,20 +234,7 @@ namespace MagiCloud.Controllers
             _logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
             if (hashesChanged)
             {
-                var extractor = _textExtractors.FirstOrDefault(e => e.IsValidForMimeType(contentType));
-                if (extractor is not null)
-                {
-                    _logger.LogInformation("Found suitable extractor {Class} for mimetype {MimeType}", extractor.GetType(), contentType);
-                    try
-                    {
-                        doc.Text = await extractor.ExtractTextAsync(fileStream);
-                        _logger.LogInformation("Text extraction complete. Length: {Count}", doc.Text.Length);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to extract text for file {Id}", doc.Id);
-                    }
-                }
+                doc.Text = await _extractionHelper.ExtractTextAsync(fileStream, contentType);
             }
 
             await _elastic.UpdateFileAttributesAsync(userId, doc);
