@@ -13,6 +13,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0"/>
     <PackageReference Include="NEST" Version="7.17.0"/>
     <PackageReference Include="PdfPig" Version="0.1.5"/>
+    <PackageReference Include="IronOcr" Version="2022.3.0"/>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MagiCommon\MagiCommon.csproj"/>

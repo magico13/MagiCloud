@@ -33,6 +33,7 @@ namespace MagiCloud
             // Add text extractors
             services.AddScoped<ITextExtractor, PlainTextExtractor>();
             services.AddScoped<ITextExtractor, PdfExtractor>();
+            services.AddScoped<ITextExtractor, ImageExtractor>();
 
             services.AddCors(options =>
                 options.AddDefaultPolicy(p =>
