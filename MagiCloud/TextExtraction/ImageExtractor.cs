@@ -34,16 +34,9 @@ namespace MagiCloud.TextExtraction
                     return null;
                 }
                 // Remove any lines that are completely empty
-                var lines = rawText.Split();
-                StringBuilder builder = new();
-                foreach (var line in lines)
-                {
-                    if (!string.IsNullOrWhiteSpace(line))
-                    {
-                        builder.AppendLine(line);
-                    }
-                }
-                return builder.ToString();
+                var lines = rawText.Split('\n', 
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                return string.Join("\n", lines);
             }
             catch (Exception ex)
             {
