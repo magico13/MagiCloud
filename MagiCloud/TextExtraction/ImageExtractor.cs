@@ -40,7 +40,7 @@ namespace MagiCloud.TextExtraction
                 {
                     if (!string.IsNullOrWhiteSpace(line))
                     {
-                        builder.Append(line);
+                        builder.AppendLine(line);
                     }
                 }
                 return builder.ToString();
