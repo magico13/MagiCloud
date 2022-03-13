@@ -1,0 +1,27 @@
+﻿@using MagiCommon
+@using MagiCommon.Models
+
+@inject IMagiCloudAPI MagicApi
+
+<TextEdit Placeholder="Search..." @bind-Text="SearchQuery" ></TextEdit> 
+<Button Color="Color.Primary" Clicked="@Search">Search</Button>
+
+
+@code {
+    [Parameter]
+    public List<SearchResult> Results { get; set; }
+
+    [Parameter]
+    public EventCallback<List<SearchResult>> OnSearch { get; set; }
+
+    public string SearchQuery { get; set; }
+
+    public async Task Search()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            Results = await MagicApi.SearchAsync(SearchQuery);
+            await OnSearch.InvokeAsync(Results);
+        }
+    }
+}

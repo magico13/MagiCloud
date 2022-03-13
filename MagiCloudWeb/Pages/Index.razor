@@ -8,6 +8,7 @@
 
 <Login OnSuccessfulLogin="@OnFilesChanged">
     <Upload OnUploadComplete="@OnFilesChanged" CurrentDirectory="@CurrentFolder"/>
+    <SearchBar OnSearch="@OnSearch"/>
     <FilesComponent FileList="@Files" @ref="@FilesComponentRef"/>
 </Login>
 
@@ -28,5 +29,11 @@
         {
             Logger.LogError(ex, "Failed to update file list.");
         }
+    }
+
+    public async Task OnSearch(List<SearchResult> results)
+    {
+        Files = results;
+        await Task.CompletedTask;
     }
 }
