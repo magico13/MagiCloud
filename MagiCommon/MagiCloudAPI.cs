@@ -1,5 +1,6 @@
 ﻿using MagiCommon.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -9,7 +10,8 @@ namespace MagiCommon
 {
     public interface IMagiCloudAPI
     {
-        Task<FileList> GetFilesAsync(bool? deleted);
+        Task<List<SearchResult>> GetFilesAsync(bool? deleted);
+        Task<List<SearchResult>> SearchAsync(string query);
         Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
         Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo);
         Task<ElasticFileInfo> GetFileInfoAsync(string id);
@@ -35,14 +37,20 @@ namespace MagiCommon
             this.TokenProvider = tokenProvider;
         }
 
-        public async Task<FileList> GetFilesAsync(bool? deleted = null)
+        public async Task<List<SearchResult>> GetFilesAsync(bool? deleted = null)
         {
             var url = "api/files";
             if (deleted.HasValue)
             {
                 url += $"?deleted={deleted}";
             }
-            return await Client.GetFromJsonAsync<FileList>(url);
+            return await Client.GetFromJsonAsync<List<SearchResult>>(url);
+        }
+
+        public async Task<List<SearchResult>> SearchAsync(string query)
+        {
+            var url = $"api/search?query={query}";
+            return await Client.GetFromJsonAsync<List<SearchResult>>(url);
         }
 
         public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)

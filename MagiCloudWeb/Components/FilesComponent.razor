@@ -10,14 +10,13 @@
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<FilesComponent> Logger
 
-<Upload OnUploadComplete="@FilesChanged" CurrentDirectory="@currentFolder"/>
-
 <h3>Files</h3>
-@if (allFiles?.Any() == true)
+@if (FileList?.Any() == true)
 {
-    <Paragraph>@currentFolder</Paragraph>
+    <Paragraph>@CurrentFolder</Paragraph>
     <DataGrid TItem="FileWrapper" 
                 Data="@Files"
+                DetailRowTrigger=@(w => w.Item?.BackingFileInfo?.Highlights?.Any() == true)
                 Sortable
                 SelectionMode="DataGridSelectionMode.Single"
                 CommandMode="DataGridCommandMode.Default"
@@ -30,7 +29,7 @@
                 RowRemoved="@RowRemoved"
                 RowUpdated="@RowUpdated">
         <DataGridColumns>
-            <DataGridCommandColumn TItem="FileWrapper" NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
+            <DataGridCommandColumn NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
                 <SaveCommandTemplate>
                     <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Save"/> </Button>
                 </SaveCommandTemplate>
@@ -44,7 +43,7 @@
                     <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Delete"/> </Button>
                 </DeleteCommandTemplate>
             </DataGridCommandColumn>
-            <DataGridColumn TItem="FileWrapper" Field="Name" Caption="File Name" Editable>
+            <DataGridColumn Field="Name" Caption="File Name" Editable>
                 <DisplayTemplate>
                     @if(context.BackingFileInfo != null)
                     {
@@ -57,13 +56,13 @@
                     }
                     else
                     {
-                        <Button Clicked="@(() => FilterToFolder(Path.Combine(currentFolder, context.Name)))">
+                        <Button Clicked="@(() => FilterToFolder(Path.Combine(CurrentFolder, context.Name)))">
                             @context.Name
                         </Button>
                     }
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="FileWrapper" Field="Size" Caption="File Size">
+            <DataGridColumn Field="Size" Caption="File Size">
                 <DisplayTemplate>
                     @if (context.Size.HasValue)
                     {
@@ -77,15 +76,15 @@
                     }
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="FileWrapper" Field="MimeType" Caption="File Type" />
-            <DataGridColumn TItem="FileWrapper" Field="LastUpdated" Caption="Last Update">
+            <DataGridColumn Field="MimeType" Caption="File Type" />
+            <DataGridColumn Field="LastUpdated" Caption="Last Update">
                 <DisplayTemplate>
                     <Tooltip Text="@(context.LastUpdated?.LocalDateTime.ToString())">
                         @(context.LastUpdated?.LocalDateTime.Humanize())
                     </Tooltip>
                 </DisplayTemplate>
             </DataGridColumn>
-            <DataGridColumn TItem="FileWrapper" Field="IsPublic" Caption="Public?" >
+            <DataGridColumn Field="IsPublic" Caption="Public?" >
                 <DisplayTemplate>
                     @if (context.IsPublic == true)
                     {
@@ -102,6 +101,13 @@
                 </DisplayTemplate>
             </DataGridColumn>
         </DataGridColumns>
+        <DetailRowTemplate>
+            @if(context?.BackingFileInfo?.Highlights?.Any() == true)
+            {
+                // print out all the highlights
+               @((MarkupString)string.Join("<br/>", context.BackingFileInfo.Highlights))
+            }
+        </DetailRowTemplate>
     </DataGrid>
 }
 else

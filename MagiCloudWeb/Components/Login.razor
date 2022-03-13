@@ -44,6 +44,9 @@ else
     [Parameter]
     public RenderFragment ChildContent { get; set; }
 
+    [Parameter]
+    public EventCallback OnSuccessfulLogin { get; set; }
+
     private LoginModel model = new();
     private string token = null;
     private string username = null;
@@ -57,6 +60,7 @@ else
             {
                 var user = await MagicApi.GetUserAsync();
                 username = user?.Username;
+                await OnSuccessfulLogin.InvokeAsync();
             }
         }
         catch (Exception ex)
@@ -89,5 +93,6 @@ else
         Logger.LogInformation("Token: {Token}", token);
 
         await TokenProvider.StoreTokenAsync(token);
+        await OnSuccessfulLogin.InvokeAsync();
     }
 }

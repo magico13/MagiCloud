@@ -43,11 +43,11 @@ namespace MagiCloud.Controllers
             // if force is true then do it for docs that already have text as well
             var userId = User.Identity.Name;
             var docList = await _elastic.GetDocumentsAsync(userId, false); //TODO: Do it for all docs, not just ours
-            var filteredList = docList.Files;
+            var filteredList = docList;
             if (!string.IsNullOrWhiteSpace(mimeTypes))
             {
                 var split = mimeTypes.Split(';');
-                filteredList = docList.Files.FindAll(f => split.Contains(f.MimeType));
+                filteredList = docList.FindAll(f => split.Contains(f.MimeType));
             }
             _logger.LogInformation(
                 "Performing text extraction on up to {Count} documents. Force is {Flag}",

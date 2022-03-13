@@ -1,6 +1,32 @@
 ﻿@page "/"
+@using MagiCommon
+@using MagiCommon.Models
+@using Microsoft.Extensions.Logging
 
+@inject IMagiCloudAPI MagicApi
+@inject ILogger<Index> Logger
 
-<Login>
-    <FilesComponent/>
+<Login OnSuccessfulLogin="@OnFilesChanged">
+    <Upload OnUploadComplete="@OnFilesChanged" CurrentDirectory="@CurrentFolder"/>
+    <FilesComponent FileList="@Files" @ref="@FilesComponentRef"/>
 </Login>
+
+@code
+{
+    private FilesComponent FilesComponentRef { get; set; }
+    private string CurrentFolder => FilesComponentRef?.CurrentFolder;
+
+    private List<SearchResult> Files { get; set; }
+
+    public async Task OnFilesChanged()
+    {
+        try
+        {
+            Files = await MagicApi.GetFilesAsync(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update file list.");
+        }
+    }
+}

@@ -19,8 +19,9 @@ namespace MagiCloud
     {
         IElasticClient Client { get; set; }
         Task<bool> SetupIndicesAsync();
-        Task<FileList> GetDocumentsAsync(string userId, bool? deleted);
+        Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted);
         Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText);
+        Task<List<SearchResult>> SearchAsync(string userId, string query);
         Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
         Task<FileAccessResult> DeleteFileAsync(string userId, string id);
         Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
@@ -99,7 +100,7 @@ namespace MagiCloud
             return true;
         }
 
-        public async Task<FileList> GetDocumentsAsync(string userId, bool? deleted = null)
+        public async Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted = null)
         {
             Setup();
             var result = await Client.SearchAsync<ElasticFileInfo>(s =>
@@ -138,20 +139,21 @@ namespace MagiCloud
             });
             if (result.IsValid)
             {
-                var list = new List<ElasticFileInfo>();
+                var list = new List<SearchResult>();
                 foreach (var hit in result.Hits)
                 {
-                    var source = hit.Source;
-                    source.Id = hit.Id;
-                    // omit the text from the result returned to the web
-                    // TODO: make this optional?
-                    source.Text = null;
+                    var source = new SearchResult(hit.Source)
+                    {
+                        Id = hit.Id,
+                        Text = null,
+                        Highlights = null
+                    };
                     list.Add(source);
                 }
-                return new FileList { Files = list };
+                return list;
             }
             _logger.LogError("Invalid GetDocuments call. {ServerError}", result.ServerError);
-            return new FileList() { Files = new List<ElasticFileInfo>() };
+            return new List<SearchResult>();
         }
 
         public async Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText)
@@ -177,6 +179,54 @@ namespace MagiCloud
                 FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
                 _ => (FileAccessResult.NotPermitted, null),
             };
+        }
+
+        public async Task<List<SearchResult>> SearchAsync(string userId, string query)
+        {
+            Setup();
+            var result = await Client.SearchAsync<ElasticFileInfo>(s =>
+            {
+                return s.Size(10000) //10k items currently supported, TODO paginate
+                .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
+                .Highlight(h => h.Fields(f => f.Field(i => i.Text)))
+                .Query(q =>
+                {
+                    var qc = q.QueryString(qs => qs
+                        .Query(query)
+                        .Fields(f => f
+                            .Field(i => i.Name)
+                            .Field(i => i.Text)
+                        ));
+                    qc &= q
+                        .Match(m => m
+                            .Field(f => f.UserId)
+                            .Query(userId)
+                        );
+                    return qc;
+                });
+
+            });
+            if (result.IsValid)
+            {
+                var list = new List<SearchResult>();
+                foreach (var hit in result.Hits)
+                {
+                    var info = new SearchResult(hit.Source)
+                    {
+                        Id = hit.Id,
+                        Text = null
+                    };
+                    if (hit.Highlight.TryGetValue(nameof(SearchResult.Text).ToLower(), out var value) 
+                        && value?.Any() == true)
+                    {
+                        info.Highlights = value.ToArray();
+                    }
+                    list.Add(info);
+                }
+                return list;
+            }
+            _logger.LogError("Invalid Search call. {ServerError}", result.ServerError);
+            return new List<SearchResult>();
         }
 
         public async Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file)
@@ -267,7 +317,8 @@ namespace MagiCloud
                     case "py": return "text/x-python";
                     case "csv": return "text/csv";
                     case "xcf": return "image/x-xcf";
-                    case "ofx": return "text/plain";
+                    case "ofx":
+                    case "ino": return "text/plain";
                 }
                 new FileExtensionContentTypeProvider().TryGetContentType(file.GetFileName(), out string type);
                 if (type is null)

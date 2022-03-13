@@ -10,7 +10,7 @@ namespace MagiCloudWeb.Pages
 {
     public partial class TrashCan
     {
-        private List<ElasticFileInfo> files;
+        private List<SearchResult> files;
 
         protected override async Task OnInitializedAsync()
         {
@@ -24,10 +24,10 @@ namespace MagiCloudWeb.Pages
             {
                 files = null;
                 var fileList = await MagicApi.GetFilesAsync(true);
-                if (fileList?.Files?.Any() == true)
+                if (fileList?.Any() == true)
                 {
-                    fileList.Files.Sort(new NameComparer());
-                    files = fileList.Files;
+                    fileList.Sort(new NameComparer());
+                    files = fileList;
                 }
             }
             catch (Exception ex)
@@ -42,7 +42,7 @@ namespace MagiCloudWeb.Pages
             files.RemoveAll(f => f.Id == id);
         }
 
-        private async Task UndeleteAsync(ElasticFileInfo fileInfo)
+        private async Task UndeleteAsync(SearchResult fileInfo)
         {
             fileInfo.IsDeleted = false;
             await MagicApi.UpdateFileAsync(fileInfo);
@@ -51,7 +51,7 @@ namespace MagiCloudWeb.Pages
 
         private async Task EmptyTrash()
         {
-            foreach (var file in new List<ElasticFileInfo>(files) ?? new())
+            foreach (var file in new List<SearchResult>(files) ?? new())
             {
                 await MagicApi.RemoveFileAsync(file.Id, true);
                 files.Remove(file);

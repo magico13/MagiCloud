@@ -6,7 +6,7 @@ namespace MagiCloudWeb.Models
     public class FileWrapper
     {
         public FileWrapper() { }
-        public FileWrapper(ElasticFileInfo backing)
+        public FileWrapper(SearchResult backing)
         {
             Name = backing.Name;
             BackingFileInfo = backing;
@@ -14,7 +14,7 @@ namespace MagiCloudWeb.Models
 
         public string Name { get; set; }
         //public string Path { get; set; }
-        public ElasticFileInfo BackingFileInfo { get; set; }
+        public SearchResult BackingFileInfo { get; set; }
 
         private DateTimeOffset? _lastUpdated;
         public DateTimeOffset? LastUpdated

@@ -3,6 +3,7 @@ using MagiCloudWeb.Models;
 using MagiCommon.Comparers.ElasticFileInfoComparers;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -14,32 +15,37 @@ namespace MagiCloudWeb.Components
 {
     public partial class FilesComponent
     {
-        private List<ElasticFileInfo> allFiles;
-        private string currentFolder = "/";
-        private List<FileWrapper> Files { get; set; }
-
-        protected override async Task OnInitializedAsync()
+        [Parameter]
+        public string CurrentFolder { get; set; } = "/";
+        [Parameter]
+        public List<SearchResult> FileList
         {
-            await base.OnInitializedAsync();
-            await GetFilesAsync();
+            get => _files;
+            set
+            {
+                _files = value;
+                SortFiles();
+            }
         }
 
-        private async Task GetFilesAsync()
+        private List<FileWrapper> Files { get; set; }
+
+        private List<SearchResult> _files;
+
+        public void SortFiles()
         {
             try
             {
-                allFiles = null;
-                var fileList = await MagicApi.GetFilesAsync(false);
-                if (fileList?.Files?.Any() == true)
+                if (_files?.Any() == true)
                 {
-                    fileList.Files.Sort(new NameComparer());
-                    allFiles = fileList.Files;
-                    FilterToFolder(currentFolder);
+                    _files.Sort(new NameComparer());
+                    FilterToFolder(CurrentFolder);
                 }
+                StateHasChanged();
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error getting file list");
+                Logger.LogError(ex, "Error setting file list");
             }
         }
 
@@ -47,17 +53,17 @@ namespace MagiCloudWeb.Components
         {
             folder = Path.GetFullPath(folder);
             Logger.LogWarning("Filtering to folder {Folder}", folder);
-            currentFolder = folder;
+            CurrentFolder = folder;
             Files = new List<FileWrapper>();
             if (folder.Length > 1)
             {
                 Files.Add(new FileWrapper { Name = ".." });
             }
-            Files.AddRange(GetDirectoriesInFolder(allFiles, folder));
-            Files.AddRange(GetFilesInFolder(allFiles, folder, false));
+            Files.AddRange(GetDirectoriesInFolder(FileList, folder));
+            Files.AddRange(GetFilesInFolder(FileList, folder, false));
         }
 
-        private static List<FileWrapper> GetFilesInFolder(IEnumerable<ElasticFileInfo> files, string folder, bool includeChildren)
+        private static List<FileWrapper> GetFilesInFolder(IEnumerable<SearchResult> files, string folder, bool includeChildren)
         {
             if (includeChildren)
             {
@@ -66,7 +72,7 @@ namespace MagiCloudWeb.Components
             return files.Where(f => Path.GetRelativePath(folder, f.GetFullPath()) == f.GetFileName()).Select(f => new FileWrapper(f)).ToList();
         }
 
-        private  List<FileWrapper> GetDirectoriesInFolder(IEnumerable<ElasticFileInfo> files, string folder)
+        private  List<FileWrapper> GetDirectoriesInFolder(IEnumerable<SearchResult> files, string folder)
         {
             var dirs = new HashSet<string>();
             foreach (var file in files)
@@ -103,12 +109,6 @@ namespace MagiCloudWeb.Components
             return path.ToString();
         }
 
-        public async Task FilesChanged()
-        {
-            await Task.Delay(1000); //takes time to propagate
-            await GetFilesAsync();
-        }
-
         public async Task RowRemoved(FileWrapper wrapper)
         {
             var file = wrapper.BackingFileInfo;
@@ -118,9 +118,9 @@ namespace MagiCloudWeb.Components
             }
             Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
             file.IsDeleted = true;
-            allFiles.Remove(file);
+            FileList.Remove(file);
             await MagicApi.RemoveFileAsync(file.Id, false);
-            FilterToFolder(currentFolder);
+            FilterToFolder(CurrentFolder);
         }
 
         public async Task RowUpdated(SavedRowItem<FileWrapper, Dictionary<string, object>> saved)
@@ -133,7 +133,7 @@ namespace MagiCloudWeb.Components
             file.Name = saved.Item.Name;
             Logger.LogInformation("Updating file {Name} ({Id})", file.Name, file.Id);
             await MagicApi.UpdateFileAsync(file);
-            FilterToFolder(currentFolder);
+            FilterToFolder(CurrentFolder);
         }
 
         public async Task UpdateVisibility(FileWrapper wrapper, bool visible)
@@ -141,9 +141,9 @@ namespace MagiCloudWeb.Components
             var file = wrapper.BackingFileInfo;
             if (file == null)
             {
-                var fullPath = Path.Combine(currentFolder, wrapper.Name);
+                var fullPath = Path.Combine(CurrentFolder, wrapper.Name);
                 Logger.LogInformation("Updating visibility for all items under folder {Path}", fullPath);
-                foreach (var item in GetFilesInFolder(allFiles, fullPath, true))
+                foreach (var item in GetFilesInFolder(FileList, fullPath, true))
                 {
                     await UpdateVisibility(item.BackingFileInfo, visible);
                 }
@@ -152,7 +152,7 @@ namespace MagiCloudWeb.Components
             {
                 await UpdateVisibility(file, visible);
             }
-            FilterToFolder(currentFolder);
+            FilterToFolder(CurrentFolder);
         }
 
         private async Task UpdateVisibility(ElasticFileInfo file, bool visible)
