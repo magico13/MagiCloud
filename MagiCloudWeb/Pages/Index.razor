@@ -9,13 +9,12 @@
 <Login OnSuccessfulLogin="@OnFilesChanged">
     <Upload OnUploadComplete="@OnFilesChanged" CurrentDirectory="@CurrentFolder"/>
     <SearchBar OnSearch="@OnSearch"/>
-    <FilesComponent FileList="@Files" @ref="@FilesComponentRef"/>
+    <FilesComponent FileList="@Files" OnFolderChanged="@OnFolderChanged"/>
 </Login>
 
 @code
 {
-    private FilesComponent FilesComponentRef { get; set; }
-    private string CurrentFolder => FilesComponentRef?.CurrentFolder;
+    private string CurrentFolder { get; set; }
 
     private List<SearchResult> Files { get; set; }
 
@@ -31,9 +30,13 @@
         }
     }
 
-    public async Task OnSearch(List<SearchResult> results)
+    public void OnSearch(List<SearchResult> results)
     {
         Files = results;
-        await Task.CompletedTask;
+    }
+
+    public void OnFolderChanged(string folder)
+    {
+        CurrentFolder = folder;
     }
 }

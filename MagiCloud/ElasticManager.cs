@@ -188,7 +188,11 @@ namespace MagiCloud
             {
                 return s.Size(10000) //10k items currently supported, TODO paginate
                 .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
-                .Highlight(h => h.Fields(f => f.Field(i => i.Text)))
+                .Highlight(h => h
+                    .Fields(f => f.Field(i => i.Text))
+                    .PreTags("<mark>")
+                    .PostTags("</mark>")
+                )
                 .Query(q =>
                 {
                     var qc = q.QueryString(qs => qs
@@ -242,10 +246,10 @@ namespace MagiCloud
             // if an id is provided, check if that file actually exists, if not throw that out
             if (!string.IsNullOrWhiteSpace(file.Id))
             {
-                var (getResult, existing) = await GetDocumentAsync(userId, file.Id, false);
+                var (getResult, existing) = await GetDocumentAsync(userId, file.Id, true);
                 if (getResult == FileAccessResult.FullAccess) //if existing file (that we can access) overwrite it
                 {
-                    EnsureFileAttributes(file, existing);
+                    CopyExistingAttributes(file, existing);
                 }
                 else
                 {
@@ -301,11 +305,12 @@ namespace MagiCloud
             ThrowIfInvalid(result);
         }
 
-        private void EnsureFileAttributes(ElasticFileInfo newFile, ElasticFileInfo existingFile)
+        private void CopyExistingAttributes(ElasticFileInfo newFile, ElasticFileInfo existingFile)
         {
             newFile.Hash = existingFile?.Hash;
             newFile.Size = existingFile?.Size ?? 0;
             newFile.MimeType = existingFile?.MimeType;
+            newFile.Text ??= existingFile?.Text;
         }
 
         private string GetMimeType(ElasticFileInfo file)

@@ -3,8 +3,10 @@
 
 @inject IMagiCloudAPI MagicApi
 
-<TextEdit Placeholder="Search..." @bind-Text="SearchQuery" ></TextEdit> 
-<Button Color="Color.Primary" Clicked="@Search">Search</Button>
+<Form>
+    <TextEdit Placeholder="Search..." @bind-Text="SearchQuery" Float="Float.Start" Width="Width.Is75"></TextEdit>
+    <Button Color="Color.Primary" Clicked="@Search" Type="ButtonType.Submit" PreventDefaultOnSubmit Width="Width.Auto">Search</Button>
+</Form>
 
 
 @code {
@@ -21,7 +23,11 @@
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
             Results = await MagicApi.SearchAsync(SearchQuery);
-            await OnSearch.InvokeAsync(Results);
         }
+        else
+        {
+            Results = await MagicApi.GetFilesAsync(false);
+        }
+        await OnSearch.InvokeAsync(Results);
     }
 }

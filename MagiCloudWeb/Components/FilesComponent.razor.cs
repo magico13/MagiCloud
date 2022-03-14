@@ -16,7 +16,8 @@ namespace MagiCloudWeb.Components
     public partial class FilesComponent
     {
         [Parameter]
-        public string CurrentFolder { get; set; } = "/";
+        public EventCallback<string> OnFolderChanged { get; set; }
+
         [Parameter]
         public List<SearchResult> FileList
         {
@@ -29,6 +30,19 @@ namespace MagiCloudWeb.Components
         }
 
         private List<FileWrapper> Files { get; set; }
+        private string _folder = "/";
+        private string CurrentFolder
+        {
+            get => _folder;
+            set
+            {
+                if (_folder != value)
+                {
+                    _folder = value;
+                    OnFolderChanged.InvokeAsync(_folder);
+                }
+            }
+        }
 
         private List<SearchResult> _files;
 
