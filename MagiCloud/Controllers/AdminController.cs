@@ -14,12 +14,12 @@ namespace MagiCloud.Controllers
     {
         private readonly ILogger<AdminController> _logger;
         private readonly IElasticManager _elastic;
-        private readonly TextExtraction.ExtractionHelper _extractionHelper;
+        private readonly ExtractionHelper _extractionHelper;
 
         public AdminController(
             ILogger<AdminController> logger, 
             IElasticManager elastic,
-            TextExtraction.ExtractionHelper extractionHelper)
+            ExtractionHelper extractionHelper)
         {
             _logger = logger;
             _elastic = elastic;

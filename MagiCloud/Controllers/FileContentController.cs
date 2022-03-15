@@ -1,5 +1,4 @@
 ﻿using MagiCloud.DataManager;
-using MagiCloud.TextExtraction;
 using MagiCommon;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
@@ -10,9 +9,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers

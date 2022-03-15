@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
-using MagiCloud.OCR;
+using Goggles.OCR;
 using Microsoft.Extensions.Logging;
 
-namespace MagiCloud.TextExtraction
+namespace Goggles.TextExtraction
 {
     public class ImageExtractor : ITextExtractor
     {
@@ -28,14 +26,15 @@ namespace MagiCloud.TextExtraction
         {
             try
             {
-                var rawText = await _ocrEngine.OcrStreamAsync(stream);
+                var rawText = await _ocrEngine.ExtractText(stream);
                 if (string.IsNullOrWhiteSpace(rawText))
                 {
                     return null;
                 }
                 // Remove any lines that are completely empty
-                var lines = rawText.Split('\n', 
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var lines = rawText.Split(new char[] { '\n' }, 
+                    StringSplitOptions.RemoveEmptyEntries);
+                Array.ForEach(lines, line => line.Trim());
                 return string.Join("\n", lines);
             }
             catch (Exception ex)

@@ -1,12 +1,14 @@
 using System.IO;
 using System.Threading.Tasks;
 
-namespace MagiCloud.TextExtraction
+namespace Goggles.TextExtraction
 {
     public class PlainTextExtractor : ITextExtractor
     {
         public bool IsValidForMimeType(string mimeType)
             => mimeType?.StartsWith("text/") == true;
+
+        public bool UsesOCR => false;
 
         public async Task<string> ExtractTextAsync(Stream stream)
         {

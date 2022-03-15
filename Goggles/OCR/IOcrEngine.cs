@@ -1,10 +1,10 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace MagiCloud.OCR
+namespace Goggles.OCR
 {
     public interface IOcrEngine
     {
-        Task<string> OcrStreamAsync(Stream stream);
+        Task<string> ExtractText(Stream stream);
     }
 }

@@ -1,7 +1,6 @@
+using Goggles;
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
-using MagiCloud.OCR;
-using MagiCloud.TextExtraction;
 using MagiCommon;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -26,18 +25,22 @@ namespace MagiCloud
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<ElasticSettings>(Configuration.GetSection(nameof(ElasticSettings)));
-            services.Configure<ExtractionSettings>(Configuration.GetSection(nameof(ExtractionSettings)));
 
             services.AddScoped<IElasticManager, ElasticManager>();
             services.AddScoped<IDataManager, FileSystemDataManager>();
             services.AddScoped<IHashService, HashService>();
 
-            // Add text extractors
-            services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
+            // Add text extraction abilities
+            var extractionSettings = Configuration
+                .GetSection(nameof(ExtractionSettings))
+                .Get<ExtractionSettings>();
+            services.AddLens(c =>
+            {
+                c.MaxTextLength = extractionSettings.MaxTextLength;
+                c.EnableOCR = extractionSettings.EnableOCR;
+            });
             services.AddScoped<ExtractionHelper>();
-            services.AddScoped<ITextExtractor, PlainTextExtractor>();
-            services.AddScoped<ITextExtractor, PdfExtractor>();
-            services.AddScoped<ITextExtractor, ImageExtractor>();
+            
 
             services.AddCors(options =>
                 options.AddDefaultPolicy(p =>

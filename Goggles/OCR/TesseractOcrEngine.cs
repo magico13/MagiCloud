@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Tesseract;
 
-namespace MagiCloud.OCR
+namespace Goggles.OCR
 {
     public class TesseractOcrEngine : IOcrEngine, IDisposable
     {
@@ -14,7 +14,7 @@ namespace MagiCloud.OCR
         public TesseractOcrEngine(ILogger<TesseractOcrEngine> logger)
         {
             _logger = logger;
-
+            _logger.LogInformation("Current directory is "+System.Environment.CurrentDirectory);
             _engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
         }
 
@@ -25,15 +25,17 @@ namespace MagiCloud.OCR
             GC.SuppressFinalize(this);
         }
 
-        public async Task<string> OcrStreamAsync(Stream stream)
+        public async Task<string> ExtractText(Stream stream)
         {
             byte[] imageBytes = new byte[stream.Length];
-            await stream.ReadAsync(imageBytes);
-            using var img = Pix.LoadFromMemory(imageBytes);
-            using var page = _engine.Process(img);
-            var text = page.GetText();
-            _logger.LogDebug("Tesseract extracted {Count} characters.", text.Length);
-            return text;
+            await stream.ReadAsync(imageBytes, 0, imageBytes.Length);
+            using (var img = Pix.LoadFromMemory(imageBytes))
+            using (var page = _engine.Process(img))
+            {
+                var text = page.GetText();
+                _logger.LogDebug("Tesseract extracted {Count} characters.", text.Length);
+                return text;
+            }
         }
     }
 }

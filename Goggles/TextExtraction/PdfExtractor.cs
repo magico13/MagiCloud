@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
-namespace MagiCloud.TextExtraction
+namespace Goggles.TextExtraction
 {
     public class PdfExtractor : ITextExtractor
     {
@@ -20,6 +20,8 @@ namespace MagiCloud.TextExtraction
         public bool IsValidForMimeType(string mimeType)
             => string.Equals(mimeType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
 
+        public bool UsesOCR => false;
+
         public async Task<string> ExtractTextAsync(Stream stream)
         {
             return await Task.Run(() =>
@@ -27,16 +29,18 @@ namespace MagiCloud.TextExtraction
                 try
                 {
                     StringBuilder builder = new StringBuilder();
-                    using var pdf = PdfDocument.Open(stream);
-                    // if (pdf.IsEncrypted)
-                    // {
-                    //     _logger.LogError("PDF extraction faild: PDF encrypted");
-                    //     return null;
-                    // }
-                    foreach (var page in pdf.GetPages())
+                    using (var pdf = PdfDocument.Open(stream))
                     {
-                        var text = ContentOrderTextExtractor.GetText(page);
-                        builder.Append(text);
+                        // if (pdf.IsEncrypted)
+                        // {
+                        //     _logger.LogError("PDF extraction faild: PDF encrypted");
+                        //     return null;
+                        // }
+                        foreach (var page in pdf.GetPages())
+                        {
+                            var text = ContentOrderTextExtractor.GetText(page);
+                            builder.Append(text);
+                        }
                     }
                     return builder.ToString();
                 }

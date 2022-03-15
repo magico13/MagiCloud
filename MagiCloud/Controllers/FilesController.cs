@@ -43,12 +43,12 @@ namespace MagiCloud.Controllers
         [HttpGet]
         [Route("{id}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAsync(string id)
+        public async Task<IActionResult> GetAsync(string id, [FromQuery] bool includeText = false)
         {
             try
             {
                 var userId = User?.Identity?.Name;
-                var (result, file) = await _elastic.GetDocumentAsync(userId, id, false);
+                var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
                 if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
                 {
                     return Json(file);
