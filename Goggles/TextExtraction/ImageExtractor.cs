@@ -17,8 +17,8 @@ namespace Goggles.TextExtraction
             _ocrEngine = ocrEngine;
         }
 
-        public bool IsValidForMimeType(string mimeType)
-            => mimeType?.StartsWith("image/") == true;
+        public bool IsValidForContentType(string contentType)
+            => contentType?.StartsWith("image/") == true;
 
         public bool UsesOCR => true;
 

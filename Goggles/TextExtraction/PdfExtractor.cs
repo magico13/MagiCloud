@@ -17,8 +17,8 @@ namespace Goggles.TextExtraction
             _logger = logger;
         }
 
-        public bool IsValidForMimeType(string mimeType)
-            => string.Equals(mimeType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
+        public bool IsValidForContentType(string contentType)
+            => string.Equals(contentType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
 
         public bool UsesOCR => false;
 

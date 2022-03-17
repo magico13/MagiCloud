@@ -5,8 +5,16 @@ namespace Goggles.TextExtraction
 {
     public class PlainTextExtractor : ITextExtractor
     {
-        public bool IsValidForMimeType(string mimeType)
-            => mimeType?.StartsWith("text/") == true;
+        public bool IsValidForContentType(string contentType)
+        {
+            if (string.IsNullOrEmpty(contentType))
+            { 
+                return false; 
+            }
+            return contentType.StartsWith("text/") 
+                || contentType.StartsWith("message/")
+                || contentType == "application/json";
+        }
 
         public bool UsesOCR => false;
 

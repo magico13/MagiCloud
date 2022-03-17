@@ -1,4 +1,5 @@
 ﻿using Goggles.TextExtraction;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -14,6 +15,9 @@ namespace Goggles
         private IEnumerable<ITextExtractor> Extractors { get; }
         private GogglesConfiguration Config { get; }
 
+        private static readonly FileExtensionContentTypeProvider _extensionTypeProvider 
+            = new FileExtensionContentTypeProvider();
+
         public Lens(
             ILogger<Lens> logger,
             IEnumerable<ITextExtractor> extractors,
@@ -24,6 +28,32 @@ namespace Goggles
             Config = configuration.Value;
         }
 
+        public static string DetermineContentType(string filename)
+        {
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                return string.Empty;
+            }
+            var extension = filename.Contains(".") 
+                ? Path.GetExtension(filename).TrimStart('.') 
+                : filename;
+
+            switch (extension.ToLower())
+            { //known overrides
+                case "py": return "text/x-python";
+                case "csv": return "text/csv";
+                case "xcf": return "image/x-xcf";
+                case "ofx":
+                case "ino": return "text/plain";
+            }
+            if (!_extensionTypeProvider.TryGetContentType("file." + extension, out string type) 
+                || string.IsNullOrEmpty(type))
+            {
+                type = "application/octet-stream";
+            }
+            return type;
+        }
+
         public async Task<string> ExtractTextAsync(Stream stream, string contentType)
         {
             if (stream == null || stream == Stream.Null)
@@ -32,7 +62,7 @@ namespace Goggles
             }
             foreach (var extractor in Extractors)
             {
-                if (extractor.IsValidForMimeType(contentType)
+                if (extractor.IsValidForContentType(contentType)
                     && (Config.EnableOCR || !extractor.UsesOCR))
                 {
                     Logger.LogInformation(

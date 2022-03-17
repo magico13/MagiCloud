@@ -1,4 +1,5 @@
-﻿using MagiCloud.Configuration;
+﻿using Goggles;
+using MagiCloud.Configuration;
 using MagiCommon;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
@@ -317,20 +318,7 @@ namespace MagiCloud
         {
             if (string.IsNullOrWhiteSpace(file.MimeType))
             {
-                switch (file.Extension.ToLower())
-                { //known overrides
-                    case "py": return "text/x-python";
-                    case "csv": return "text/csv";
-                    case "xcf": return "image/x-xcf";
-                    case "ofx":
-                    case "ino": return "text/plain";
-                }
-                new FileExtensionContentTypeProvider().TryGetContentType(file.GetFileName(), out string type);
-                if (type is null)
-                {
-                    type = "application/octet-stream";
-                }
-                return type;
+                return Lens.DetermineContentType(file.Extension);
             }
             return file.MimeType;
         }

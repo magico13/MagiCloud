@@ -6,7 +6,7 @@ namespace Goggles.TextExtraction
     public interface ITextExtractor
     {
         Task<string> ExtractTextAsync(Stream stream);
-        bool IsValidForMimeType(string mimeType);
+        bool IsValidForContentType(string contentType);
         bool UsesOCR { get; }
     }
 }
