@@ -42,7 +42,7 @@ pipeline {
                 sh 'mv MagiConsole/bin/Release/net6.0/publish zMagiConsole'
                 sh 'cd zMagiConsole && zip -r MagiConsole.zip .'
 
-                sh 'mv GogglesApi/bin/Release/net6.0/publish zGogglesApi'
+                sh 'mv GogglesApi/bin/Release/net6.0/linux-x64/publish zGogglesApi'
                 sh 'cd zGogglesApi && zip -r GogglesApi.zip .'
 
                 archiveArtifacts artifacts: '*/*.zip'
