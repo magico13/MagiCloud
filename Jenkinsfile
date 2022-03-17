@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        sdk = '.NET 6.0.103'
+        sdk = '.NET 6.0.100'
     }
 
     stages {
