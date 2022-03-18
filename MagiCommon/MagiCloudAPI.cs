@@ -34,7 +34,7 @@ namespace MagiCommon
         public MagiCloudAPI(HttpClient client, ITokenProvider tokenProvider)
         {
             Client = client;
-            this.TokenProvider = tokenProvider;
+            TokenProvider = tokenProvider;
         }
 
         public async Task<List<SearchResult>> GetFilesAsync(bool? deleted = null)
@@ -84,7 +84,7 @@ namespace MagiCommon
                         using (var partialStream = new MemoryStream(chunkSize))
                         {
                             var buffer = new byte[chunkSize];
-                            int actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
+                            var actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
                             var content = new MultipartFormDataContent
                             {
                                 { new ByteArrayContent(buffer, 0, actual), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
@@ -109,15 +109,9 @@ namespace MagiCommon
             return await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
         }
 
-        public async Task<ElasticFileInfo> GetFileInfoAsync(string id)
-        {
-            return await Client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
-        }
+        public async Task<ElasticFileInfo> GetFileInfoAsync(string id) => await Client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
 
-        public async Task<Stream> GetFileContentAsync(string id)
-        {
-            return await Client.GetStreamAsync($"api/filecontent/{id}");
-        }
+        public async Task<Stream> GetFileContentAsync(string id) => await Client.GetStreamAsync($"api/filecontent/{id}");
 
         public Uri GetFileContentUri(string id, bool download)
         {
@@ -128,10 +122,7 @@ namespace MagiCommon
             return builder.Uri;
         }
 
-        public async Task RemoveFileAsync(string id, bool permanent)
-        {
-            await Client.DeleteAsync($"api/files/{id}?permanent={permanent}");
-        }
+        public async Task RemoveFileAsync(string id, bool permanent) => await Client.DeleteAsync($"api/files/{id}?permanent={permanent}");
 
         public async Task<User> GetUserAsync()
         {

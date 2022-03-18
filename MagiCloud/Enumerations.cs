@@ -1,11 +1,10 @@
-﻿namespace MagiCloud
+﻿namespace MagiCloud;
+
+public enum FileAccessResult
 {
-    public enum FileAccessResult
-    {
-        Unknown,
-        FullAccess,
-        NotFound,
-        NotPermitted,
-        ReadOnly
-    }
+    Unknown,
+    FullAccess,
+    NotFound,
+    NotPermitted,
+    ReadOnly
 }

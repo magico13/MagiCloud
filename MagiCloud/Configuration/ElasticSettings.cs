@@ -1,9 +1,8 @@
-﻿namespace MagiCloud.Configuration
+﻿namespace MagiCloud.Configuration;
+
+public class ElasticSettings
 {
-    public class ElasticSettings
-    {
-        public string Url { get; set; }
-        public string ApiKey { get; set; }
-        public string ApiKeyId { get; set; }
-    }
+    public string Url { get; set; }
+    public string ApiKey { get; set; }
+    public string ApiKeyId { get; set; }
 }

@@ -5,90 +5,89 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MagiCloud.Controllers
+namespace MagiCloud.Controllers;
+
+[Route("api/[controller]")]
+[Authorize]
+[ApiController]
+public class AdminController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [Authorize]
-    [ApiController]
-    public class AdminController : ControllerBase
+    private readonly ILogger<AdminController> _logger;
+    private readonly IElasticManager _elastic;
+    private readonly ExtractionHelper _extractionHelper;
+
+    public AdminController(
+        ILogger<AdminController> logger, 
+        IElasticManager elastic,
+        ExtractionHelper extractionHelper)
     {
-        private readonly ILogger<AdminController> _logger;
-        private readonly IElasticManager _elastic;
-        private readonly ExtractionHelper _extractionHelper;
+        _logger = logger;
+        _elastic = elastic;
+        _extractionHelper = extractionHelper;
+    }
 
-        public AdminController(
-            ILogger<AdminController> logger, 
-            IElasticManager elastic,
-            ExtractionHelper extractionHelper)
+    [HttpPost]
+    [Route("cleanTokens")]
+    public async Task<IActionResult> RemoveExpiredTokensAsync()
+    {
+        await _elastic.SetupIndicesAsync();
+        await _elastic.RemoveExpiredTokensAsync();
+        return Ok();
+    }
+
+    [HttpPost]
+    [Route("extractText")]
+    public async Task<IActionResult> ExtractText([FromQuery] bool force = false, [FromQuery] string mimeTypes = null)
+    {
+        // run text extraction on all docs that are missing text
+        // if force is true then do it for docs that already have text as well
+        var userId = User.Identity.Name;
+        var docList = await _elastic.GetDocumentsAsync(userId, false); //TODO: Do it for all docs, not just ours
+        var filteredList = docList;
+        if (!string.IsNullOrWhiteSpace(mimeTypes))
         {
-            _logger = logger;
-            _elastic = elastic;
-            _extractionHelper = extractionHelper;
+            var split = mimeTypes.Split(';');
+            filteredList = docList.FindAll(f => split.Contains(f.MimeType));
         }
-
-        [HttpPost]
-        [Route("cleanTokens")]
-        public async Task<IActionResult> RemoveExpiredTokensAsync()
+        _logger.LogInformation(
+            "Performing text extraction on up to {Count} documents. Force is {Flag}",
+            filteredList.Count,
+            force);
+        var updatedDocs = new List<string>();
+        foreach (var doc in filteredList)
         {
-            await _elastic.SetupIndicesAsync();
-            await _elastic.RemoveExpiredTokensAsync();
-            return Ok();
-        }
-
-        [HttpPost]
-        [Route("extractText")]
-        public async Task<IActionResult> ExtractText([FromQuery] bool force = false, [FromQuery] string mimeTypes = null)
-        {
-            // run text extraction on all docs that are missing text
-            // if force is true then do it for docs that already have text as well
-            var userId = User.Identity.Name;
-            var docList = await _elastic.GetDocumentsAsync(userId, false); //TODO: Do it for all docs, not just ours
-            var filteredList = docList;
-            if (!string.IsNullOrWhiteSpace(mimeTypes))
+            var (updated, text) = await _extractionHelper.ExtractTextAsync(userId, doc.Id, force);
+            if (updated)
             {
-                var split = mimeTypes.Split(';');
-                filteredList = docList.FindAll(f => split.Contains(f.MimeType));
-            }
-            _logger.LogInformation(
-                "Performing text extraction on up to {Count} documents. Force is {Flag}",
-                filteredList.Count,
-                force);
-            var updatedDocs = new List<string>();
-            foreach (var doc in filteredList)
-            {
-                var (updated, text) = await _extractionHelper.ExtractTextAsync(userId, doc.Id, force);
-                if (updated)
+                if (!string.IsNullOrWhiteSpace(text))
                 {
-                    if (!string.IsNullOrWhiteSpace(text))
-                    {
-                        _logger.LogInformation(
-                            "File {FileId} extracted {Length} characters. Type is {ContentType}.",
-                            doc.Id,
-                            text.Length,
-                            doc.MimeType);
-                        doc.Text = text;
-                        updatedDocs.Add(doc.Id);
-                        await _elastic.UpdateFileAttributesAsync(userId, doc);
-                    }
-                    else
-                    {
-                        _logger.LogInformation(
-                            "File {FileId} failed to extract text. Type is {ContentType}.",
-                            doc.Id,
-                            doc.MimeType);
-                    }
+                    _logger.LogInformation(
+                        "File {FileId} extracted {Length} characters. Type is {ContentType}.",
+                        doc.Id,
+                        text.Length,
+                        doc.MimeType);
+                    doc.Text = text;
+                    updatedDocs.Add(doc.Id);
+                    await _elastic.UpdateFileAttributesAsync(userId, doc);
                 }
                 else
                 {
                     _logger.LogInformation(
-                             "File {FileId} already had text with {Length} characters. Type is {ContentType}.",
-                             doc.Id,
-                             text.Length,
-                             doc.MimeType);
+                        "File {FileId} failed to extract text. Type is {ContentType}.",
+                        doc.Id,
+                        doc.MimeType);
                 }
             }
-
-            return Ok(updatedDocs);
+            else
+            {
+                _logger.LogInformation(
+                         "File {FileId} already had text with {Length} characters. Type is {ContentType}.",
+                         doc.Id,
+                         text.Length,
+                         doc.MimeType);
+            }
         }
+
+        return Ok(updatedDocs);
     }
 }

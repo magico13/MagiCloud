@@ -67,9 +67,10 @@
                 uploadedBytes = 0;
                 totalBytes = file.Size;
                 Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
+                var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
                 var info = new MagiCommon.Models.ElasticFileInfo
-                {
-                    Name = Path.Combine(CurrentDirectory, Path.GetFileNameWithoutExtension(file.Name)),
+                {   
+                    Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
                     Extension = Path.GetExtension(file.Name).TrimStart('.'),
                     MimeType = file.Type,
                     LastModified = file.LastModified,

@@ -2,37 +2,36 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace MagiCloud.Controllers
+namespace MagiCloud.Controllers;
+
+[Route("api/")]
+[ApiController]
+public class DefaultController : ControllerBase
 {
-    [Route("api/")]
-    [ApiController]
-    public class DefaultController : ControllerBase
+    public IElasticManager Elastic { get; }
+
+    public DefaultController(IElasticManager elastic)
     {
-        public IElasticManager Elastic { get; }
+        this.Elastic = elastic;
+    }
 
-        public DefaultController(IElasticManager elastic)
+    [HttpGet]
+    public async Task<IActionResult> GetAsync()
+    {
+        var elasticReady = false;
+        try
         {
-            this.Elastic = elastic;
+             elasticReady = await Elastic.SetupIndicesAsync();
         }
+        catch { }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAsync()
+        var obj = new Dictionary<string, object>
         {
-            var elasticReady = false;
-            try
-            {
-                 elasticReady = await Elastic.SetupIndicesAsync();
-            }
-            catch { }
-
-            var obj = new Dictionary<string, object>
-            {
-                ["MagiCloud"] = "operational",
-                ["Elasticsearch"] = elasticReady ? "operational" : "error"
-            };
+            ["MagiCloud"] = "operational",
+            ["Elasticsearch"] = elasticReady ? "operational" : "error"
+        };
 
 
-            return Ok(obj);
-        }
+        return Ok(obj);
     }
 }

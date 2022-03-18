@@ -4,40 +4,39 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
-namespace MagiCloud.Controllers
+namespace MagiCloud.Controllers;
+
+[Route("api/[controller]")]
+[Authorize]
+public class SearchController : Controller
 {
-    [Route("api/[controller]")]
-    [Authorize]
-    public class SearchController : Controller
+    private readonly ILogger<SearchController> _logger;
+    private readonly IElasticManager _elastic;
+
+    public SearchController(ILogger<SearchController> logger, IElasticManager elastic)
     {
-        private readonly ILogger<SearchController> _logger;
-        private readonly IElasticManager _elastic;
+        _logger = logger;
+        _elastic = elastic;
+    }
 
-        public SearchController(ILogger<SearchController> logger, IElasticManager elastic)
+    [HttpGet]
+    [Route("")]
+    public async Task<IActionResult> SearchAsync([FromQuery] string query)
+    {
+        try
         {
-            _logger = logger;
-            _elastic = elastic;
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(new { Message = "Invalid query" });
+            }
+            var userId = User.Identity.Name;
+            var docs = await _elastic.SearchAsync(userId, query);
+            return Json(docs);
         }
-
-        [HttpGet]
-        [Route("")]
-        public async Task<IActionResult> SearchAsync([FromQuery] string query)
+        catch (Exception ex)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(query))
-                {
-                    return BadRequest(new { Message = "Invalid query" });
-                }
-                var userId = User.Identity.Name;
-                var docs = await _elastic.SearchAsync(userId, query);
-                return Json(docs);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Exception while getting document list.");
-                return StatusCode(500);
-            }
+            _logger.LogError(ex, "Exception while getting document list.");
+            return StatusCode(500);
         }
     }
 }

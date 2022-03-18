@@ -1,9 +1,8 @@
-﻿namespace MagiConsole
+﻿namespace MagiConsole;
+
+public class Settings
 {
-    public class Settings
-    {
-        public int FullSyncSeconds { get; set; }
-        public string FolderPath { get; set; }
-        public string ServerUrl { get; set; }
-    }
+    public int FullSyncSeconds { get; set; }
+    public string FolderPath { get; set; }
+    public string ServerUrl { get; set; }
 }

@@ -6,127 +6,126 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
-namespace MagiCloud.Controllers
+namespace MagiCloud.Controllers;
+
+[Route("api/[controller]")]
+[Authorize]
+public class FilesController : Controller
 {
-    [Route("api/[controller]")]
-    [Authorize]
-    public class FilesController : Controller
+    private readonly ILogger<FilesController> _logger;
+    private readonly IElasticManager _elastic;
+    private readonly IDataManager _dataManager;
+
+    public FilesController(ILogger<FilesController> logger, IElasticManager elastic, IDataManager dataManager)
     {
-        private readonly ILogger<FilesController> _logger;
-        private readonly IElasticManager _elastic;
-        private readonly IDataManager _dataManager;
+        _logger = logger;
+        _elastic = elastic;
+        _dataManager = dataManager;
+    }
 
-        public FilesController(ILogger<FilesController> logger, IElasticManager elastic, IDataManager dataManager)
+    [HttpGet]
+    [Route("")]
+    public async Task<IActionResult> GetAsync([FromQuery] bool? deleted)
+    {
+        try
         {
-            _logger = logger;
-            _elastic = elastic;
-            _dataManager = dataManager;
+            var userId = User.Identity.Name;
+            var docs = await _elastic.GetDocumentsAsync(userId, deleted);
+            return Json(docs);
         }
-
-        [HttpGet]
-        [Route("")]
-        public async Task<IActionResult> GetAsync([FromQuery] bool? deleted)
+        catch (Exception ex)
         {
-            try
+            _logger.LogError(ex, "Exception while getting document list.");
+            return StatusCode(500);
+        }
+    }
+
+    [HttpGet]
+    [Route("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAsync(string id, [FromQuery] bool includeText = false)
+    {
+        try
+        {
+            var userId = User?.Identity?.Name;
+            var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
+            if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
             {
-                var userId = User.Identity.Name;
-                var docs = await _elastic.GetDocumentsAsync(userId, deleted);
-                return Json(docs);
+                return Json(file);
             }
-            catch (Exception ex)
+            else if (result == FileAccessResult.NotFound)
             {
-                _logger.LogError(ex, "Exception while getting document list.");
-                return StatusCode(500);
+                return NotFound();
+            }
+            else
+            {
+                return Forbid();
             }
         }
-
-        [HttpGet]
-        [Route("{id}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAsync(string id, [FromQuery] bool includeText = false)
+        catch (Exception ex)
         {
-            try
+            _logger.LogError(ex, "Exception while getting document {DocId}.", id);
+            return StatusCode(500);
+        }
+    }
+
+    [HttpPost]
+    [Route("")]
+    public async Task<IActionResult> PostAsync([FromBody]ElasticFileInfo file)
+    {
+        try
+        {
+            var userId = User.Identity.Name;
+            await _elastic.SetupIndicesAsync();
+            var docId = await _elastic.IndexDocumentAsync(userId, file);
+            var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
+            doc.Id = docId;
+            return Json(doc);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while getting document list.");
+            return StatusCode(500);
+        }
+    }
+
+    // DELETE: files/5?permanent=true
+    [HttpDelete]
+    [Route("{id}")]
+    public async Task<IActionResult> DeleteAsync(string id, [FromQuery]bool permanent=false)
+    {
+        try
+        {
+            var userId = User.Identity.Name;
+            var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
+            if (result == FileAccessResult.FullAccess)
             {
-                var userId = User?.Identity?.Name;
-                var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
-                if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+                // Mark file as deleted but don't permanently delete the file
+                if (!permanent)
                 {
-                    return Json(file);
-                }
-                else if (result == FileAccessResult.NotFound)
-                {
-                    return NotFound();
+                    doc.IsDeleted = true;
+                    await _elastic.IndexDocumentAsync(userId, doc);
                 }
                 else
                 {
-                    return Forbid();
+                    _dataManager.DeleteFile(id);
+                    await _elastic.DeleteFileAsync(userId, id);
                 }
+                return NoContent();
             }
-            catch (Exception ex)
+            else if (result == FileAccessResult.NotFound)
             {
-                _logger.LogError(ex, "Exception while getting document {DocId}.", id);
-                return StatusCode(500);
+                return NotFound();
+            }
+            else
+            {
+                return Forbid();
             }
         }
-
-        [HttpPost]
-        [Route("")]
-        public async Task<IActionResult> PostAsync([FromBody]ElasticFileInfo file)
+        catch (Exception ex)
         {
-            try
-            {
-                var userId = User.Identity.Name;
-                await _elastic.SetupIndicesAsync();
-                var docId = await _elastic.IndexDocumentAsync(userId, file);
-                var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
-                doc.Id = docId;
-                return Json(doc);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Exception while getting document list.");
-                return StatusCode(500);
-            }
-        }
-
-        // DELETE: files/5?permanent=true
-        [HttpDelete]
-        [Route("{id}")]
-        public async Task<IActionResult> DeleteAsync(string id, [FromQuery]bool permanent=false)
-        {
-            try
-            {
-                var userId = User.Identity.Name;
-                var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
-                if (result == FileAccessResult.FullAccess)
-                {
-                    // Mark file as deleted but don't permanently delete the file
-                    if (!permanent)
-                    {
-                        doc.IsDeleted = true;
-                        await _elastic.IndexDocumentAsync(userId, doc);
-                    }
-                    else
-                    {
-                        _dataManager.DeleteFile(id);
-                        await _elastic.DeleteFileAsync(userId, id);
-                    }
-                    return NoContent();
-                }
-                else if (result == FileAccessResult.NotFound)
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    return Forbid();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Exception while deleting document {DocId}.", id);
-                return StatusCode(500);
-            }
+            _logger.LogError(ex, "Exception while deleting document {DocId}.", id);
+            return StatusCode(500);
         }
     }
 }

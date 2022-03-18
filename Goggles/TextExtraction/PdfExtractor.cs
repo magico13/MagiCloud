@@ -10,25 +10,22 @@ namespace Goggles.TextExtraction
 {
     public class PdfExtractor : ITextExtractor
     {
-        private ILogger<PdfExtractor> _logger;
+        private readonly ILogger<PdfExtractor> _logger;
 
-        public PdfExtractor(ILogger<PdfExtractor> logger)
-        {
-            _logger = logger;
-        }
+        public PdfExtractor(ILogger<PdfExtractor> logger) => _logger = logger;
 
         public bool IsValidForContentType(string contentType)
             => string.Equals(contentType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
 
         public bool UsesOCR => false;
 
-        public async Task<string> ExtractTextAsync(Stream stream)
-        {
-            return await Task.Run(() =>
+        public async Task<string> ExtractTextAsync(Stream stream) =>
+            // Spin up in a separate Task to run in the background
+            await Task.Run(() =>
             {
                 try
                 {
-                    StringBuilder builder = new StringBuilder();
+                    var builder = new StringBuilder();
                     using (var pdf = PdfDocument.Open(stream))
                     {
                         // if (pdf.IsEncrypted)
@@ -50,6 +47,5 @@ namespace Goggles.TextExtraction
                     return null;
                 }
             });
-        }
     }
 }

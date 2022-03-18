@@ -3,14 +3,13 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MagiCloudWeb
+namespace MagiCloudWeb;
+
+public class CustomHttpHandler : HttpClientHandler
 {
-    public class CustomHttpHandler : HttpClientHandler
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-            return await base.SendAsync(request, cancellationToken);
-        }
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        return await base.SendAsync(request, cancellationToken);
     }
 }

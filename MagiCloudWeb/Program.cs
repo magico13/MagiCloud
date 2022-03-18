@@ -8,34 +8,33 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 
-namespace MagiCloudWeb
+namespace MagiCloudWeb;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static async Task Main(string[] args)
-        {
-            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+        var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-            builder.Services
-                .AddBlazorise(options =>
-                {
-                    options.Immediate = true;
-                })
-                .AddBootstrap5Providers()
-                .AddFontAwesomeIcons();
-
-            builder.RootComponents.Add<App>("#app");
-
-            builder.Services.AddHttpClient();
-            builder.Services.AddStorage();
-            builder.Services.AddScoped<ITokenProvider, BlazorStorageTokenProvider>();
-            builder.Services.AddScoped<CustomHttpHandler>();
-            builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c =>
+        builder.Services
+            .AddBlazorise(options =>
             {
-                c.BaseAddress = new Uri(builder.Configuration["Settings:ServerUrl"]);
-            }).ConfigurePrimaryHttpMessageHandler<CustomHttpHandler>();
+                options.Immediate = true;
+            })
+            .AddBootstrap5Providers()
+            .AddFontAwesomeIcons();
 
-            await builder.Build().RunAsync();
-        }
+        builder.RootComponents.Add<App>("#app");
+
+        builder.Services.AddHttpClient();
+        builder.Services.AddStorage();
+        builder.Services.AddScoped<ITokenProvider, BlazorStorageTokenProvider>();
+        builder.Services.AddScoped<CustomHttpHandler>();
+        builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c =>
+        {
+            c.BaseAddress = new Uri(builder.Configuration["Settings:ServerUrl"]);
+        }).ConfigurePrimaryHttpMessageHandler<CustomHttpHandler>();
+
+        await builder.Build().RunAsync();
     }
 }

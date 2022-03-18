@@ -2,33 +2,32 @@
 using MagiCommon;
 using System.Threading.Tasks;
 
-namespace MagiCloudWeb
+namespace MagiCloudWeb;
+
+public class BlazorStorageTokenProvider : ITokenProvider
 {
-    public class BlazorStorageTokenProvider : ITokenProvider
+    const string KEY = "authToken";
+    public StorageBase Storage { get; }
+
+    public BlazorStorageTokenProvider(LocalStorage storage)
     {
-        const string KEY = "authToken";
-        public StorageBase Storage { get; }
+        this.Storage = storage;
+    }
 
-        public BlazorStorageTokenProvider(LocalStorage storage)
+    public async Task<string> GetTokenAsync()
+    {
+        return await Storage.GetItemAsync(KEY);
+    }
+
+    public async Task StoreTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
         {
-            this.Storage = storage;
+            await Storage.RemoveItemAsync(KEY);
         }
-
-        public async Task<string> GetTokenAsync()
+        else
         {
-            return await Storage.GetItemAsync(KEY);
-        }
-
-        public async Task StoreTokenAsync(string token)
-        {
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                await Storage.RemoveItemAsync(KEY);
-            }
-            else
-            {
-                await Storage.SetItemAsync(KEY, token);
-            }
+            await Storage.SetItemAsync(KEY, token);
         }
     }
 }

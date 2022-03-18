@@ -1,7 +1,6 @@
-﻿namespace MagiCloud
+﻿namespace MagiCloud;
+
+public class Constants
 {
-    public class Constants
-    {
-        public const string TokenAuthenticationScheme = "TokenAuthenticationScheme";
-    }
+    public const string TokenAuthenticationScheme = "TokenAuthenticationScheme";
 }

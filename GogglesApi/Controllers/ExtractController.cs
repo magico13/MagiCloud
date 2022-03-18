@@ -1,46 +1,45 @@
 using Goggles;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GogglesApi.Controllers
+namespace GogglesApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ExtractController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class ExtractController : ControllerBase
+    private readonly ILogger<ExtractController> _logger;
+    private readonly ILens _lens;
+
+    public ExtractController(ILogger<ExtractController> logger, ILens lens)
     {
-        private readonly ILogger<ExtractController> _logger;
-        private readonly ILens _lens;
+        _logger = logger;
+        _lens = lens;
+    }
 
-        public ExtractController(ILogger<ExtractController> logger, ILens lens)
+    [HttpPost]
+    [Route("text")]
+    [RequestSizeLimit(104857600)] //100MB
+    [RequestFormLimits(ValueLengthLimit = 104857600, MultipartBodyLengthLimit = 104857600)]
+    public async Task<IActionResult> PostAsync(IFormFile file)
+    {
+        using var fileStream = file.OpenReadStream();
+        var contentType = file.ContentType != "application/octect-stream" 
+            ? file.ContentType 
+            : Lens.DetermineContentType(file.Name);
+        return new JsonResult(new 
         {
-            _logger = logger;
-            _lens = lens;
-        }
+            Text = await _lens.ExtractTextAsync(fileStream, contentType),
+            contentType 
+        });
+    }
 
-        [HttpPost]
-        [Route("text")]
-        [RequestSizeLimit(104857600)] //100MB
-        [RequestFormLimits(ValueLengthLimit = 104857600, MultipartBodyLengthLimit = 104857600)]
-        public async Task<IActionResult> PostAsync(IFormFile file)
-        {
-            using var fileStream = file.OpenReadStream();
-            var contentType = file.ContentType != "application/octect-stream" 
-                ? file.ContentType 
-                : Lens.DetermineContentType(file.Name);
-            return new JsonResult(new 
-            {
-                Text = await _lens.ExtractTextAsync(fileStream, contentType),
-                contentType 
-            });
-        }
-
-        [HttpGet]
-        [Route("contentType")]
-        public IActionResult Get([FromQuery] string extension)
-        {
-            return new JsonResult(new 
-            { 
-                ContentType = Lens.DetermineContentType(extension) 
-            });
-        }
+    [HttpGet]
+    [Route("contentType")]
+    public IActionResult Get([FromQuery] string extension)
+    {
+        return new JsonResult(new 
+        { 
+            ContentType = Lens.DetermineContentType(extension) 
+        });
     }
 }
