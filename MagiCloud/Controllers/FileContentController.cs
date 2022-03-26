@@ -60,7 +60,7 @@ public class FileContentController : ControllerBase
                     stream = _dataManager.GetFile(doc.Id);
                     if (string.IsNullOrWhiteSpace(doc.MimeType))
                     {
-                        new FileExtensionContentTypeProvider().TryGetContentType(doc.GetFileName(), out string type);
+                        new FileExtensionContentTypeProvider().TryGetContentType(doc.GetFileName(), out var type);
                         if (type is null)
                         {
                             type = "application/octet-stream";

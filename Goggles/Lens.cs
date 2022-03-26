@@ -45,8 +45,9 @@ namespace Goggles
                 case "xcf": return "image/x-xcf";
                 case "ofx":
                 case "ino": return "text/plain";
+                case "gcode": return "text/x-gcode";
             }
-            if (!_extensionTypeProvider.TryGetContentType("file." + extension, out string type) 
+            if (!_extensionTypeProvider.TryGetContentType("file." + extension, out var type) 
                 || string.IsNullOrEmpty(type))
             {
                 type = "application/octet-stream";
