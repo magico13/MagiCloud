@@ -11,7 +11,19 @@
 @inject ILogger<FilesComponent> Logger
 
 <h3>Files</h3>
-@if (FileList?.Any() == true)
+@if (FileList == null)
+{
+    <Paragraph>
+        Loading files...
+    </Paragraph>
+}
+else if (!FileList.Any())
+{
+    <Paragraph>
+        No files found...
+    </Paragraph>
+}
+else
 {
     <Paragraph>@CurrentFolder</Paragraph>
     <DataGrid TItem="FileWrapper" 
@@ -109,10 +121,4 @@
             }
         </DetailRowTemplate>
     </DataGrid>
-}
-else
-{
-    <Paragraph>
-        No files found...
-    </Paragraph>
 }
