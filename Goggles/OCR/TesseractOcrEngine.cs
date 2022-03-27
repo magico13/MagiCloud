@@ -11,11 +11,16 @@ namespace Goggles.OCR
         private readonly ILogger<TesseractOcrEngine> _logger;
         private readonly TesseractEngine _engine;
 
+        private const string ALPHANUMERIC_WHITELIST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789";
+        private const string ALPHANUMERIC_WITH_PUNCTUATION = ALPHANUMERIC_WHITELIST + ".'?!-";
+
         public TesseractOcrEngine(ILogger<TesseractOcrEngine> logger)
         {
             _logger = logger;
             _logger.LogInformation("Current directory is "+System.Environment.CurrentDirectory);
             _engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
+
+            _engine.SetVariable("tessedit_char_whitelist", ALPHANUMERIC_WITH_PUNCTUATION);
         }
 
         public void Dispose()
@@ -27,7 +32,7 @@ namespace Goggles.OCR
 
         public async Task<string> ExtractText(Stream stream)
         {
-            byte[] imageBytes = new byte[stream.Length];
+            var imageBytes = new byte[stream.Length];
             await stream.ReadAsync(imageBytes, 0, imageBytes.Length);
             using (var img = Pix.LoadFromMemory(imageBytes))
             using (var page = _engine.Process(img))
