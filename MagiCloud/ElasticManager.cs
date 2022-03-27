@@ -46,12 +46,18 @@ public class ElasticManager : IElasticManager
     private readonly ElasticSettings _settings;
     private readonly ILogger<ElasticManager> _logger;
     private readonly IHashService _hashService;
+    private readonly ILens _lens;
 
-    public ElasticManager(IOptionsSnapshot<ElasticSettings> options, ILogger<ElasticManager> logger, IHashService hashService)
+    public ElasticManager(
+        IOptionsSnapshot<ElasticSettings> options,
+        ILogger<ElasticManager> logger,
+        IHashService hashService,
+        ILens lens)
     {
         _settings = options.Value;
         _logger = logger;
         _hashService = hashService;
+        _lens = lens;
     }
 
     public void Setup()
@@ -306,11 +312,11 @@ public class ElasticManager : IElasticManager
         newFile.Text ??= existingFile?.Text;
     }
 
-    private static string GetMimeType(ElasticFileInfo file)
+    private string GetMimeType(ElasticFileInfo file)
     {
         if (string.IsNullOrWhiteSpace(file.MimeType))
         {
-            return Lens.DetermineContentType(file.Extension);
+            return _lens.DetermineContentType(file.Extension);
         }
         return file.MimeType;
     }

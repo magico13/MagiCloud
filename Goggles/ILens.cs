@@ -6,5 +6,6 @@ namespace Goggles
     public interface ILens
     {
         Task<string> ExtractTextAsync(Stream stream, string contentType);
+        string DetermineContentType(string filename);
     }
 }
