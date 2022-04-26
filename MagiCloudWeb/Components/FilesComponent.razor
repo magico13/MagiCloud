@@ -26,20 +26,20 @@ else if (!FileList.Any())
 else
 {
     <Paragraph>@CurrentFolder</Paragraph>
-    <DataGrid TItem="FileWrapper" 
-                Data="@Files"
+    <DataGrid TItem=FileWrapper
+                Data=Files
                 DetailRowTrigger=@(w => w.Item?.BackingFileInfo?.Highlights?.Any() == true)
                 Sortable
-                SelectionMode="DataGridSelectionMode.Single"
-                CommandMode="DataGridCommandMode.Default"
+                SelectionMode=DataGridSelectionMode.Single
+                CommandMode=DataGridCommandMode.Default
                 Responsive
                 PageSize=10
                 ShowPager
                 ShowPageSizes
                 Editable
-                EditMode="DataGridEditMode.Inline"
-                RowRemoved="@RowRemoved"
-                RowUpdated="@RowUpdated">
+                EditMode=DataGridEditMode.Inline
+                RowRemoved=RowRemoved
+                RowUpdated=RowUpdated>
         <DataGridColumns>
             <DataGridCommandColumn NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
                 <SaveCommandTemplate>

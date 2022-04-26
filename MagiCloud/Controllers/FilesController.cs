@@ -49,7 +49,7 @@ public class FilesController : Controller
         {
             var userId = User?.Identity?.Name;
             var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
-            if (result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+            if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
             {
                 return Json(file);
             }

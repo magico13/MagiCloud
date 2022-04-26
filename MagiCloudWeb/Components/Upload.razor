@@ -7,18 +7,18 @@
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<Upload> Logger
 
-<h3>Upload Files</h3>
+<Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
-<p>
+<Paragraph>
     <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=Constants.UPLOAD_CHUNK_SIZE />
-</p>
+</Paragraph>
 
 @if (totalUpload > 0)
 {
     @if (!finished)
     {
-        <p>Uploaded... @uploaded / @totalUpload</p>
-        <Progress Value="@progress" Color="Color.Success">@progress %</Progress>
+        <Paragraph>Uploaded... @uploaded / @totalUpload</Paragraph>
+        <Progress Value=progress Color=Color.Success Striped>@progress %</Progress>
     }
     else
     {
@@ -27,12 +27,12 @@
 }
 @if (errorMessages.Any())
 {
-    <ul>
+    <UnorderedList>
     @foreach (var msg in errorMessages)
     {
-        <li style="color:red">@msg</li>
+        <UnorderedListItem TextColor=TextColor.Danger>@msg</UnorderedListItem>
     }
-    </ul>
+    </UnorderedList>
 }
 
 @code {

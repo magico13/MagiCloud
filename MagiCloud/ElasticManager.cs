@@ -1,6 +1,7 @@
 ﻿using Goggles;
 using MagiCloud.Configuration;
 using MagiCommon;
+using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,6 +22,7 @@ public interface IElasticManager
     Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted);
     Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText);
     Task<List<SearchResult>> SearchAsync(string userId, string query);
+    Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension);
     Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
     Task<FileAccessResult> DeleteFileAsync(string userId, string id);
     Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
@@ -232,6 +234,46 @@ public class ElasticManager : IElasticManager
         return new List<SearchResult>();
     }
 
+    public async Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension)
+    {
+        Setup();
+        var result = await Client.SearchAsync<ElasticFileInfo>(s => s
+            .Size(1)
+            .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
+            .Query(q =>
+            {
+                var qc = q
+                    .Match(m => m
+                        .Field(f => f.UserId)
+                        .Query(userId))
+                    && q.Match(m => m
+                        .Field(f => f.Name)
+                        .Query(filename))
+                    && q.Match(m => m
+                        .Field(f => f.Extension)
+                        .Query(extension));
+                return qc;
+            }));
+        if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound 
+            || result.Total == 0)
+        {
+            _logger.LogInformation("Document with name {Name}.{Extension} not found.", filename, extension);
+            return (FileAccessResult.NotFound, null);
+        }
+        if (result.IsValid)
+        {
+            var source = result.Hits.First().Source;
+            source.Id = result.Hits.First().Id;
+            var accessLevel = VerifyFileAccess(userId, source);
+            return accessLevel switch
+            {
+                FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
+                _ => (FileAccessResult.NotPermitted, null),
+            };
+        }
+        return (FileAccessResult.NotPermitted, null);
+    }
+
     public async Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file)
     {
         Setup();
@@ -242,6 +284,41 @@ public class ElasticManager : IElasticManager
         file.LastUpdated = DateTimeOffset.Now;
         file.Hash = null;
         file.UserId = userId;
+
+        // Check to see if a file already exists with that name for this user
+        var (findResult, existingByName) = await FindDocumentByNameAsync(userId, file.Name, file.Extension);
+        if (findResult != FileAccessResult.NotFound)
+        {
+            // A file with that name already exists, if we're using the same id then we can safely overwrite
+            // if we have no id then we can overwrite and use the existing id
+            if ((string.IsNullOrWhiteSpace(file.Id) || existingByName.Id == file.Id)
+                && findResult == FileAccessResult.FullAccess)
+            {
+                file.Id = existingByName.Id;
+            }
+            else if (findResult == FileAccessResult.FullAccess)
+            {
+                // CONFLICT - Ids are different and there is a conflict in names.
+                // If we have permission to overwrite, then we can just do so, but should log this
+                _logger.LogWarning("Forcing provided file with id {Id} to id {Id2} because of name conflict '{Name}'",
+                                   file.Id,
+                                   existingByName.Id,
+                                   file.GetFullPath());
+                file.Id = existingByName.Id;
+            }
+            else
+            {
+                // If we can't overwrite we must throw an exception
+                _logger.LogError(
+                    "Unresolvable name conflict between new id {Id} and existing id {Id2} with name '{Name}'",
+                    file.Id,
+                    existingByName.Id,
+                    file.GetFullPath());
+
+                throw new ArgumentException($"File with name '{file.GetFullPath()}' cannot be indexed due to unresolvable id conflict.");
+            }
+        }
+
         // if an id is provided, check if that file actually exists, if not throw that out
         if (!string.IsNullOrWhiteSpace(file.Id))
         {
