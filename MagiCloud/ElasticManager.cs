@@ -116,9 +116,9 @@ public class ElasticManager : IElasticManager
             .Query(q =>
             {
                 var qc = q
-                    .Match(m => m
-                        .Field(f => f.UserId)
-                        .Query(userId)
+                    .Term(t => t
+                        .Field(f => f.UserId.Suffix("keyword"))
+                        .Value(userId)
                     );
                 if (deleted != null)
                 {
@@ -205,9 +205,9 @@ public class ElasticManager : IElasticManager
                         .Field(i => i.Text)
                     ));
                 qc &= q
-                    .Match(m => m
-                        .Field(f => f.UserId)
-                        .Query(userId)
+                    .Term(t => t
+                        .Field(f => f.UserId.Suffix("keyword"))
+                        .Value(userId)
                     );
                 return qc;
             }));
@@ -243,15 +243,17 @@ public class ElasticManager : IElasticManager
             .Query(q =>
             {
                 var qc = q
-                    .Match(m => m
-                        .Field(f => f.UserId)
-                        .Query(userId))
-                    && q.Match(m => m
+                    .Term(t => t
+                        .Field(f => f.UserId.Suffix("keyword"))
+                        .Value(userId)
+                    ) && q.Match(m => m
                         .Field(f => f.Name)
-                        .Query(filename))
-                    && q.Match(m => m
+                        .Query(filename)
+                    ) && q.Match(m => m
                         .Field(f => f.Extension)
-                        .Query(extension));
+                        .Query(extension)
+                    );
+                // Note: Not using term for the filename checks bc term is case sensitive
                 return qc;
             }));
         if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound 
@@ -262,16 +264,23 @@ public class ElasticManager : IElasticManager
         }
         if (result.IsValid)
         {
-            var source = result.Hits.First().Source;
-            source.Id = result.Hits.First().Id;
-            var accessLevel = VerifyFileAccess(userId, source);
-            return accessLevel switch
+            foreach (var hit in result.Hits)
             {
-                FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
-                _ => (FileAccessResult.NotPermitted, null),
-            };
+                var source = hit.Source;
+                if (string.Equals(source.Name, filename, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(source.Extension, extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    source.Id = hit.Id;
+                    var accessLevel = VerifyFileAccess(userId, source);
+                    return accessLevel switch
+                    {
+                        FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
+                        _ => (FileAccessResult.NotPermitted, null),
+                    };
+                }
+            }
         }
-        return (FileAccessResult.NotPermitted, null);
+        return (FileAccessResult.NotFound, null);
     }
 
     public async Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file)
@@ -318,6 +327,8 @@ public class ElasticManager : IElasticManager
                 throw new ArgumentException($"File with name '{file.GetFullPath()}' cannot be indexed due to unresolvable id conflict.");
             }
         }
+        // TODO: We should be able to avoid getting the document twice, if you provide an id then the name probably matches too
+        // eg if the name didn't change then we don't really need to check for duplicate names at all
 
         // if an id is provided, check if that file actually exists, if not throw that out
         if (!string.IsNullOrWhiteSpace(file.Id))
