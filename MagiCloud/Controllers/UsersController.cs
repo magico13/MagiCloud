@@ -1,11 +1,14 @@
-﻿using MagiCommon;
+﻿using MagiCloud.Configuration;
+using MagiCommon;
 using MagiCommon.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Collections.Generic;
+using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -18,12 +21,18 @@ public class UsersController : ControllerBase
     private readonly ILogger<UsersController> _logger;
     private readonly IElasticManager _elastic;
     private readonly IHashService _hashService;
+    private readonly GeneralSettings _generalSettings;
 
-    public UsersController(ILogger<UsersController> logger, IElasticManager elastic, IHashService hashService)
+    public UsersController(
+        ILogger<UsersController> logger,
+        IElasticManager elastic,
+        IHashService hashService,
+        IOptions<GeneralSettings> generalSettings)
     {
         _logger = logger;
         _elastic = elastic;
         _hashService = hashService;
+        _generalSettings = generalSettings.Value;
     }
 
     [HttpGet]
@@ -42,6 +51,12 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateUserAsync(User user)
     {
+        if (!_generalSettings.AllowNewUserCreation)
+        {
+            _logger.LogInformation("Attempted to create user {Username} but new user creation disabled.", user.Username);
+            return StatusCode((int)HttpStatusCode.Forbidden);
+        }
+
         await _elastic.SetupIndicesAsync();
         if (!string.IsNullOrEmpty(user.Id))
         {

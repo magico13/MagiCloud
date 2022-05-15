@@ -25,6 +25,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         services.Configure<ElasticSettings>(Configuration.GetSection(nameof(ElasticSettings)));
+        services.Configure<GeneralSettings>(Configuration.GetSection(nameof(GeneralSettings)));
 
         services.AddScoped<IElasticManager, ElasticManager>();
         services.AddScoped<IDataManager, FileSystemDataManager>();

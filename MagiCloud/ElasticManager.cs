@@ -415,9 +415,9 @@ public class ElasticManager : IElasticManager
         // Check if a user with the provided username exists, if so throw
         var result = await Client.SearchAsync<User>(s =>
             s.Query(q =>
-                q.Match(m =>
-                    m.Field(f => f.Username)
-                    .Query(user.Username)
+                q.Term(t => t
+                    .Field(f => f.Username.Suffix("keyword"))
+                    .Value(user.Username)
                 )
             )
         );
@@ -462,9 +462,9 @@ public class ElasticManager : IElasticManager
         User found = null;
         var result = await Client.SearchAsync<User>(s =>
             s.Query(q =>
-                q.Match(m =>
-                    m.Field(f => f.Username)
-                    .Query(request.Username)
+                q.Term(t => t
+                    .Field(f => f.Username.Suffix("keyword"))
+                    .Value(request.Username)
                 )
             )
         );
