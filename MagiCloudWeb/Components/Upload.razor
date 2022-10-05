@@ -10,7 +10,7 @@
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
 <Paragraph>
-    <FileEdit @ref="@fileEdit" Changed="@LoadFiles" Multiple Written="@OnWritten" AutoReset="false" MaxMessageSize=Constants.UPLOAD_CHUNK_SIZE />
+    <FileEdit @ref=fileEdit Changed=LoadFiles Multiple Written=OnWritten AutoReset=false MaxMessageSize=Constants.UPLOAD_CHUNK_SIZE />
 </Paragraph>
 
 @if (totalUpload > 0)
