@@ -12,11 +12,13 @@ namespace Goggles
         protected static Dictionary<string, string> CustomExtensionMapping { get; } = new Dictionary<string, string>
         {
             // Text files
-            ["py"] = "text/x-python",
             ["csv"] = "text/csv",
-            ["ofx"] = "text/plain",
-            ["ino"] = "text/plain",
             ["gcode"] = "text/x-gcode",
+            ["ino"] = "text/plain",
+            ["ofx"] = "text/plain",
+            ["py"] = "text/x-python",
+            ["yaml"] = "text/x-yaml",
+            ["yml"] = "text/x-yaml",
             // Image files
             ["xcf"] = "image/x-xcf"
         };

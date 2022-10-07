@@ -10,21 +10,10 @@
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
 <Paragraph>
-    <FileEdit @ref=fileEdit Changed=LoadFiles Multiple Written=OnWritten AutoReset=false MaxMessageSize=Constants.UPLOAD_CHUNK_SIZE />
+    <FilePicker @ref=filePicker Multiple Upload=OnFileUpload ShowMode=FilePickerShowMode.List MaxChunkSize=Constants.UPLOAD_CHUNK_SIZE MaxFileSize=maxFileSize Ended=OnEnded Changed=OnFilesChanged/>
 </Paragraph>
 
-@if (totalUpload > 0)
-{
-    @if (!finished)
-    {
-        <Paragraph>Uploaded... @uploaded / @totalUpload</Paragraph>
-        <Progress Value=progress Color=Color.Success Striped>@progress %</Progress>
-    }
-    else
-    {
-        <p>Upload complete!</p>
-    }
-}
+
 @if (errorMessages.Any())
 {
     <UnorderedList>
@@ -38,67 +27,60 @@
 @code {
     private long maxFileSize = 1024 * 1024 * 1024 * 2L; //2 GB
     private int uploaded = 0;
-    private int totalUpload = 0;
-    private int? progress;
-    private long totalBytes = 0;
-    private long uploadedBytes = 0;
-    private bool finished = false;
+    private int fileCount = 0;
     private List<string> errorMessages = new();
-    private FileEdit fileEdit;
+    private FilePicker filePicker;
 
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
     [Parameter]
     public string CurrentDirectory { get; set; }
 
-    private async Task LoadFiles(FileChangedEventArgs e)
+    private async Task OnFilesChanged(FileChangedEventArgs e)
     {
+        fileCount = e.Files.Length;
         uploaded = 0;
-        finished = false;
-        progress = null;
         errorMessages.Clear();
-        totalUpload = e.Files.Length;
-
-        foreach (var file in e.Files)
-        {
-            try
-            {
-                progress = 0;
-                uploadedBytes = 0;
-                totalBytes = file.Size;
-                Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
-                var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
-                var info = new MagiCommon.Models.ElasticFileInfo
-                {   
-                    Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
-                    Extension = Path.GetExtension(file.Name).TrimStart('.'),
-                    MimeType = file.Type,
-                    LastModified = file.LastModified,
-                    Size = file.Size
-                };
-                using var fileStream = file.OpenReadStream(maxFileSize);
-                await MagicApi.UploadFileAsync(info, fileStream);
-                uploaded++;
-                this.StateHasChanged();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("File: {Filename} Error: {Error}", 
-                    file.Name, ex.Message);
-                errorMessages.Add($"{file.Name}: Error {ex.Message}");
-            }
-        }
-        finished = true;
-        progress = null;
-        await OnUploadComplete.InvokeAsync();
+        await Task.CompletedTask;
     }
 
-    void OnWritten( FileWrittenEventArgs e )
+    private async Task OnFileUpload(FileUploadEventArgs e)
     {
-        uploadedBytes = e.Position;
-        totalBytes = e.File.Size;
-        progress = (int)(100.0 * uploadedBytes / totalBytes);
-        this.StateHasChanged();
-        Console.WriteLine( $"File: {e.File.Name} {uploadedBytes} / {totalBytes} ({progress} %)" );
+        var file = e.File;
+        try
+        {
+            Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
+            var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
+            var info = new MagiCommon.Models.ElasticFileInfo
+            {
+                Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
+                Extension = Path.GetExtension(file.Name).TrimStart('.'),
+                MimeType = file.Type,
+                LastModified = file.LastModified,
+                Size = file.Size
+            };
+            using var fileStream = file.OpenReadStream(maxFileSize);
+            await MagicApi.UploadFileAsync(info, fileStream);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("File: {Filename} Error: {Error}",
+                file.Name, ex.Message);
+            errorMessages.Add($"{file.Name}: Error {ex.Message}");
+            file.Status = FileEntryStatus.Error;
+            file.ErrorMessage = ex.Message;
+
+            // Forcibly tell the FilePicker that the upload ended without success
+            await filePicker.FileEdit.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
+        }
+    }
+
+    private async Task OnEnded(FileEndedEventArgs e)
+    {
+        uploaded++;
+        if (uploaded >= fileCount)
+        {
+            await OnUploadComplete.InvokeAsync();
+        }
     }
 }

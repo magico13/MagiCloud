@@ -6,10 +6,10 @@
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<Index> Logger
 
-<Login OnSuccessfulLogin="@OnFilesChanged">
-    <Upload OnUploadComplete="@OnFilesChanged" CurrentDirectory="@CurrentFolder"/>
-    <SearchBar OnSearch="@OnSearch"/>
-    <FilesComponent FileList="@Files" OnFolderChanged="@OnFolderChanged"/>
+<Login OnSuccessfulLogin=OnFilesChanged>
+    <Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder/>
+    <SearchBar OnSearch=OnSearch/>
+    <FilesComponent FileList=Files OnFolderChanged=OnFolderChanged/>
 </Login>
 
 @code
