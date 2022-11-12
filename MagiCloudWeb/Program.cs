@@ -1,40 +1,27 @@
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
-using Cloudcrate.AspNetCore.Blazor.Browser.Storage;
+using MagiCloudWeb;
 using MagiCommon;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Threading.Tasks;
 
-namespace MagiCloudWeb;
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
-public class Program
-{
-    public static async Task Main(string[] args)
-    {
-        var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.Services
+    .AddBlazorise(options => options.Immediate = true)
+    .AddBootstrap5Providers()
+    .AddFontAwesomeIcons();
 
-        builder.Services
-            .AddBlazorise(options =>
-            {
-                options.Immediate = true;
-            })
-            .AddBootstrap5Providers()
-            .AddFontAwesomeIcons();
+builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c => 
+    c.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+).ConfigurePrimaryHttpMessageHandler<BaseAddressAuthorizationMessageHandler>();
 
-        builder.RootComponents.Add<App>("#app");
+builder.Services.AddApiAuthorization();
 
-        builder.Services.AddHttpClient();
-        builder.Services.AddStorage();
-        builder.Services.AddScoped<ITokenProvider, BlazorStorageTokenProvider>();
-        builder.Services.AddScoped<CustomHttpHandler>();
-        builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c =>
-        {
-            c.BaseAddress = new Uri(builder.Configuration["Settings:ServerUrl"]);
-        }).ConfigurePrimaryHttpMessageHandler<CustomHttpHandler>();
-
-        await builder.Build().RunAsync();
-    }
-}
+await builder.Build().RunAsync();

@@ -2,10 +2,11 @@
 @using MagiCommon
 @using MagiCommon.Extensions
 @using MagiCommon.Models
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Logging
 
+@attribute [Authorize]
 
-@inject ITokenProvider TokenProvider
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<TrashCan> Logger
 

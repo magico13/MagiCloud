@@ -29,13 +29,8 @@ namespace MagiCommon
     public class MagiCloudAPI : IMagiCloudAPI
     {
         public HttpClient Client { get; }
-        public ITokenProvider TokenProvider { get; }
 
-        public MagiCloudAPI(HttpClient client, ITokenProvider tokenProvider)
-        {
-            Client = client;
-            TokenProvider = tokenProvider;
-        }
+        public MagiCloudAPI(HttpClient client) => Client = client;
 
         public async Task<List<SearchResult>> GetFilesAsync(bool? deleted = null)
         {

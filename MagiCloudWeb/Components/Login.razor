@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Logging
 
-@inject ITokenProvider TokenProvider
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<Login> Logger
 
@@ -53,28 +52,28 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            token = await TokenProvider.GetTokenAsync();
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                var user = await MagicApi.GetUserAsync();
-                username = user?.Username;
-                await OnSuccessfulLogin.InvokeAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to check user");
-        }
-        finally
-        {
-            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(username))
-            {
-                await TokenProvider.StoreTokenAsync(null);
-                token = null;
-            }
-        }
+        //try
+        //{
+        //    token = await TokenProvider.GetTokenAsync();
+        //    if (!string.IsNullOrWhiteSpace(token))
+        //    {
+        //        var user = await MagicApi.GetUserAsync();
+        //        username = user?.Username;
+        //        await OnSuccessfulLogin.InvokeAsync();
+        //    }
+        //}
+        //catch (Exception ex)
+        //{
+        //    Logger.LogError(ex, "Failed to check user");
+        //}
+        //finally
+        //{
+        //    if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(username))
+        //    {
+        //        await TokenProvider.StoreTokenAsync(null);
+        //        token = null;
+        //    }
+        //}
         await base.OnInitializedAsync();
     }
 
@@ -92,7 +91,6 @@ else
         username = model.Username;
         Logger.LogInformation("Token: {Token}", token);
 
-        await TokenProvider.StoreTokenAsync(token);
         await OnSuccessfulLogin.InvokeAsync();
     }
 }
