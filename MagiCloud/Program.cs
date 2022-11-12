@@ -1,3 +1,4 @@
+using Duende.IdentityServer.Services;
 using Goggles;
 using MagiCloud;
 using MagiCloud.Configuration;
@@ -5,13 +6,13 @@ using MagiCloud.DataManager;
 using MagiCloud.Db;
 using MagiCommon;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,10 +27,15 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddIdentityServer()
-    .AddApiAuthorization<IdentityUser, ApplicationDbContext>();
+    .AddApiAuthorization<IdentityUser, ApplicationDbContext>(options => {
+        options.IdentityResources["openid"].UserClaims.Add("name");
+        options.ApiResources.Single().UserClaims.Add("name");
+    });
 
 builder.Services.AddAuthentication()
     .AddIdentityServerJwt();
+
+builder.Services.AddTransient<IProfileService, ProfileService>();
 
 // Other setup
 builder.Services.AddControllersWithViews();
@@ -62,14 +68,6 @@ builder.Services.AddCors(options =>
         .AllowCredentials()
     )
 );
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(o =>
-    {
-        //o.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
-        o.SlidingExpiration = true;
-        o.LoginPath = "/authentiation/login";
-    });
 
 var app = builder.Build();
 

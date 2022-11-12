@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Net.Http;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -18,9 +19,11 @@ builder.Services
     .AddBootstrap5Providers()
     .AddFontAwesomeIcons();
 
-builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(c => 
-    c.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-).ConfigurePrimaryHttpMessageHandler<BaseAddressAuthorizationMessageHandler>();
+builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
+    .AddHttpMessageHandler<BaseAddressAuthorizationMessageHandler>();
+
+// Supply HttpClient instances that include access tokens when making requests to the server project
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(IMagiCloudAPI)));
 
 builder.Services.AddApiAuthorization();
 

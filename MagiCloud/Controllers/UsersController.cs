@@ -39,7 +39,8 @@ public class UsersController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetUserAsync()
     {
-        var userId = User.Identity.Name;
+        var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+        if (userId == null) { return Forbid(); }
         var user = await _elastic.GetUserAsync(userId);
         if (user == null)
         {

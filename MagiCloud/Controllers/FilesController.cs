@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers;
@@ -29,7 +30,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+            if (userId == null) { return Forbid(); }
             var docs = await _elastic.GetDocumentsAsync(userId, deleted);
             return Json(docs);
         }
@@ -47,7 +49,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User?.Identity?.Name;
+            var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+            if (userId == null) { return Forbid(); }
             var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
             if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
             {
@@ -75,7 +78,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+            if (userId == null) { return Forbid(); }
             await _elastic.SetupIndicesAsync();
             var docId = await _elastic.IndexDocumentAsync(userId, file);
             var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
@@ -96,7 +100,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+            if (userId == null) { return Forbid(); }
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
             if (result == FileAccessResult.FullAccess)
             {

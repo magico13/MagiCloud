@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers;
@@ -29,7 +30,8 @@ public class SearchController : Controller
             {
                 return BadRequest(new { Message = "Invalid query" });
             }
-            var userId = User.Identity.Name;
+            var userId = User.FindFirst(ClaimsIdentity.DefaultNameClaimType)?.Value;
+            if (userId == null) { return Forbid(); }
             var docs = await _elastic.SearchAsync(userId, query);
             return Json(docs);
         }

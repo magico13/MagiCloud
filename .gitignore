@@ -356,3 +356,4 @@ MigrationBackup/
 appsettings.Development.json
 .vscode/
 /MagiCloud/wwwroot
+/MagiCloud/identity.db

@@ -1,16 +1,23 @@
 ﻿@page "/"
 @using MagiCommon
 @using MagiCommon.Models
+@using Microsoft.AspNetCore.Authorization;
 @using Microsoft.Extensions.Logging
+
+@attribute [Authorize]
 
 @inject IMagiCloudAPI MagicApi
 @inject ILogger<Index> Logger
 
-<Login OnSuccessfulLogin=OnFilesChanged>
-    <Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder/>
-    <SearchBar OnSearch=OnSearch/>
-    <FilesComponent FileList=Files OnFolderChanged=OnFolderChanged/>
-</Login>
+@*<Login OnSuccessfulLogin=OnFilesChanged>
+    <Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder />
+    <SearchBar OnSearch=OnSearch />
+    <FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
+</Login>*@
+
+<Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder />
+<SearchBar OnSearch=OnSearch />
+<FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
 
 @code
 {
