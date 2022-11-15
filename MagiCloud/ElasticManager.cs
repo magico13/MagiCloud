@@ -1,6 +1,5 @@
 ﻿using Goggles;
 using MagiCloud.Configuration;
-using MagiCommon;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
@@ -27,12 +26,6 @@ public interface IElasticManager
     Task<FileAccessResult> DeleteFileAsync(string userId, string id);
     Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
 
-    Task<User> GetUserAsync(string userId);
-    Task<User> CreateUserAsync(User user);
-    Task<AuthToken> LoginUserAsync(LoginRequest request);
-    Task<AuthToken> VerifyTokenAsync(string token);
-    Task RemoveExpiredTokensAsync();
-
     FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file);
 }
 
@@ -47,18 +40,15 @@ public class ElasticManager : IElasticManager
 
     private readonly ElasticSettings _settings;
     private readonly ILogger<ElasticManager> _logger;
-    private readonly IHashService _hashService;
     private readonly ILens _lens;
 
     public ElasticManager(
         IOptionsSnapshot<ElasticSettings> options,
         ILogger<ElasticManager> logger,
-        IHashService hashService,
         ILens lens)
     {
         _settings = options.Value;
         _logger = logger;
-        _hashService = hashService;
         _lens = lens;
     }
 
@@ -71,14 +61,6 @@ public class ElasticManager : IElasticManager
         var connectionSettings = new ConnectionSettings(new Uri(_settings.Url))
             .DefaultMappingFor<ElasticFileInfo>(i => i
                 .IndexName(FILES_INDEX)
-                .IdProperty(p => p.Id)
-            )
-            .DefaultMappingFor<User>(i => i
-                .IndexName(USER_INDEX)
-                .IdProperty(p => p.Id)
-            )
-            .DefaultMappingFor<AuthToken>(i => i
-                .IndexName(TOKEN_INDEX)
                 .IdProperty(p => p.Id)
             )
             .EnableDebugMode()
@@ -409,162 +391,6 @@ public class ElasticManager : IElasticManager
         return file.MimeType;
     }
 
-    public async Task<User> CreateUserAsync(User user)
-    {
-        Setup();
-        // Check if a user with the provided username exists, if so throw
-        var result = await Client.SearchAsync<User>(s =>
-            s.Query(q =>
-                q.Term(t => t
-                    .Field(f => f.Username.Suffix("keyword"))
-                    .Value(user.Username)
-                )
-            )
-        );
-
-        if (result.Total > 0)
-        {
-            // exists
-            return null;
-        }
-
-        var createResult = await Client.IndexDocumentAsync(user);
-        ThrowIfInvalid(createResult);
-        
-        user.Id = createResult.Id;
-        user.Password = null;
-
-        return user;
-    }
-
-    public async Task<User> GetUserAsync(string userId)
-    {
-        Setup();
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            var userResult = await Client.GetAsync<User>(userId);
-            if (!userResult.Found)
-            {
-                return null;
-            }
-            ThrowIfInvalid(userResult);
-            var user = userResult.Source;
-            user.Password = null;
-            user.Id = userId;
-            return user;
-        }
-        return null;
-    }
-
-    public async Task<AuthToken> LoginUserAsync(LoginRequest request)
-    {
-        Setup();
-        User found = null;
-        var result = await Client.SearchAsync<User>(s =>
-            s.Query(q =>
-                q.Term(t => t
-                    .Field(f => f.Username.Suffix("keyword"))
-                    .Value(request.Username)
-                )
-            )
-        );
-        if (result.IsValid && result.Total > 0)
-        {
-            var hit = result.Hits.FirstOrDefault();
-            found = hit.Source;
-            found.Id = hit.Id;
-        }
-
-        //verification
-        var valid = !string.IsNullOrWhiteSpace(found?.Id)
-            && !found.IsLocked
-            && string.Equals(found.Username, request.Username, StringComparison.Ordinal)
-            && string.Equals(found.Password, request.Password, StringComparison.Ordinal);
-
-        if (!valid)
-        {
-            _logger.LogInformation("Invalid login for username {Username}", request.Username);
-        }
-
-        if (!valid && found?.IsLocked == false)
-        {
-            // If there is an account, increase the failed login counter
-            // If failed logins > 3, lock the account
-            found.LoginFailures++;
-            if (found.LoginFailures > 3)
-            {
-                _logger.LogWarning("Locking account {Id} due to login failures.", found.Id);
-                found.IsLocked = true;
-            }
-            ThrowIfInvalid(await Client.IndexDocumentAsync(found));
-        }
-        else if (valid)
-        {
-            if (found.LoginFailures > 0)
-            {
-                _logger.LogInformation("Resetting login failures for account {Id}. Previous Failures: {Count}", found.Id, found.LoginFailures);
-                found.LoginFailures = 0;
-                ThrowIfInvalid(await Client.IndexDocumentAsync(found));
-            }
-
-            var rawToken = Guid.NewGuid().ToString();
-            var token = new AuthToken
-            {
-                Id = _hashService.GeneratePasswordHash(rawToken), //we store the hash of the guid, not the guid itself
-                Creation = DateTimeOffset.Now,
-                LinkedUserId = found.Id,
-                Name = request.TokenName,
-                LastUpdated = DateTimeOffset.Now,
-                Timeout = request.DesiredTimeout,
-                Expiration = request.DesiredExpiration
-            };
-            var storeTokenResult = await Client.IndexDocumentAsync(token);
-            ThrowIfInvalid(storeTokenResult);
-            token.Id = rawToken; //callers must pass the original guid as the token so we give it to them here. We cannot retrieve it, only check it
-            return token;
-        }
-        return null;
-
-    }
-
-    public async Task<AuthToken> VerifyTokenAsync(string token)
-    {
-        Setup();
-        var hashedToken = _hashService.GeneratePasswordHash(token); //caller passes original guid token, we compare hashes. Never have original token stored.
-        var result = await Client.GetAsync<AuthToken>(hashedToken);
-        if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
-        {
-            _logger.LogWarning("Token with id {Id} not found.", hashedToken);
-            return null;
-        }
-        ThrowIfInvalid(result);
-        var fullToken = result.Source;
-        var expired = false;
-        if (fullToken.Timeout > 0)
-        {
-            if (DateTimeOffset.Now > fullToken.LastUpdated + TimeSpan.FromSeconds(fullToken.Timeout.Value))
-            {
-                _logger.LogWarning("Token {Id} has expired from inactivity.", hashedToken);
-                expired = true;
-            }
-        }
-        if (DateTimeOffset.Now > fullToken.Expiration)
-        {
-            _logger.LogWarning("Token {Id} has expired.", hashedToken);
-            expired = true;
-        }
-        if (expired)
-        {
-            var response = await Client.DeleteAsync<AuthToken>(hashedToken);
-            ThrowIfInvalid(response);
-            return null;
-        }
-        fullToken.LastUpdated = DateTimeOffset.Now;
-        var updateResult = await Client.IndexDocumentAsync(fullToken);
-        ThrowIfInvalid(updateResult);
-        return fullToken;
-    }
-
     public FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
     {
         if (string.Equals(file.UserId, userId, StringComparison.Ordinal))
@@ -576,52 +402,6 @@ public class ElasticManager : IElasticManager
             return FileAccessResult.ReadOnly;
         }
         return FileAccessResult.NotPermitted;
-    }
-
-    public async Task RemoveExpiredTokensAsync()
-    {
-        Setup();
-        var result = await Client.SearchAsync<AuthToken>(s => s
-            .Size(10000)
-            .Query(q => q
-                .DateRange(c => c
-                    .Name("date_expiration")
-                    .Field(f => f.Expiration)
-                    .GreaterThan("2000-01-01")
-                    .LessThan(DateMath.Now)
-                ) || q
-                .LongRange(e => e
-                    .Name("timeout_exists")
-                    .Field(f => f.Timeout)
-                    .GreaterThan(0)
-                )
-            ));
-        if (result.IsValid)
-        {
-            var list = new List<AuthToken>();
-            foreach (var hit in result.Hits)
-            {
-                var fullToken = hit.Source;
-                var expired = false;
-                if (fullToken.Timeout > 0)
-                {
-                    if (DateTimeOffset.Now > fullToken.LastUpdated + TimeSpan.FromSeconds(fullToken.Timeout.Value))
-                    {
-                        _logger.LogWarning("Token {Id} has expired from inactivity.", fullToken.Id);
-                        expired = true;
-                    }
-                }
-                if (DateTimeOffset.Now > fullToken.Expiration)
-                {
-                    _logger.LogWarning("Token {Id} has expired.", fullToken.Id);
-                    expired = true;
-                }
-                if (expired)
-                {
-                    var response = await Client.DeleteAsync<AuthToken>(fullToken.Id);
-                }
-            }
-        }
     }
 
     private void ThrowIfInvalid(ResponseBase response)

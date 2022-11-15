@@ -12,7 +12,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Linq;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,25 +25,27 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 
 builder.Services.AddDefaultIdentity<IdentityUser>()
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddIdentityServer()
-    .AddApiAuthorization<IdentityUser, ApplicationDbContext>(options => {
-        options.IdentityResources["openid"].UserClaims.Add("name");
-        options.ApiResources.Single().UserClaims.Add("name");
-    });
+    .AddApiAuthorization<IdentityUser, ApplicationDbContext>();
 
 builder.Services.AddAuthentication()
-    .AddIdentityServerJwt();
+    .AddIdentityServerJwt()
+    .AddCookie();
 
 builder.Services.AddTransient<IProfileService, ProfileService>();
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Remove("role");
+
+builder.Services.Configure<IdentityOptions>(options =>
+    options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier);
 
 // Other setup
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
-builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
 
 builder.Services.AddScoped<IElasticManager, ElasticManager>();
 builder.Services.AddScoped<IDataManager, FileSystemDataManager>();

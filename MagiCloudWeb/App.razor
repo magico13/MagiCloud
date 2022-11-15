@@ -5,7 +5,9 @@
                 <NotAuthorized>
                     @if (context.User.Identity?.IsAuthenticated != true)
                     {
-                        <RedirectToLogin />
+                        <LayoutView Layout="@typeof(MainLayout)">
+                            <RedirectToLogin />
+                        </LayoutView>
                     }
                     else
                     {

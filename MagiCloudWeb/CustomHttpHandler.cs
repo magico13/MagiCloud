@@ -1,10 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-using System;
 
 namespace MagiCloudWeb;
 

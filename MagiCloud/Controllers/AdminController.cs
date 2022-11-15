@@ -27,15 +27,6 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost]
-    [Route("cleanTokens")]
-    public async Task<IActionResult> RemoveExpiredTokensAsync()
-    {
-        await _elastic.SetupIndicesAsync();
-        await _elastic.RemoveExpiredTokensAsync();
-        return Ok();
-    }
-
-    [HttpPost]
     [Route("extractText")]
     public async Task<IActionResult> ExtractText([FromQuery] bool force = false, [FromQuery] string mimeTypes = null)
     {

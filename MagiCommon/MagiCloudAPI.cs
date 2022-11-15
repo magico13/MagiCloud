@@ -18,12 +18,6 @@ namespace MagiCommon
         Task<Stream> GetFileContentAsync(string id);
         Uri GetFileContentUri(string id, bool download);
         Task RemoveFileAsync(string id, bool permanent);
-
-
-        Task<User> GetUserAsync();
-        Task<User> CreateUserAsync(User user);
-        Task<AuthToken> GetAuthTokenAsync(LoginRequest request);
-        Task<AuthToken> ReauthTokenAsync(string token);
     }
 
     public class MagiCloudAPI : IMagiCloudAPI
@@ -118,37 +112,5 @@ namespace MagiCommon
         }
 
         public async Task RemoveFileAsync(string id, bool permanent) => await Client.DeleteAsync($"api/files/{id}?permanent={permanent}");
-
-        public async Task<User> GetUserAsync()
-        {
-            var response = await Client.GetAsync($"api/users");
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound || response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                return null;
-            }
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<User>();
-        }
-
-        public async Task<User> CreateUserAsync(User user)
-        {
-            var response = await Client.PostAsJsonAsync("api/users", user);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<User>();
-        }
-
-        public async Task<AuthToken> GetAuthTokenAsync(LoginRequest request)
-        {
-            var response = await Client.PostAsJsonAsync("api/users/login", request);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<AuthToken>();
-        }
-
-        public async Task<AuthToken> ReauthTokenAsync(string token)
-        {
-            var response = await Client.PutAsync($"api/users/reauth?token={token}", null);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<AuthToken>();
-        }
     }
 }

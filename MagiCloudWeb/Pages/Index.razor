@@ -25,6 +25,12 @@
 
     private List<SearchResult> Files { get; set; }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await OnFilesChanged();
+    }
+
     public async Task OnFilesChanged()
     {
         try
