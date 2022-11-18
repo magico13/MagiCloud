@@ -1,7 +1,7 @@
 ﻿using MagiCommon.Models;
 using System;
 
-namespace MagiCloudWeb.Models;
+namespace MagiCloud.Models;
 
 public class FileWrapper
 {

@@ -1,12 +1,13 @@
 ﻿@page "/"
 @using MagiCommon
+@using MagiCommon.Extensions
 @using MagiCommon.Models
 @using Microsoft.AspNetCore.Authorization;
 @using Microsoft.Extensions.Logging
 
 @attribute [Authorize]
 
-@inject IMagiCloudAPI MagicApi
+@inject IElasticManager Elastic
 @inject ILogger<Index> Logger
 
 @*<Login OnSuccessfulLogin=OnFilesChanged>
@@ -21,6 +22,10 @@
 
 @code
 {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
     private string CurrentFolder { get; set; }
 
     private List<SearchResult> Files { get; set; }
@@ -28,6 +33,8 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
         await OnFilesChanged();
     }
 
@@ -35,7 +42,7 @@
     {
         try
         {
-            Files = await MagicApi.GetFilesAsync(false);
+            Files = await Elastic.GetDocumentsAsync(UserId, false);
         }
         catch (Exception ex)
         {

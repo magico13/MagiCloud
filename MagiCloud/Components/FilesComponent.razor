@@ -1,0 +1,311 @@
+﻿@using Blazorise
+@using Humanizer
+@using MagiCommon
+@using MagiCommon.Comparers.ElasticFileInfoComparers;
+@using MagiCommon.Extensions
+@using MagiCommon.Models
+@using Microsoft.Extensions.Logging
+@using System.IO
+
+@inject HttpClient Client
+@inject ILogger<FilesComponent> Logger
+@inject IElasticManager Elastic
+
+<h3>Files</h3>
+@if (FileList == null)
+{
+    <Paragraph>
+        Loading files...
+    </Paragraph>
+}
+else if (!FileList.Any())
+{
+    <Paragraph>
+        No files found...
+    </Paragraph>
+}
+else
+{
+    <Paragraph>@CurrentFolder</Paragraph>
+    <DataGrid TItem=FileWrapper
+                Data=Files
+                DetailRowTrigger=@(w => w.Item?.BackingFileInfo?.Highlights?.Any() == true)
+                Sortable
+                SelectionMode=DataGridSelectionMode.Single
+                CommandMode=DataGridCommandMode.Default
+                Responsive
+                PageSize=10
+                ShowPager
+                ShowPageSizes
+                Editable
+                EditMode=DataGridEditMode.Inline
+                RowRemoved=RowRemoved
+                RowUpdated=RowUpdated>
+        <DataGridColumns>
+            <DataGridCommandColumn NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
+                <SaveCommandTemplate>
+                    <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Save"/> </Button>
+                </SaveCommandTemplate>
+                <CancelCommandTemplate>
+                    <Button ElementId="btnCancel" Color="Color.Secondary" Clicked="@context.Clicked"> <Icon Name="IconName.Times"/> </Button>
+                </CancelCommandTemplate>
+                <EditCommandTemplate>
+                    <Button ElementId="btnEdit" Color="Color.Primary" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Edit"/> </Button>
+                </EditCommandTemplate>
+                <DeleteCommandTemplate>
+                    <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Delete"/> </Button>
+                </DeleteCommandTemplate>
+            </DataGridCommandColumn>
+            <DataGridColumn Field="Name" Caption="File Name" Editable>
+                <DisplayTemplate>
+                    @if(context.BackingFileInfo != null)
+                    {
+                        <Button Type="ButtonType.Link" To="@GetFileContentUri(context.BackingFileInfo.Id, true)" Target="Target.Blank">
+                            <Icon Name="IconName.Download" />
+                        </Button>
+                        <Anchor To="@GetFileContentUri(context.BackingFileInfo.Id, false)" Target="Target.Blank">
+                            @context.BackingFileInfo.GetFileName()
+                        </Anchor>
+                    }
+                    else
+                    {
+                        <Button Clicked="@(() => FilterToFolder(Path.Combine(CurrentFolder, context.Name)))">
+                            @context.Name
+                        </Button>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn Field="Size" Caption="File Size">
+                <DisplayTemplate>
+                    @if (context.Size.HasValue)
+                    {
+                        <Span>
+                            @((context.Size).Value.Bytes().ToString("#.##"))
+                        </Span>
+                    }
+                    else
+                    {
+                        @string.Empty
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn Field="MimeType" Caption="File Type" />
+            <DataGridColumn Field="LastUpdated" Caption="Last Update">
+                <DisplayTemplate>
+                    <Tooltip Text="@(context.LastUpdated?.LocalDateTime.ToString())">
+                        @(context.LastUpdated?.LocalDateTime.Humanize())
+                    </Tooltip>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn Field="IsPublic" Caption="Public?" >
+                <DisplayTemplate>
+                    @if (context.IsPublic == true)
+                    {
+                        <Button Clicked="@(() => UpdateVisibility(context, false))">
+                            <Icon Name="IconName.Eye"/>
+                        </Button>
+                    }
+                    else if (context.IsPublic == false)
+                    {
+                        <Button Clicked="@(() => UpdateVisibility(context, true))">
+                            <Icon Name="IconName.EyeSlash" IconStyle="IconStyle.Regular"/>
+                        </Button>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+        <DetailRowTemplate>
+            @if(context?.BackingFileInfo?.Highlights?.Any() == true)
+            {
+                // print out all the highlights
+               @((MarkupString)string.Join("<br/>", context.BackingFileInfo.Highlights))
+            }
+        </DetailRowTemplate>
+    </DataGrid>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnFolderChanged { get; set; }
+
+    [Parameter]
+    public List<SearchResult> FileList
+    {
+        get => _files;
+        set
+        {
+            _files = value;
+            SortFiles();
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await base.OnInitializedAsync();
+    }
+
+
+    private List<FileWrapper> Files { get; set; }
+    private string _folder = "/";
+    private string CurrentFolder
+    {
+        get => _folder;
+        set
+        {
+            if (_folder != value)
+            {
+                _folder = value;
+                OnFolderChanged.InvokeAsync(_folder);
+            }
+        }
+    }
+
+    private List<SearchResult> _files;
+
+    public void SortFiles()
+    {
+        try
+        {
+            if (_files?.Any() == true)
+            {
+                _files.Sort(new NameComparer());
+                FilterToFolder(CurrentFolder);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error setting file list");
+        }
+    }
+
+    private void FilterToFolder(string folder)
+    {
+        folder = Path.GetFullPath(folder);
+        Logger.LogWarning("Filtering to folder {Folder}", folder);
+        CurrentFolder = folder;
+        Files = new List<FileWrapper>();
+        if (folder.Length > 1)
+        {
+            Files.Add(new FileWrapper { Name = ".." });
+        }
+        Files.AddRange(GetDirectoriesInFolder(FileList, folder));
+        Files.AddRange(GetFilesInFolder(FileList, folder, false));
+    }
+
+    private static List<FileWrapper> GetFilesInFolder(IEnumerable<SearchResult> files, string folder, bool includeChildren)
+    {
+        if (includeChildren)
+        {
+            return files.Where(f => !Path.GetRelativePath(folder, f.GetFullPath()).StartsWith("..")).Select(f => new FileWrapper(f)).ToList();
+        }
+        return files.Where(f => Path.GetRelativePath(folder, f.GetFullPath()) == f.GetFileName()).Select(f => new FileWrapper(f)).ToList();
+    }
+
+    private List<FileWrapper> GetDirectoriesInFolder(IEnumerable<SearchResult> files, string folder)
+    {
+        var dirs = new HashSet<string>();
+        foreach (var file in files)
+        {
+            var split = Path.GetRelativePath(folder, file.GetFullPath()).Split('/');
+            if (split.Length > 1)
+            {
+                var firstPartOfPath = split.First();
+                if (!string.IsNullOrWhiteSpace(firstPartOfPath) && !firstPartOfPath.StartsWith(".."))
+                {
+                    dirs.Add(firstPartOfPath);
+                }
+            }
+        }
+        var list = new List<FileWrapper>();
+        foreach (var dir in dirs)
+        {
+            var filesInFolder = GetFilesInFolder(files, Path.Combine(folder, dir), true);
+            //Logger.LogInformation("{Count} files in folder {Name}", filesInFolder.Count, Path.Combine(folder, dir));
+            list.Add(new FileWrapper
+                {
+                    Name = dir,
+                    IsPublic = filesInFolder.TrueForAll(f => f.IsPublic == true),
+                    LastUpdated = filesInFolder.Max(f => f.LastUpdated),
+                    Size = filesInFolder.Sum(f => f.Size)
+                });
+        }
+        return list;
+    }
+
+    private string GetFileContentUri(string id, bool download = false)
+    {
+        //var path = MagicApi.GetFileContentUri(id, download);
+        var builder = new UriBuilder(new Uri(Client.BaseAddress, $"api/filecontent/{id}"))
+        {
+            Query = $"download={download}"
+        };
+        return builder.ToString();
+    }
+
+    public async Task RowRemoved(FileWrapper wrapper)
+    {
+        var file = wrapper.BackingFileInfo;
+        if (file == null)
+        {
+            return;
+        }
+        Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
+        file.IsDeleted = true;
+        FileList.Remove(file);
+        //await MagicApi.RemoveFileAsync(file.Id, false);
+        var (result, doc) = await Elastic.GetDocumentAsync(UserId, file.Id, false);
+        if (result == FileAccessResult.FullAccess)
+        {
+            // Mark file as deleted but don't permanently delete the file
+            doc.IsDeleted = true;
+            await Elastic.IndexDocumentAsync(UserId, doc);
+        }
+
+        FilterToFolder(CurrentFolder);
+    }
+
+    public async Task RowUpdated(SavedRowItem<FileWrapper, Dictionary<string, object>> saved)
+    {
+        var file = saved.Item.BackingFileInfo;
+        if (file == null)
+        {
+            return;
+        }
+        file.Name = saved.Item.Name;
+        Logger.LogInformation("Updating file {Name} ({Id})", file.Name, file.Id);
+        await Elastic.IndexDocumentAsync(UserId, file);
+        FilterToFolder(CurrentFolder);
+    }
+
+    public async Task UpdateVisibility(FileWrapper wrapper, bool visible)
+    {
+        var file = wrapper.BackingFileInfo;
+        if (file == null)
+        {
+            var fullPath = Path.Combine(CurrentFolder, wrapper.Name);
+            Logger.LogInformation("Updating visibility for all items under folder {Path}", fullPath);
+            foreach (var item in GetFilesInFolder(FileList, fullPath, true))
+            {
+                await UpdateVisibility(item.BackingFileInfo, visible);
+            }
+        }
+        else
+        {
+            await UpdateVisibility(file, visible);
+        }
+        FilterToFolder(CurrentFolder);
+    }
+
+    private async Task UpdateVisibility(ElasticFileInfo file, bool visible)
+    {
+        Logger.LogInformation("Setting visibility of {Name} ({Id}) to {Visibility}", file.Name, file.Id, visible);
+        file.IsPublic = visible;
+        await Elastic.IndexDocumentAsync(UserId, file);
+    }
+}

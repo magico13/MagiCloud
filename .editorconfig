@@ -160,6 +160,9 @@ csharp_style_prefer_pattern_matching = true:suggestion
 csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
 csharp_style_prefer_not_pattern = true:suggestion
 csharp_style_prefer_extended_property_pattern = true:suggestion
+csharp_style_prefer_method_group_conversion = true:silent
+csharp_style_prefer_top_level_statements = true:silent
+csharp_style_prefer_utf8_string_literals = true:suggestion
 
 [*.{cs,vb}]
 #### Naming styles ####

@@ -25,8 +25,6 @@ public interface IElasticManager
     Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
     Task<FileAccessResult> DeleteFileAsync(string userId, string id);
     Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
-
-    FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file);
 }
 
 
@@ -391,7 +389,7 @@ public class ElasticManager : IElasticManager
         return file.MimeType;
     }
 
-    public FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
+    private FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
     {
         if (string.Equals(file.UserId, userId, StringComparison.Ordinal))
         {

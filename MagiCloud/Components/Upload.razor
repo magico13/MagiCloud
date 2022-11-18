@@ -1,9 +1,12 @@
+@using MagiCloud.DataManager;
 @using MagiCommon
+@using MagiCommon.Extensions
+@using MagiCommon.Models;
 @using Microsoft.Extensions.Logging
 @using System 
 @using System.IO
 
-@inject IMagiCloudAPI MagicApi
+@inject FileStorageService FileStorage
 @inject ILogger<Upload> Logger
 
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
@@ -30,10 +33,21 @@
     private List<string> errorMessages = new();
     private FilePicker filePicker;
 
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
     [Parameter]
     public string CurrentDirectory { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await base.OnInitializedAsync();
+    }
 
     private async Task OnFilesChanged(FileChangedEventArgs e)
     {
@@ -50,7 +64,7 @@
         {
             Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
             var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
-            var info = new MagiCommon.Models.ElasticFileInfo
+            var info = new ElasticFileInfo
             {
                 Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
                 Extension = Path.GetExtension(file.Name).TrimStart('.'),
@@ -59,7 +73,8 @@
                 Size = file.Size
             };
             using var fileStream = file.OpenReadStream(maxFileSize);
-            await MagicApi.UploadFileAsync(info, fileStream);
+            await FileStorage.StoreFile(UserId, info, fileStream);
+
         }
         catch (Exception ex)
         {
@@ -82,4 +97,5 @@
             await OnUploadComplete.InvokeAsync();
         }
     }
+
 }

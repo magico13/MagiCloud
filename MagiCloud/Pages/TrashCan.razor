@@ -1,0 +1,121 @@
+﻿@page "/trash"
+@using MagiCommon
+@using MagiCommon.Comparers.ElasticFileInfoComparers;
+@using MagiCommon.Extensions
+@using MagiCommon.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
+
+@attribute [Authorize]
+
+@inject IElasticManager Elastic
+@inject ILogger<TrashCan> Logger
+
+<h3>Trash Can</h3>
+
+@if (files?.Any() == true)
+{
+    <Button Color="Color.Danger" Clicked="@EmptyTrash">Empty Trash</Button>
+    <DataGrid
+            TItem="SearchResult"
+            Data="@files"
+            PageSize=10
+            Responsive
+            ShowPager
+            ShowPageSizes
+            Sortable
+            SelectionMode="DataGridSelectionMode.Single">
+        <DataGridColumns>
+            <DataGridColumn Field="@nameof(ElasticFileInfo.Name)" Caption="Name">
+                <DisplayTemplate>
+                     @context.GetFullPath()
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn Field="@nameof(ElasticFileInfo.MimeType)" Caption="File Type" />
+            <DataGridColumn Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Updated">
+                <DisplayTemplate>
+                    @(context.LastUpdated.LocalDateTime)
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn Sortable="false">
+                <DisplayTemplate>
+                    <Button Color="Color.Primary" Clicked="@(async () => await UndeleteAsync(context))">Restore</Button>
+                    <Button Color="Color.Danger" Clicked="@(async () => await PermanentlyDeleteAsync(context.Id))">Perma-Delete</Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+    </DataGrid>
+}
+else
+{
+    <Paragraph>
+        No files in trash...
+    </Paragraph>
+}
+
+
+@code{
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
+    private List<SearchResult> files;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await GetFilesAsync();
+    }
+
+    private async Task GetFilesAsync()
+    {
+        try
+        {
+            files = null;
+            var fileList = await Elastic.GetDocumentsAsync(UserId, true);
+            if (fileList?.Any() == true)
+            {
+                fileList.Sort(new NameComparer());
+                files = fileList;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting file list");
+        }
+    }
+
+    private async Task PermanentlyDeleteAsync(string id)
+    {
+        await DeleteFile(id);
+        files.RemoveAll(f => f.Id == id);
+    }
+
+    private async Task UndeleteAsync(SearchResult fileInfo)
+    {
+        fileInfo.IsDeleted = false;
+        await Elastic.IndexDocumentAsync(UserId, fileInfo);
+        files.Remove(fileInfo);
+    }
+
+    private async Task EmptyTrash()
+    {
+        foreach (var file in new List<SearchResult>(files) ?? new())
+        {
+            await DeleteFile(file.Id);
+            files.Remove(file);
+        }
+    }
+
+    private async Task DeleteFile(string id)
+    {
+        var (result, _) = await Elastic.GetDocumentAsync(UserId, id, false);
+        if (result == FileAccessResult.FullAccess)
+        {
+            await Elastic.DeleteFileAsync(UserId, id);
+        }
+        
+    }
+}

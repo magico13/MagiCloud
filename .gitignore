@@ -355,5 +355,4 @@ MigrationBackup/
 # development runtime settings
 appsettings.Development.json
 .vscode/
-/MagiCloud/wwwroot
 /MagiCloud/identity.db
