@@ -1,0 +1,45 @@
+﻿@using MagiCommon
+@using MagiCommon.Extensions
+@using MagiCommon.Models
+
+@inject IElasticManager Elastic
+
+<Form>
+    <TextEdit Placeholder="Search..." @bind-Text="SearchQuery" Float="Float.Start" Width="Width.Is75"></TextEdit>
+    <Button Color="Color.Primary" Clicked="@Search" Type="ButtonType.Submit" PreventDefaultOnSubmit Width="Width.Auto">Search</Button>
+</Form>
+
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
+    [Parameter]
+    public List<SearchResult> Results { get; set; }
+
+    [Parameter]
+    public EventCallback<List<SearchResult>> OnSearch { get; set; }
+
+    public string SearchQuery { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await base.OnInitializedAsync();
+    }
+
+    public async Task Search()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            Results = await Elastic.SearchAsync(UserId, SearchQuery);
+        }
+        else
+        {
+            Results = await Elastic.GetDocumentsAsync(UserId, false);
+        }
+        await OnSearch.InvokeAsync(Results);
+    }
+}

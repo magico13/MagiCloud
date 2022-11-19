@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using MagiCommon.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
@@ -29,7 +30,8 @@ public class SearchController : Controller
             {
                 return BadRequest(new { Message = "Invalid query" });
             }
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             var docs = await _elastic.SearchAsync(userId, query);
             return Json(docs);
         }

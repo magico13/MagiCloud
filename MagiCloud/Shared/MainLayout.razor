@@ -1,0 +1,26 @@
+﻿@inherits LayoutComponentBase
+
+<Layout Sider>
+    <LayoutSider>
+        <LayoutSiderContent>
+            <SideMenu />
+        </LayoutSiderContent>
+    </LayoutSider>
+    <Layout>
+        <LayoutHeader Background="Background.Primary">
+            <Heading Color="TextColor.White">
+                <Container>
+                    <Span>
+                        MagiCloud
+                        <LoginDisplay />
+                    </Span>
+                </Container>
+            </Heading>
+        </LayoutHeader>
+        <LayoutContent Background="Background.Body">
+            <Container>
+                @Body
+            </Container>
+        </LayoutContent>
+    </Layout>
+</Layout>

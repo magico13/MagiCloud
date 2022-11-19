@@ -1,6 +1,8 @@
 ﻿using MagiCloud.DataManager;
+using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
@@ -15,12 +17,18 @@ public class FilesController : Controller
     private readonly ILogger<FilesController> _logger;
     private readonly IElasticManager _elastic;
     private readonly IDataManager _dataManager;
+    private readonly UserManager<IdentityUser> _userManager;
 
-    public FilesController(ILogger<FilesController> logger, IElasticManager elastic, IDataManager dataManager)
+    public FilesController(
+        ILogger<FilesController> logger,
+        IElasticManager elastic,
+        IDataManager dataManager,
+        UserManager<IdentityUser> userManager)
     {
         _logger = logger;
         _elastic = elastic;
         _dataManager = dataManager;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -29,7 +37,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId is null) { return Forbid(); }
             var docs = await _elastic.GetDocumentsAsync(userId, deleted);
             return Json(docs);
         }
@@ -47,7 +56,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User?.Identity?.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
             if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
             {
@@ -75,7 +85,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             await _elastic.SetupIndicesAsync();
             var docId = await _elastic.IndexDocumentAsync(userId, file);
             var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
@@ -96,7 +107,8 @@ public class FilesController : Controller
     {
         try
         {
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
             if (result == FileAccessResult.FullAccess)
             {

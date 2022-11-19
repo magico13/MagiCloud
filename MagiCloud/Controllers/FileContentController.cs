@@ -48,7 +48,7 @@ public class FileContentController : ControllerBase
         Stream stream = null;
         try
         {
-            var userId = User?.Identity?.Name;
+            var userId = User.GetUserId();
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
             
             if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
@@ -61,10 +61,7 @@ public class FileContentController : ControllerBase
                     if (string.IsNullOrWhiteSpace(doc.MimeType))
                     {
                         new FileExtensionContentTypeProvider().TryGetContentType(doc.GetFileName(), out var type);
-                        if (type is null)
-                        {
-                            type = "application/octet-stream";
-                        }
+                        type ??= "application/octet-stream";
                         doc.MimeType = type;
                         _logger.LogWarning("MimeType data missing for document {DocId}, using type {ContentType}", doc.Id, doc.MimeType);
 
@@ -125,7 +122,8 @@ public class FileContentController : ControllerBase
         try
         {
             //get the file info from the db, upload the file data, update the info in the db
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             if (file is null || file.Length < 0)
             {
                 return BadRequest();
@@ -171,7 +169,8 @@ public class FileContentController : ControllerBase
         try
         {
             //get the file info from the db, upload the file data, update the info in the db
-            var userId = User.Identity.Name;
+            var userId = User.GetUserId();
+            if (userId == null) { return Forbid(); }
             if (file is null || file.Length < 0)
             {
                 return BadRequest();

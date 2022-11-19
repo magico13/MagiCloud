@@ -1,0 +1,101 @@
+@using MagiCloud.DataManager;
+@using MagiCommon
+@using MagiCommon.Extensions
+@using MagiCommon.Models;
+@using Microsoft.Extensions.Logging
+@using System 
+@using System.IO
+
+@inject FileStorageService FileStorage
+@inject ILogger<Upload> Logger
+
+<Heading Size=HeadingSize.Is3>Upload Files</Heading>
+
+<Paragraph>
+    <FilePicker @ref=filePicker Multiple Upload=OnFileUpload ShowMode=FilePickerShowMode.List MaxChunkSize=Constants.UPLOAD_CHUNK_SIZE MaxFileSize=maxFileSize Ended=OnEnded Changed=OnFilesChanged/>
+</Paragraph>
+
+
+@if (errorMessages.Any())
+{
+    <UnorderedList>
+    @foreach (var msg in errorMessages)
+    {
+        <UnorderedListItem TextColor=TextColor.Danger>@msg</UnorderedListItem>
+    }
+    </UnorderedList>
+}
+
+@code {
+    private long maxFileSize = 1024 * 1024 * 1024 * 2L; //2 GB
+    private int uploaded = 0;
+    private int fileCount = 0;
+    private List<string> errorMessages = new();
+    private FilePicker filePicker;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
+    [Parameter]
+    public EventCallback OnUploadComplete { get; set; }
+    [Parameter]
+    public string CurrentDirectory { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task OnFilesChanged(FileChangedEventArgs e)
+    {
+        fileCount = e.Files.Length;
+        uploaded = 0;
+        errorMessages.Clear();
+        await Task.CompletedTask;
+    }
+
+    private async Task OnFileUpload(FileUploadEventArgs e)
+    {
+        var file = e.File;
+        try
+        {
+            Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
+            var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
+            var info = new ElasticFileInfo
+            {
+                Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
+                Extension = Path.GetExtension(file.Name).TrimStart('.'),
+                MimeType = file.Type,
+                LastModified = file.LastModified,
+                Size = file.Size
+            };
+            using var fileStream = file.OpenReadStream(maxFileSize);
+            await FileStorage.StoreFile(UserId, info, fileStream);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("File: {Filename} Error: {Error}",
+                file.Name, ex.Message);
+            errorMessages.Add($"{file.Name}: Error {ex.Message}");
+            file.Status = FileEntryStatus.Error;
+            file.ErrorMessage = ex.Message;
+
+            // Forcibly tell the FilePicker that the upload ended without success
+            await filePicker.FileEdit.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
+        }
+    }
+
+    private async Task OnEnded(FileEndedEventArgs e)
+    {
+        uploaded++;
+        if (uploaded >= fileCount)
+        {
+            await OnUploadComplete.InvokeAsync();
+        }
+    }
+
+}

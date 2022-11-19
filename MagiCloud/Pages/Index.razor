@@ -1,0 +1,62 @@
+﻿@page "/"
+@using MagiCommon
+@using MagiCommon.Extensions
+@using MagiCommon.Models
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.Extensions.Logging
+
+@attribute [Authorize]
+
+@inject IElasticManager Elastic
+@inject ILogger<Index> Logger
+
+@*<Login OnSuccessfulLogin=OnFilesChanged>
+    <Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder />
+    <SearchBar OnSearch=OnSearch />
+    <FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
+</Login>*@
+
+<Upload OnUploadComplete=OnFilesChanged CurrentDirectory=@CurrentFolder />
+<SearchBar OnSearch=OnSearch />
+<FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+
+    private string CurrentFolder { get; set; }
+
+    private List<SearchResult> Files { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        await OnFilesChanged();
+    }
+
+    public async Task OnFilesChanged()
+    {
+        try
+        {
+            Files = await Elastic.GetDocumentsAsync(UserId, false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update file list.");
+        }
+    }
+
+    public void OnSearch(List<SearchResult> results)
+    {
+        Files = results;
+    }
+
+    public void OnFolderChanged(string folder)
+    {
+        CurrentFolder = folder;
+    }
+}
