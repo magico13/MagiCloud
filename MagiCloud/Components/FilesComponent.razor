@@ -7,7 +7,6 @@
 @using Microsoft.Extensions.Logging
 @using System.IO
 
-@inject HttpClient Client
 @inject ILogger<FilesComponent> Logger
 @inject IElasticManager Elastic
 
@@ -240,12 +239,7 @@ else
 
     private string GetFileContentUri(string id, bool download = false)
     {
-        //var path = MagicApi.GetFileContentUri(id, download);
-        var builder = new UriBuilder(new Uri(Client.BaseAddress, $"api/filecontent/{id}"))
-        {
-            Query = $"download={download}"
-        };
-        return builder.ToString();
+        return $"api/filecontent/{id}?download={download}";
     }
 
     public async Task RowRemoved(FileWrapper wrapper)

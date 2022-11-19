@@ -15,8 +15,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,10 +46,7 @@ builder.Services.AddScoped<IElasticManager, ElasticManager>();
 builder.Services.AddScoped<IDataManager, FileSystemDataManager>();
 builder.Services.AddScoped<IHashService, HashService>();
 builder.Services.AddScoped<FileStorageService>();
-builder.Services.AddHttpClient(Options.DefaultName, client => client.BaseAddress = new Uri("https://localhost:8002/"));
-//builder.Services.AddScoped<IMagiCloudAPI, MagiCloudAPI>();
-//builder.Services.AddScoped<CustomHttpHandler>();
-//builder.Services.AddHttpClient<IMagiCloudAPI, MagiCloudAPI>(client => client.BaseAddress = new Uri("https://localhost:8002/")).AddHttpMessageHandler<CustomHttpHandler>();
+builder.Services.AddHttpClient();
 
 // Add text extraction abilities
 var extractionSettings = builder.Configuration
@@ -64,17 +59,16 @@ builder.Services.AddLens(c =>
 });
 builder.Services.AddScoped<ExtractionHelper>();
 
-
-//builder.Services.AddCors(options =>
-//    options.AddDefaultPolicy(p =>
-//        p.SetIsOriginAllowed(s => s.Contains("https://localhost") || s.Contains("https://magico13.net"))
-//        .AllowAnyMethod()
-//        .AllowAnyHeader()
-//        .AllowCredentials()
-//    )
-//);
-
 var app = builder.Build();
+
+// Run migration for the identity database
+// TODO: Not recommended way of doing this, but for our purposes is fine for now
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
