@@ -2,7 +2,12 @@
     <Blazorise.ThemeProvider Theme="@theme">
         <Router AppAssembly="@typeof(App).Assembly">
             <Found Context="routeData">
-                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" >
+                    <NotAuthorized>
+                        <Heading Size=HeadingSize.Is1>Log in required</Heading>
+                        <Paragraph>You must be logged in to use this application. Log in using the links above.</Paragraph>
+                    </NotAuthorized>
+                </AuthorizeRouteView>
                 <FocusOnNavigate RouteData="@routeData" Selector="h1" />
             </Found>
             <NotFound>

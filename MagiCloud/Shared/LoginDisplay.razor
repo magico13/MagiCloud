@@ -1,12 +1,16 @@
 ﻿<AuthorizeView>
     <Authorized>
-        <Button Type=ButtonType.Link To="Identity/Account/Manage" Color=Color.Primary Float=Float.End>Hello, @context.User.Identity?.Name!</Button>
-        <Form method="post" action="Identity/Account/LogOut" Float=Float.End>
-            <Button Type=ButtonType.Submit class="nav-link btn btn-link">Log out</Button>
-        </Form>
+        <Span Float=Float.End>
+            <Button Type=ButtonType.Link To="Identity/Account/Manage" Color=Color.Primary Float=Float.Start>Hello, @context.User.Identity?.Name!</Button>
+            <Form method="post" action="Identity/Account/LogOut" Float=Float.End>
+                <Button Type=ButtonType.Submit Color=Color.Warning Outline Float=Float.End>Log out</Button>
+            </Form>
+        </Span>
     </Authorized>
     <NotAuthorized>
-        <Button Type=ButtonType.Link To="Identity/Account/Register" Color=Color.Primary Float=Float.End>Register</Button>
-        <Button Type=ButtonType.Link To="Identity/Account/Login" Color=Color.Info Float=Float.End>Log in</Button>
+        <Span Float=Float.End>
+            <Button Type=ButtonType.Link To="Identity/Account/Register" Color=Color.Primary>Register</Button>
+            <Button Type=ButtonType.Link To="Identity/Account/Login" Color=Color.Info>Log in</Button>
+        </Span>
     </NotAuthorized>
 </AuthorizeView>

@@ -4,7 +4,6 @@
 @using MagiCommon.Models;
 @using Microsoft.Extensions.Logging
 @using System 
-@using System.IO
 
 @inject FileStorageService FileStorage
 @inject ILogger<Upload> Logger
@@ -66,8 +65,8 @@
             var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
             var info = new ElasticFileInfo
             {
-                Name = Path.Combine(curDir, Path.GetFileNameWithoutExtension(file.Name)),
-                Extension = Path.GetExtension(file.Name).TrimStart('.'),
+                Name = PathAnalog.Combine(curDir, PathAnalog.GetFileNameWithoutExtension(file.Name)),
+                Extension = PathAnalog.GetExtension(file.Name),
                 MimeType = file.Type,
                 LastModified = file.LastModified,
                 Size = file.Size

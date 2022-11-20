@@ -1,5 +1,6 @@
 ﻿using MagiCommon.Models;
-using System.IO;
+using System;
+using System.Linq;
 
 namespace MagiCommon.Extensions
 {
@@ -10,9 +11,23 @@ namespace MagiCommon.Extensions
         /// </summary>
         /// <param name="file">Source file</param>
         /// <returns>The full path with extension.</returns>
-        public static string GetFullPath(this ElasticFileInfo file)
+        public static string GetFullPath(this ElasticFileInfo file) 
+            => GetDirectory(file).TrimEnd('/') + "/" + GetFileName(file);
+
+        /// <summary>
+        /// Get just the directory part of the path
+        /// </summary>
+        /// <param name="file">Source file</param>
+        /// <returns>Directory portion of the path</returns>
+        public static string GetDirectory(this ElasticFileInfo file)
         {
-            return Path.Combine(Path.GetDirectoryName(file.Name), GetFileName(file));
+            var split = file.Name.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (split.Length > 1)
+            {
+                // Lob off the filename part of the path
+                return "/" + string.Join("/", split.Take(split.Length-1));
+            }
+            return "/";
         }
 
         /// <summary>
@@ -22,14 +37,8 @@ namespace MagiCommon.Extensions
         /// <returns>File name with extension</returns>
         public static string GetFileName(this ElasticFileInfo file)
         {
-            if (!string.IsNullOrWhiteSpace(file.Extension))
-            {
-                return $"{Path.GetFileName(file.Name)}.{file.Extension}";
-            }
-            else
-            {
-                return Path.GetFileName(file.Name);
-            }
+            var name = file.Name.Split('/').Last();
+            return !string.IsNullOrWhiteSpace(file.Extension) ? $"{name}.{file.Extension}" : name;
         }
     }
 }

@@ -5,7 +5,6 @@
 @using MagiCommon.Extensions
 @using MagiCommon.Models
 @using Microsoft.Extensions.Logging
-@using System.IO
 
 @inject ILogger<FilesComponent> Logger
 @inject IElasticManager Elastic
@@ -68,7 +67,7 @@ else
                     }
                     else
                     {
-                        <Button Clicked="@(() => FilterToFolder(Path.Combine(CurrentFolder, context.Name)))">
+                        <Button Clicked="@(() => FilterToFolder(PathAnalog.Combine(CurrentFolder, context.Name)))">
                             @context.Name
                         </Button>
                     }
@@ -185,7 +184,6 @@ else
 
     private void FilterToFolder(string folder)
     {
-        folder = Path.GetFullPath(folder);
         Logger.LogWarning("Filtering to folder {Folder}", folder);
         CurrentFolder = folder;
         Files = new List<FileWrapper>();
@@ -201,9 +199,11 @@ else
     {
         if (includeChildren)
         {
-            return files.Where(f => !Path.GetRelativePath(folder, f.GetFullPath()).StartsWith("..")).Select(f => new FileWrapper(f)).ToList();
+            // All files that start with the folder path
+            return files.Where(f => f.GetFullPath().StartsWith(folder)).Select(f => new FileWrapper(f)).ToList();
         }
-        return files.Where(f => Path.GetRelativePath(folder, f.GetFullPath()) == f.GetFileName()).Select(f => new FileWrapper(f)).ToList();
+        // files where the name starts with the folder path, but it has no additional subfolders
+        return files.Where(f => f.GetFullPath().StartsWith(folder) && f.GetFullPath()[(folder.Length+1)..].Split('/').Length == 1).Select(f => new FileWrapper(f)).ToList();
     }
 
     private List<FileWrapper> GetDirectoriesInFolder(IEnumerable<SearchResult> files, string folder)
@@ -211,11 +211,16 @@ else
         var dirs = new HashSet<string>();
         foreach (var file in files)
         {
-            var split = Path.GetRelativePath(folder, file.GetFullPath()).Split('/');
+            var filePath = file.GetFullPath();
+            if (!filePath.StartsWith(folder))
+            {
+                continue;
+            }
+            var split = filePath[folder.Length..].Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (split.Length > 1)
             {
                 var firstPartOfPath = split.First();
-                if (!string.IsNullOrWhiteSpace(firstPartOfPath) && !firstPartOfPath.StartsWith(".."))
+                if (!string.IsNullOrWhiteSpace(firstPartOfPath))
                 {
                     dirs.Add(firstPartOfPath);
                 }
@@ -224,7 +229,7 @@ else
         var list = new List<FileWrapper>();
         foreach (var dir in dirs)
         {
-            var filesInFolder = GetFilesInFolder(files, Path.Combine(folder, dir), true);
+            var filesInFolder = GetFilesInFolder(files, PathAnalog.Combine(folder, dir), true);
             //Logger.LogInformation("{Count} files in folder {Name}", filesInFolder.Count, Path.Combine(folder, dir));
             list.Add(new FileWrapper
                 {
@@ -252,7 +257,6 @@ else
         Logger.LogInformation("Removing file {Name} ({Id})", file.Name, file.Id);
         file.IsDeleted = true;
         FileList.Remove(file);
-        //await MagicApi.RemoveFileAsync(file.Id, false);
         var (result, doc) = await Elastic.GetDocumentAsync(UserId, file.Id, false);
         if (result == FileAccessResult.FullAccess)
         {
@@ -282,7 +286,7 @@ else
         var file = wrapper.BackingFileInfo;
         if (file == null)
         {
-            var fullPath = Path.Combine(CurrentFolder, wrapper.Name);
+            var fullPath = PathAnalog.Combine(CurrentFolder, wrapper.Name);
             Logger.LogInformation("Updating visibility for all items under folder {Path}", fullPath);
             foreach (var item in GetFilesInFolder(FileList, fullPath, true))
             {

@@ -17,16 +17,16 @@
 
 @if (files?.Any() == true)
 {
-    <Button Color="Color.Danger" Clicked="@EmptyTrash">Empty Trash</Button>
+    <Button Color="Color.Danger" Clicked=EmptyTrash>Empty Trash</Button>
     <DataGrid
-            TItem="SearchResult"
-            Data="@files"
+            TItem=SearchResult
+            Data=files
             PageSize=10
             Responsive
             ShowPager
             ShowPageSizes
             Sortable
-            SelectionMode="DataGridSelectionMode.Single">
+            SelectionMode=DataGridSelectionMode.Single>
         <DataGridColumns>
             <DataGridColumn Field="@nameof(ElasticFileInfo.Name)" Caption="Name">
                 <DisplayTemplate>
