@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace MagiCloud;
+namespace MagiCloud.Services;
 
 public class FileStorageService
 {

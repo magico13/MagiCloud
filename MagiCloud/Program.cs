@@ -2,15 +2,16 @@ using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
 using Goggles;
-using MagiCloud;
 using MagiCloud.Areas.Identity;
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
 using MagiCloud.Db;
+using MagiCloud.Services;
 using MagiCommon;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-builder.Services.AddDefaultIdentity<IdentityUser>()
+builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedEmail = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
@@ -40,12 +41,14 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
 
 builder.Services.AddScoped<IElasticManager, ElasticManager>();
 builder.Services.AddScoped<IDataManager, FileSystemDataManager>();
 builder.Services.AddScoped<IHashService, HashService>();
 builder.Services.AddScoped<FileStorageService>();
+builder.Services.AddTransient<IEmailSender, EmailSenderService>();
 builder.Services.AddHttpClient();
 
 // Add text extraction abilities

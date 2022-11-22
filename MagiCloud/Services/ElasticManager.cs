@@ -12,7 +12,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace MagiCloud;
+namespace MagiCloud.Services;
 
 public interface IElasticManager
 {
@@ -73,7 +73,7 @@ public class ElasticManager : IElasticManager
     {
         Setup();
 
-        foreach (var indexName in new string[] { FILES_INDEX, USER_INDEX, TOKEN_INDEX})
+        foreach (var indexName in new string[] { FILES_INDEX, USER_INDEX, TOKEN_INDEX })
         {
             var index = Indices.Index(indexName);
             var exists = await Client.Indices.ExistsAsync(index);
@@ -201,7 +201,7 @@ public class ElasticManager : IElasticManager
                     Id = hit.Id,
                     Text = null
                 };
-                if (hit.Highlight.TryGetValue(nameof(SearchResult.Text).ToLower(), out var value) 
+                if (hit.Highlight.TryGetValue(nameof(SearchResult.Text).ToLower(), out var value)
                     && value?.Any() == true)
                 {
                     info.Highlights = value.ToArray();
@@ -236,7 +236,7 @@ public class ElasticManager : IElasticManager
                 // Note: Not using term for the filename checks bc term is case sensitive
                 return qc;
             }));
-        if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound 
+        if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound
             || result.Total == 0)
         {
             _logger.LogInformation("Document with name {Name}.{Extension} not found.", filename, extension);

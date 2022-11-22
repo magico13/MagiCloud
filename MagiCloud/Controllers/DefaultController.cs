@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MagiCloud.Services;
+using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -10,10 +11,7 @@ public class DefaultController : ControllerBase
 {
     public IElasticManager Elastic { get; }
 
-    public DefaultController(IElasticManager elastic)
-    {
-        this.Elastic = elastic;
-    }
+    public DefaultController(IElasticManager elastic) => Elastic = elastic;
 
     [HttpGet]
     public async Task<IActionResult> GetAsync()

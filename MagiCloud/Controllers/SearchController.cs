@@ -1,4 +1,5 @@
-﻿using MagiCommon.Extensions;
+﻿using MagiCloud.Services;
+using MagiCommon.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

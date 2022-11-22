@@ -1,4 +1,5 @@
 ﻿using MagiCloud.DataManager;
+using MagiCloud.Services;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.AspNetCore.Authorization;
