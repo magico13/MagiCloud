@@ -42,36 +42,24 @@ public class FileStorageService
                 return FileAccessResult.Unknown;
             }
 
-            // rewrite the stream into a temp file
-            var tempFile = Path.GetTempFileName();
-            try
+            await Elastic.SetupIndicesAsync();
+            if (result == FileAccessResult.FullAccess
+                && doc != null
+                && !string.IsNullOrWhiteSpace(doc.Id))
             {
-                using var fileStream = File.Create(tempFile);
-                await stream.CopyToAsync(fileStream);
+                // document exists in db, write data to filesystem
+                using var fileStream = await DataManager.WriteFileAsync(doc.Id, stream);
 
-                await Elastic.SetupIndicesAsync();
-                if (result == FileAccessResult.FullAccess
-                    && doc != null
-                    && !string.IsNullOrWhiteSpace(doc.Id))
-                {
-                    // document exists in db, write data to filesystem
-                    await DataManager.WriteFileAsync(doc.Id, fileStream);
-
-                    // Update indexed document
-                    await UpdateFileAttributesAsync(fileStream, userId, doc, doc.MimeType);
-                    return result;
-                }
-                else if (result == FileAccessResult.NotFound)
-                {
-                    //throw
-                    return result;
-                }
-                return FileAccessResult.NotPermitted;
+                // Update indexed document
+                await UpdateFileAttributesAsync(fileStream, userId, doc, doc.MimeType);
+                return result;
             }
-            finally
+            else if (result == FileAccessResult.NotFound)
             {
-                File.Delete(tempFile);
+                //throw
+                return result;
             }
+            return FileAccessResult.NotPermitted;
         }
         return result;
     }

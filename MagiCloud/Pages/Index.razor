@@ -11,6 +11,8 @@
 @inject ILogger<Index> Logger
 
 <Upload OnUploadComplete=OnFilesUploaded CurrentDirectory=@CurrentFolder />
+
+<Heading Size=HeadingSize.Is3>Files</Heading>
 <SearchBar OnSearch=OnSearch />
 <FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
 

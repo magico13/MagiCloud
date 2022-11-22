@@ -32,11 +32,11 @@ public class FileSystemDataManager : IDataManager
         return Stream.Null;
     }
 
-    public async Task WriteFileAsync(string id, Stream file)
+    public async Task<Stream> WriteFileAsync(string id, Stream file)
     {
         Directory.CreateDirectory(ROOT);
         var path = GetPath(id);
-        using var filestream = File.Create(path);
+        var filestream = File.Create(path);
         if (file.Position != 0 && file.CanSeek)
         {
             file.Seek(0, SeekOrigin.Begin);
@@ -47,6 +47,9 @@ public class FileSystemDataManager : IDataManager
         }
         
         await file.CopyToAsync(filestream);
+        // rewind the filestream so it can be read again
+        filestream.Seek(0, SeekOrigin.Begin);
+        return filestream;
     }
 
     public async Task WriteFilePartAsync(string id, Stream filePart)

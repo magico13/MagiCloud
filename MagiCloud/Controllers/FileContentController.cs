@@ -138,11 +138,11 @@ public class FileContentController : ControllerBase
             {
                 // document exists in db, write data to filesystem
                 using var stream = file.OpenReadStream();
-                await _dataManager.WriteFileAsync(doc.Id, stream);
+                using var writtenStream = await _dataManager.WriteFileAsync(doc.Id, stream);
 
                 // Update indexed document
                 await UpdateFileAttributesAsync(
-                    stream, userId, doc, doc.MimeType ?? file.ContentType);
+                    writtenStream, userId, doc, doc.MimeType ?? file.ContentType);
                 return NoContent();
             }
             if (result == FileAccessResult.NotFound)
