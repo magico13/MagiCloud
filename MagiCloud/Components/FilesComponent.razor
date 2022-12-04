@@ -42,9 +42,10 @@ else
                 Editable
                 EditMode=DataGridEditMode.Popup
                 RowRemoved=RowRemoved
-                RowUpdated=RowUpdated>
+                RowUpdated=RowUpdated
+                UseValidation>
         <DataGridColumns>
-            <DataGridCommandColumn NewCommandAllowed="false" EditCommandAllowed="true" DeleteCommandAllowed="true"  >
+            <DataGridCommandColumn NewCommandAllowed=false EditCommandAllowed DeleteCommandAllowed  >
                 <SaveCommandTemplate>
                     <Button ElementId="btnSave" Type="ButtonType.Submit" PreventDefaultOnSubmit Color="Color.Primary" Clicked="@context.Clicked"> <Icon Name="IconName.Save"/> </Button>
                 </SaveCommandTemplate>
@@ -58,7 +59,7 @@ else
                     <Button ElementId="btnDelete" Color="Color.Danger" Clicked="@context.Clicked" Visibility="@(context.Item.BackingFileInfo is null ? Visibility.Invisible : Visibility.Visible)"> <Icon Name="IconName.Delete"/> </Button>
                 </DeleteCommandTemplate>
             </DataGridCommandColumn>
-            <DataGridColumn Field="Name" Caption="File Name" Editable>
+            <DataGridColumn Field="Name" Caption="File Name" Editable Validator=ExtendedValidationRules.IsFilePath>
                 <DisplayTemplate>
                     @if(context.BackingFileInfo != null)
                     {
@@ -136,7 +137,7 @@ else
                     <Validations @ref=_newFolderValidations StatusChanged=NewFolderValidatorsChanged>
                         <Field>
                             <FieldLabel>Folder Name</FieldLabel>
-                            <Validation Validator=NewFolderValidator>
+                            <Validation Validator=ExtendedValidationRules.IsFileName>
                                 <TextEdit @bind-Text=_newFolderText Autofocus/>
                                 <ValidationError>
                                     Invalid folder name.
@@ -377,24 +378,10 @@ else
             {
                 Name = folderName
             };
-            Files.Add(folderInfo);
+            var index = Files.Exists(f => f.Name == "..") ? 1 : 0;
+            Files.Insert(index, folderInfo);
             return true;
         }
         return false;
-    }
-
-    private void NewFolderValidator(ValidatorEventArgs e)
-    {
-        string value = e.Value as string;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            e.Status = ValidationStatus.None;
-            return;
-        }
-
-        var invalidChars = System.IO.Path.GetInvalidPathChars().ToList();
-        invalidChars.AddRange(new List<Char>() { '<', '>', ':', '"', '/', '|', '?', '*', '\\' });
-        bool isInvalid = value.IndexOfAny(invalidChars.ToArray()) >= 0;
-        e.Status = isInvalid ? ValidationStatus.Error : ValidationStatus.Success;
     }
 }

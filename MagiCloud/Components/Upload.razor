@@ -14,21 +14,49 @@
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
 <FilePicker @ref=filePicker Multiple Upload=OnFileUpload ShowMode=FilePickerShowMode.List MaxChunkSize=Constants.UPLOAD_CHUNK_SIZE MaxFileSize=maxFileSize Ended=OnEnded Changed=OnFilesChanged/>
-<Form>
-    <Validations @ref=validations>
-        <Fields>
-            <Field ColumnSize=ColumnSize.IsAuto>
-                <Button Color=Color.Primary Type=ButtonType.Submit Clicked=DownloadRemoteFile PreventDefaultOnSubmit>Remote Download</Button>
-            </Field>
-            <Validation Validator=ValidateURL>
-                <Field>
-                    <TextEdit @bind-Text=UrlText Placeholder="Or enter a URL to remotely download a file" />
-                </Field>
-            </Validation>
-        </Fields>
-    </Validations>
-</Form>
+<Button Loading=RemoteDownloadInProgress Disabled=RemoteDownloadInProgress Color=Color.Primary Clicked=OpenModal>Download Remote File</Button>
 
+<Modal @ref=remoteDownloadModal>
+    <ModalContent Centered>
+        <Form>
+            <ModalHeader>
+                <ModalTitle>Remote Download</ModalTitle>
+                <CloseButton />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref=validations StatusChanged=ValidatorsChanged>
+                    <Field>
+                        <FieldLabel>Remote File URL</FieldLabel>
+                        <Validation Validator=ExtendedValidationRules.IsURI>
+                            <TextEdit @bind-Text=UrlText Autofocus />
+                            <ValidationError>
+                                Invalid URL.
+                            </ValidationError>
+                            <ValidationNone>
+                                URL is required.
+                            </ValidationNone>
+                        </Validation>
+                    </Field>
+                    <Field>
+                        <FieldLabel>Desired File Name</FieldLabel>
+                        <Validation Validator=ExtendedValidationRules.IsFileName>
+                            <TextEdit @bind-Text=RemoteFileName />
+                            <ValidationError>
+                                Invalid File name.
+                            </ValidationError>
+                        </Validation>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
+                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Disabled=@(!validatorsPassed) Color=Color.Primary Clicked=@(() => CloseModal(true))>
+                    Download
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
 
 
 @if (errorMessages.Any())
@@ -48,6 +76,8 @@
     private List<string> errorMessages = new();
     private FilePicker filePicker;
     private Validations validations;
+    private bool validatorsPassed;
+    private Modal remoteDownloadModal;
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; }
@@ -59,6 +89,8 @@
     public string CurrentDirectory { get; set; }
 
     private string UrlText { get; set; }
+    private string RemoteFileName { get; set; }
+    private bool RemoteDownloadInProgress { get; set; }
 
     protected async override Task OnInitializedAsync()
     {
@@ -117,6 +149,7 @@
 
     private async Task DownloadRemoteFile()
     {
+        RemoteDownloadInProgress = true;
         FileStream tempStream = null;
         try
         {
@@ -137,9 +170,13 @@
 
                     var contentType = response.Content.Headers.ContentType?.MediaType;
                     var lastModified = response.Content.Headers.LastModified ?? DateTimeOffset.Now;
-                    var name = !string.IsNullOrWhiteSpace(uri.AbsolutePath) 
+                    var name = RemoteFileName;
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        name = !string.IsNullOrWhiteSpace(uri.AbsolutePath) 
                         ? uri.AbsolutePath.Trim('/').Split('/').Last() 
                         : Guid.NewGuid().ToString("N");
+                    }
 
                     var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
                     var info = new ElasticFileInfo
@@ -172,20 +209,36 @@
         finally
         {
             tempStream?.Dispose();
+            RemoteDownloadInProgress = false;
+            StateHasChanged();
         }
     }
 
-    private void ValidateURL(ValidatorEventArgs e)
+    private async Task ValidatorsChanged(ValidationsStatusChangedEventArgs e)
     {
-        var urlString = e.Value?.ToString();
-        if (string.IsNullOrWhiteSpace(urlString))
+        validatorsPassed = e.Status == ValidationStatus.Success;
+
+        if (!validatorsPassed && e.Status == ValidationStatus.None)
         {
-            e.Status = ValidationStatus.None;
+            validatorsPassed = await validations.ValidateAll();
         }
-        else
+    }
+
+    private async void OpenModal()
+    {
+        UrlText = null;
+        RemoteFileName = null;
+        await remoteDownloadModal.Show();
+    }
+
+    private async void CloseModal(bool isOk)
+    {
+        await remoteDownloadModal.Hide();
+        if (isOk && (await validations.ValidateAll()))
         {
-            var valid = Uri.TryCreate(urlString, UriKind.Absolute, out var _);
-            e.Status = valid ? ValidationStatus.Success : ValidationStatus.Error;
+            await DownloadRemoteFile();
         }
+        UrlText = null;
+        RemoteFileName = null;
     }
 }
