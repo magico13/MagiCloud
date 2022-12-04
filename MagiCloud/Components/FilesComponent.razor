@@ -23,7 +23,12 @@ else if (!FileList.Any())
 }
 else
 {
-    <Paragraph>@CurrentFolder</Paragraph>
+    <Div Flex=Flex.JustifyContent.Between>
+        <Span>@CurrentFolder</Span>
+        <Button Color=Color.Primary Clicked=OpenModal Float=Float.End>
+            New Folder
+        </Button>
+    </Div>
     <DataGrid TItem=FileWrapper
                 Data=Files
                 DetailRowTrigger=@(w => w.Item?.BackingFileInfo?.Highlights?.Any() == true)
@@ -35,7 +40,7 @@ else
                 ShowPager
                 ShowPageSizes
                 Editable
-                EditMode=DataGridEditMode.Inline
+                EditMode=DataGridEditMode.Popup
                 RowRemoved=RowRemoved
                 RowUpdated=RowUpdated>
         <DataGridColumns>
@@ -119,6 +124,39 @@ else
             }
         </DetailRowTemplate>
     </DataGrid>
+
+    <Modal @ref="_newFolderModal">
+        <ModalContent Centered>
+            <Form>
+                <ModalHeader>
+                    <ModalTitle>New Folder</ModalTitle>
+                    <CloseButton />
+                </ModalHeader>
+                <ModalBody>
+                    <Validations @ref=_newFolderValidations StatusChanged=NewFolderValidatorsChanged>
+                        <Field>
+                            <FieldLabel>Folder Name</FieldLabel>
+                            <Validation Validator=NewFolderValidator>
+                                <TextEdit @bind-Text=_newFolderText Autofocus/>
+                                <ValidationError>
+                                    Invalid folder name.
+                                </ValidationError>
+                                <ValidationNone>
+                                    Folder name is required.
+                                </ValidationNone>
+                            </Validation>
+                        </Field>
+                    </Validations>
+                </ModalBody>
+                <ModalFooter>
+                    <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
+                    <Button Type=ButtonType.Submit PreventDefaultOnSubmit Color=Color.Primary Disabled=@(!_newFolderValidatorsPassed) Clicked=@(() => CloseModal(true))>
+                        Create
+                    </Button>
+                </ModalFooter>
+            </Form>
+        </ModalContent>
+    </Modal>
 }
 
 @code {
@@ -164,6 +202,31 @@ else
     }
 
     private List<SearchResult> _files;
+
+    private Modal _newFolderModal;
+    private Validations _newFolderValidations;
+    private bool _newFolderValidatorsPassed;
+    private string _newFolderText;
+
+    private void NewFolderValidatorsChanged(ValidationsStatusChangedEventArgs e)
+    {
+        _newFolderValidatorsPassed = e.Status == ValidationStatus.Success;
+    }
+    private async void OpenModal()
+    {
+        _newFolderText = null;
+        await _newFolderModal.Show();
+    }
+
+    private async void CloseModal(bool isOk)
+    {
+        if (isOk && (await _newFolderValidations.ValidateAll()))
+        {
+            NewFolder(_newFolderText);
+        }
+        _newFolderText = null;
+        await _newFolderModal.Hide();
+    }
 
     public void SortFiles()
     {
@@ -231,12 +294,12 @@ else
             var filesInFolder = GetFilesInFolder(files, PathAnalog.Combine(folder, dir), true);
             //Logger.LogInformation("{Count} files in folder {Name}", filesInFolder.Count, Path.Combine(folder, dir));
             list.Add(new FileWrapper
-                {
-                    Name = dir,
-                    IsPublic = filesInFolder.TrueForAll(f => f.IsPublic == true),
-                    LastUpdated = filesInFolder.Max(f => f.LastUpdated),
-                    Size = filesInFolder.Sum(f => f.Size)
-                });
+            {
+                Name = dir,
+                IsPublic = filesInFolder.TrueForAll(f => f.IsPublic == true),
+                LastUpdated = filesInFolder.Max(f => f.LastUpdated),
+                Size = filesInFolder.Sum(f => f.Size)
+            });
         }
         return list;
     }
@@ -304,5 +367,34 @@ else
         Logger.LogInformation("Setting visibility of {Name} ({Id}) to {Visibility}", file.Name, file.Id, visible);
         file.IsPublic = visible;
         await Elastic.IndexDocumentAsync(UserId, file);
+    }
+
+    private bool NewFolder(string folderName = "New Folder")
+    {
+        if (!Files.Exists(f => string.Equals(f.Name, folderName, StringComparison.OrdinalIgnoreCase)))
+        {
+            var folderInfo = new FileWrapper
+            {
+                Name = folderName
+            };
+            Files.Add(folderInfo);
+            return true;
+        }
+        return false;
+    }
+
+    private void NewFolderValidator(ValidatorEventArgs e)
+    {
+        string value = e.Value as string;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            e.Status = ValidationStatus.None;
+            return;
+        }
+
+        var invalidChars = System.IO.Path.GetInvalidPathChars().ToList();
+        invalidChars.AddRange(new List<Char>() { '<', '>', ':', '"', '/', '|', '?', '*', '\\' });
+        bool isInvalid = value.IndexOfAny(invalidChars.ToArray()) >= 0;
+        e.Status = isInvalid ? ValidationStatus.Error : ValidationStatus.Success;
     }
 }

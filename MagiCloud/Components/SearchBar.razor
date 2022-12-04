@@ -5,14 +5,14 @@
 @inject IElasticManager Elastic
 
 <Form>
-    <Row Margin=Margin.Is1>
-        <Column ColumnSize=ColumnSize.Is11>
+    <Fields>
+        <Field>
             <TextEdit Placeholder="Search..." @bind-Text="SearchQuery" Float="Float.Start"></TextEdit>
-        </Column>
-        <Column ColumnSize=ColumnSize.Is1>
+        </Field>
+        <Field ColumnSize=ColumnSize.IsAuto>
             <Button Color=Color.Primary Clicked=Search Type=ButtonType.Submit PreventDefaultOnSubmit>Search</Button>
-        </Column>
-    </Row>
+        </Field>
+    </Fields>
 </Form>
 
 

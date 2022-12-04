@@ -21,7 +21,7 @@
                 <Button Color=Color.Primary Type=ButtonType.Submit Clicked=DownloadRemoteFile PreventDefaultOnSubmit>Remote Download</Button>
             </Field>
             <Validation Validator=ValidateURL>
-                <Field ColumnSize=ColumnSize.Is10>
+                <Field>
                     <TextEdit @bind-Text=UrlText Placeholder="Or enter a URL to remotely download a file" />
                 </Field>
             </Validation>

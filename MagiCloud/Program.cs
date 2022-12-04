@@ -52,8 +52,12 @@ builder.Services.AddScoped<IElasticManager, ElasticManager>();
 builder.Services.AddScoped<IDataManager, FileSystemDataManager>();
 builder.Services.AddScoped<IHashService, HashService>();
 builder.Services.AddScoped<FileStorageService>();
-builder.Services.AddTransient<IEmailSender, EmailSenderService>();
 builder.Services.AddHttpClient();
+
+if (!string.IsNullOrWhiteSpace(builder.Configuration.Get<GeneralSettings>().SendGridKey))
+{
+    builder.Services.AddTransient<IEmailSender, SendGridEmailService>();
+}
 
 // Add text extraction abilities
 var extractionSettings = builder.Configuration

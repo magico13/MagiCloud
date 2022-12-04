@@ -9,14 +9,14 @@ using SendGrid;
 
 namespace MagiCloud.Services;
 
-public class EmailSenderService : IEmailSender
+public class SendGridEmailService : IEmailSender
 {
     private readonly ILogger _logger;
     public GeneralSettings Options { get; }
 
-    public EmailSenderService(
+    public SendGridEmailService(
         IOptions<GeneralSettings> optionsAccessor,
-        ILogger<EmailSenderService> logger)
+        ILogger<SendGridEmailService> logger)
     {
         Options = optionsAccessor.Value;
         _logger = logger;
