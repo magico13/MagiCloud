@@ -1,10 +1,9 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace Goggles.OCR
+namespace Goggles.OCR;
+
+public interface IOcrEngine
 {
-    public interface IOcrEngine
-    {
-        Task<string> ExtractText(Stream stream);
-    }
+    Task<string> ExtractText(Stream stream, string contentType);
 }

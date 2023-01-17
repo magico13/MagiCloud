@@ -1,48 +1,45 @@
 ﻿using Microsoft.AspNetCore.StaticFiles;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 
-namespace Goggles
+namespace Goggles;
+
+internal class ContentTypeAnalyzer
 {
-    internal class ContentTypeAnalyzer
+    private readonly static FileExtensionContentTypeProvider _extensionTypeProvider
+        = new FileExtensionContentTypeProvider();
+
+    protected static Dictionary<string, string> CustomExtensionMapping { get; } = new Dictionary<string, string>
     {
-        private readonly static FileExtensionContentTypeProvider _extensionTypeProvider
-            = new FileExtensionContentTypeProvider();
+        // Text files
+        ["csv"] = "text/csv",
+        ["gcode"] = "text/x-gcode",
+        ["ino"] = "text/plain",
+        ["ofx"] = "text/plain",
+        ["py"] = "text/x-python",
+        ["yaml"] = "text/x-yaml",
+        ["yml"] = "text/x-yaml",
+        // Image files
+        ["xcf"] = "image/x-xcf"
+    };
 
-        protected static Dictionary<string, string> CustomExtensionMapping { get; } = new Dictionary<string, string>
+    internal static string DetermineContentType(string filename)
+    {
+        if (string.IsNullOrWhiteSpace(filename))
         {
-            // Text files
-            ["csv"] = "text/csv",
-            ["gcode"] = "text/x-gcode",
-            ["ino"] = "text/plain",
-            ["ofx"] = "text/plain",
-            ["py"] = "text/x-python",
-            ["yaml"] = "text/x-yaml",
-            ["yml"] = "text/x-yaml",
-            // Image files
-            ["xcf"] = "image/x-xcf"
-        };
-
-        internal static string DetermineContentType(string filename)
-        {
-            if (string.IsNullOrWhiteSpace(filename))
-            {
-                return string.Empty;
-            }
-            var extension = filename.Contains(".")
-                ? Path.GetExtension(filename).TrimStart('.')
-                : filename;
-
-            if (CustomExtensionMapping.TryGetValue(extension.ToLower(), out var mapping))
-            {
-                return mapping;
-            }
-            if (!_extensionTypeProvider.TryGetContentType("file." + extension, out var type)
-                || string.IsNullOrEmpty(type))
-            {
-                type = "application/octet-stream";
-            }
-            return type;
+            return string.Empty;
         }
+        var extension = filename.Split('.').LastOrDefault() ?? filename;
+
+        if (CustomExtensionMapping.TryGetValue(extension.ToLower(), out var mapping))
+        {
+            return mapping;
+        }
+        if (!_extensionTypeProvider.TryGetContentType("file." + extension, out var type)
+            || string.IsNullOrEmpty(type))
+        {
+            type = "application/octet-stream";
+        }
+        return type;
     }
 }

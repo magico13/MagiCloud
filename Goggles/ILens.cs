@@ -1,11 +1,10 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace Goggles
+namespace Goggles;
+
+public interface ILens
 {
-    public interface ILens
-    {
-        Task<string> ExtractTextAsync(Stream stream, string contentType);
-        string DetermineContentType(string filename);
-    }
+    Task<string> ExtractTextAsync(Stream stream, string contentType);
+    string DetermineContentType(string filename);
 }

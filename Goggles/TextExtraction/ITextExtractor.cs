@@ -1,12 +1,11 @@
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Goggles.TextExtraction
+namespace Goggles.TextExtraction;
+
+public interface ITextExtractor
 {
-    public interface ITextExtractor
-    {
-        Task<string> ExtractTextAsync(Stream stream);
-        bool IsValidForContentType(string contentType);
-        bool UsesOCR { get; }
-    }
+    Task<string> ExtractTextAsync(Stream stream, string contentType);
+    bool IsValidForContentType(string contentType);
+    bool UsesOCR { get; }
 }

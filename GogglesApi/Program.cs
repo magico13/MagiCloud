@@ -9,8 +9,14 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Lens with the default values
-builder.Services.AddLens(o => { });
+// Add Lens with the provided values
+var gogglesConfig = builder.Configuration.GetSection(nameof(GogglesConfiguration)).Get<GogglesConfiguration>();
+builder.Services.AddLens(o =>
+{
+    o.MaxTextLength = gogglesConfig.MaxTextLength;
+    o.EnableOCR = gogglesConfig.EnableOCR;
+    o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
+});
 
 var app = builder.Build();
 
