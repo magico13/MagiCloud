@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Goggles.OCR;
@@ -32,7 +31,7 @@ internal class AzureOcrEngine : IOcrEngine
             return null;
         }
 
-        var endpoint = $"{_azureConfig.VisionEndpoint}/vision/v3.2/ocr?language=unk&detectOrientation=true&model-version=latest";
+        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2022-10-12-preview&features=read";
 
         _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _azureConfig.SubscriptionKey);
 
@@ -43,47 +42,59 @@ internal class AzureOcrEngine : IOcrEngine
         var response = await _httpClient.PostAsync(endpoint, httpContent);
         response.EnsureSuccessStatusCode();
         var ocrResponse = await response.Content.ReadFromJsonAsync<AzureOcrResponse>();
-        // take all the words and append them together
-        StringBuilder finalString = new();
-        foreach (var region in ocrResponse.Regions)
-        {
-            foreach (var line in region.Lines)
-            {
-                foreach (var word in line.Words)
-                {
-                    finalString.Append($"{word.Text} ");
-                }
-                finalString.AppendLine();
-            }
-        }
-        return finalString.ToString();
+        return ocrResponse.ReadResult?.Content;
     }
 
     public class AzureOcrResponse
     {
-        public string Language { get; set; }
-        public float TextAngle { get; set; }
-        public string Orientation { get; set; }
-        public Region[] Regions { get; set; }
+        public string ModelVersion { get; set; }
+        public Metadata Metadata { get; set; }
+        public ReadResult ReadResult { get; set; }
+    }
+
+    public class Metadata
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+
+    public class ReadResult
+    {
+        public string StringIndexType { get; set; }
+        public string Content { get; set; }
+        public Page[] Pages { get; set; }
+        public object[] Styles { get; set; }
         public string ModelVersion { get; set; }
     }
 
-    public class Region
+    public class Page
     {
-        public string BoundingBox { get; set; }
+        public float Height { get; set; }
+        public float Width { get; set; }
+        public float Angle { get; set; }
+        public int PageNumber { get; set; }
+        public Word[] Words { get; set; }
+        public Span[] Spans { get; set; }
         public Line[] Lines { get; set; }
     }
-
     public class Line
     {
-        public string BoundingBox { get; set; }
-        public Word[] Words { get; set; }
+        public string Content { get; set; }
+        public float[] BoundingBox { get; set; }
+        public Span[] Spans { get; set; }
     }
 
     public class Word
     {
-        public string BoundingBox { get; set; }
-        public string Text { get; set; }
+        public string Content { get; set; }
+        public float[] BoundingBox { get; set; }
+        public float Confidence { get; set; }
+        public Span Span { get; set; }
     }
 
+    public class Span
+    {
+        public int Offset { get; set; }
+        public int Length { get; set; }
+    }
 }

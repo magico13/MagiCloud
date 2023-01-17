@@ -60,13 +60,14 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration.Get<GeneralSettings>().Send
 }
 
 // Add text extraction abilities
-var extractionSettings = builder.Configuration
-    .GetSection(nameof(ExtractionSettings))
-    .Get<ExtractionSettings>();
-builder.Services.AddLens(c =>
+var gogglesConfig = builder.Configuration
+    .GetSection(nameof(GogglesConfiguration))
+    .Get<GogglesConfiguration>();
+builder.Services.AddLens(o =>
 {
-    c.MaxTextLength = extractionSettings.MaxTextLength;
-    c.EnableOCR = extractionSettings.EnableOCR;
+    o.MaxTextLength = gogglesConfig.MaxTextLength;
+    o.EnableOCR = gogglesConfig.EnableOCR;
+    o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
 });
 builder.Services.AddScoped<ExtractionHelper>();
 

@@ -22,9 +22,7 @@ public class ExtractionHelper
     }
 
     public Task<string> ExtractTextAsync(Stream stream, string contentType)
-    {
-        return _lens.ExtractTextAsync(stream, contentType);
-    }
+        => _lens.ExtractTextAsync(stream, contentType);
 
     public async Task<(bool, string)> ExtractTextAsync(string userId, string docId, bool force = false)
     {
