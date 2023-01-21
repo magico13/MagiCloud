@@ -1,0 +1,108 @@
+﻿@page "/view/{Id}"
+@using MagiCloud.DataManager;
+@using MagiCommon.Extensions
+@using MagiCommon.Models;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.Extensions.Logging;
+@using System.IO;
+
+@inject IDataManager DataManager
+@inject IElasticManager Elastic
+@inject ILogger<Viewer> Logger
+
+@attribute [Authorize]
+
+@if (FileInfo is not null)
+{
+    <Card>
+        <CardHeader>
+            <CardTitle Size=4 TextAlignment=TextAlignment.Center>
+                @FileInfo.GetFileName()
+            </CardTitle>
+        </CardHeader>
+        
+        <CardBody>
+            @if (string.IsNullOrWhiteSpace(FileInfo.MimeType))
+            {
+                @*Download button*@
+                <Anchor To=@FileInfo.GetFileContentUri(true)>Download</Anchor>
+            }
+            else if (this.FileInfo.MimeType.StartsWith("image/") == true)
+            {
+                <Image Source=@FileInfo.GetFileContentUri(true) Text=@FileInfo.GetFileName() Style="height: 67%">
+                </Image>
+                @*<Figure Size="FigureSize.Default" >
+                    <FigureImage Source=@FileInfo.GetFileContentUri(true) AlternateText=@FileInfo.GetFileName()></FigureImage>
+                </Figure>*@
+            }
+            else if (FileInfo.MimeType.StartsWith("audio/"))
+            {
+                <video controls poster="images/audio_poster.png" crossorigin="anonymous" width="640" height="480" src=@FileInfo.GetFileContentUri(false)>
+                    <source class="u-audio" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
+                    @*<track label="English" kind="subtitles" srclang="en" src="07_Training.vtt">*@
+                </video>
+            }
+            else if (FileInfo.MimeType.StartsWith("video/"))
+            {
+                <video controls crossorigin="anonymous" src=@FileInfo.GetFileContentUri(false) width="100%">
+                    <source class="u-video" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
+                    @*<track label="English" kind="subtitles" srclang="en" src="07_Training.vtt">*@
+                </video>
+            }
+            else
+            {
+                <Anchor To=@FileInfo.GetFileContentUri(false) Target=Target.Blank>
+                    Try To View In Browser
+                </Anchor>
+            }
+
+            <CardTitle>
+                <Button Type=ButtonType.Link Color=Color.Primary To=@FileInfo.GetFileContentUri(true) Target=Target.Blank>Download File</Button>
+                @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
+                {
+                    <Button Type=ButtonType.Link Color=Color.Secondary To=@(FileInfo.GetFileContentUri()+"/text") Target=Target.Blank>Download Text</Button>
+                }
+            </CardTitle>
+            @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
+            {
+                <CardText>
+                    <textarea readonly style="width: 100%" rows=5>
+                        @FileInfo.Text
+                    </textarea>
+                </CardText>
+            }
+        </CardBody>
+    </Card>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    protected string UserId { get; set; }
+
+    [Parameter]
+    public string Id { get; set; }
+    protected ElasticFileInfo FileInfo { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            await PopulateFileInfo(Id);
+        }
+    }
+
+    protected async Task PopulateFileInfo(string id)
+    {
+        var (accessResult, info) = await Elastic.GetDocumentAsync(UserId, id, true);
+        if (accessResult is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
+            && info is not null)
+        {
+            FileInfo = info;
+        }
+    }
+
+}

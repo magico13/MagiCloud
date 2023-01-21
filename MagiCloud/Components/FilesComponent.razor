@@ -63,10 +63,10 @@ else
                 <DisplayTemplate>
                     @if(context.BackingFileInfo != null)
                     {
-                        <Button Type="ButtonType.Link" To="@GetFileContentUri(context.BackingFileInfo.Id, true)" Target="Target.Blank">
+                        @*<Button Type="ButtonType.Link" To="@context.BackingFileInfo.GetFileContentUri(true)" Target="Target.Blank">
                             <Icon Name="IconName.Download" />
-                        </Button>
-                        <Anchor To="@GetFileContentUri(context.BackingFileInfo.Id, false)" Target="Target.Blank">
+                        </Button>*@
+                        <Anchor To="@("/view/" + context.BackingFileInfo.Id)" Target="Target.Blank">
                             @context.BackingFileInfo.GetFileName()
                         </Anchor>
                     }
@@ -305,10 +305,10 @@ else
         return list;
     }
 
-    private string GetFileContentUri(string id, bool download = false)
-    {
-        return $"api/filecontent/{id}?download={download}";
-    }
+    //private string GetFileContentUri(string id, bool download = false)
+    //{
+    //    return $"api/filecontent/{id}?download={download}";
+    //}
 
     public async Task RowRemoved(FileWrapper wrapper)
     {

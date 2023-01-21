@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Controllers;
@@ -110,6 +111,32 @@ public class FileContentController : ControllerBase
         {
             stream?.Close();
             _logger.LogError(ex, "Exception while getting content for document {DocId}.", id);
+            return StatusCode(500);
+        }
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    [Route("{id}/text")]
+    public async Task<IActionResult> GetFileTextAsync(string id)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            if (userId is null) { return Forbid(); }
+            var (result, doc) = await _elastic.GetDocumentAsync(userId, id, true);
+
+            if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+                && doc != null && !string.IsNullOrWhiteSpace(doc.Id) 
+                && !doc.IsDeleted && !string.IsNullOrWhiteSpace(doc.Text))
+            {
+                return File(Encoding.UTF8.GetBytes(doc.Text), "text/plain");
+            }
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while getting document list.");
             return StatusCode(500);
         }
     }
