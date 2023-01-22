@@ -53,7 +53,7 @@ public class FileContentController : ControllerBase
             var userId = User.GetUserId();
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
             
-            if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+            if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
                 && doc != null && !string.IsNullOrWhiteSpace(doc.Id) && !doc.IsDeleted)
             {
                 // document exists in db, pull from file system
@@ -123,10 +123,9 @@ public class FileContentController : ControllerBase
         try
         {
             var userId = User.GetUserId();
-            if (userId is null) { return Forbid(); }
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, true);
 
-            if ((result == FileAccessResult.FullAccess || result == FileAccessResult.ReadOnly)
+            if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
                 && doc != null && !string.IsNullOrWhiteSpace(doc.Id) 
                 && !doc.IsDeleted && !string.IsNullOrWhiteSpace(doc.Text))
             {
