@@ -1,5 +1,6 @@
 ﻿using Goggles;
 using MagiCloud.DataManager;
+using MagiCommon.Extensions;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -21,8 +22,8 @@ public class ExtractionHelper
         _dataManager = dataManager;
     }
 
-    public Task<string> ExtractTextAsync(Stream stream, string contentType)
-        => _lens.ExtractTextAsync(stream, contentType);
+    public Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+        => _lens.ExtractTextAsync(stream, filename, contentType);
 
     public async Task<(bool, string)> ExtractTextAsync(string userId, string docId, bool force = false)
     {
@@ -36,7 +37,7 @@ public class ExtractionHelper
                 return (false, doc.Text);
             }
             using var fileStream = _dataManager.GetFile(doc.Id);
-            return (true, await ExtractTextAsync(fileStream, doc.MimeType));
+            return (true, await ExtractTextAsync(fileStream, doc.GetFileName(), doc.MimeType));
         }
         else
         {

@@ -30,7 +30,7 @@ public class TesseractOcrEngine : IOcrEngine, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public async Task<string> ExtractText(Stream stream, string contentType)
+    public async Task<string> ExtractText(Stream stream, string filename, string contentType)
     {
         var imageBytes = new byte[stream.Length];
         await stream.ReadAsync(imageBytes);

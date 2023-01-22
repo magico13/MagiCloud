@@ -110,7 +110,7 @@ else
     {
         var (accessResult, info) = await Elastic.GetDocumentAsync(UserId, id, true);
         if (accessResult is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
-            && info is not null)
+            && info is not null && !info.IsDeleted)
         {
             FileInfo = info;
         }

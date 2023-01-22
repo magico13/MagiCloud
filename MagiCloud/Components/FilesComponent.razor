@@ -305,11 +305,6 @@ else
         return list;
     }
 
-    //private string GetFileContentUri(string id, bool download = false)
-    //{
-    //    return $"api/filecontent/{id}?download={download}";
-    //}
-
     public async Task RowRemoved(FileWrapper wrapper)
     {
         var file = wrapper.BackingFileInfo;

@@ -22,11 +22,11 @@ public class ImageExtractor : ITextExtractor
 
     public bool UsesOCR => true;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string contentType)
+    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         try
         {
-            var rawText = await _ocrEngine.ExtractText(stream, contentType);
+            var rawText = await _ocrEngine.ExtractText(stream, filename, contentType);
             if (string.IsNullOrWhiteSpace(rawText))
             {
                 return null;

@@ -19,7 +19,7 @@ public class PdfExtractor : ITextExtractor
 
     public bool UsesOCR => false;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string contentType) =>
+    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType) =>
         // Spin up in a separate Task to run in the background
         await Task.Run(() =>
         {

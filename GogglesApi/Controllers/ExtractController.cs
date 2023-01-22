@@ -28,7 +28,7 @@ public class ExtractController : ControllerBase
             : _lens.DetermineContentType(file.FileName);
         return new JsonResult(new 
         {
-            Text = await _lens.ExtractTextAsync(fileStream, contentType),
+            Text = await _lens.ExtractTextAsync(fileStream, file.FileName, contentType),
             contentType 
         });
     }

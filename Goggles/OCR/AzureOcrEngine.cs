@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ internal class AzureOcrEngine : IOcrEngine
         _azureConfig = options.Value.AzureOCRConfiguration;
     }
 
-    public async Task<string> ExtractText(Stream stream, string contentType)
+    public async Task<string> ExtractText(Stream stream, string filename, string contentType)
     {
         if (string.IsNullOrWhiteSpace(_azureConfig?.VisionEndpoint) || string.IsNullOrWhiteSpace(_azureConfig?.SubscriptionKey))
         {
@@ -35,10 +36,8 @@ internal class AzureOcrEngine : IOcrEngine
 
         _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _azureConfig.SubscriptionKey);
 
-        var imageBytes = new byte[stream.Length];
-        await stream.ReadAsync(imageBytes);
-        var httpContent = new ByteArrayContent(imageBytes);
-        httpContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
+        var httpContent = new StreamContent(stream);
+        httpContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
         var response = await _httpClient.PostAsync(endpoint, httpContent);
         response.EnsureSuccessStatusCode();
         var ocrResponse = await response.Content.ReadFromJsonAsync<AzureOcrResponse>();

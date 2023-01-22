@@ -18,7 +18,7 @@ public class PlainTextExtractor : ITextExtractor
 
     public bool UsesOCR => false;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string contentType)
+    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         // Plain text, so we just extract the content as-is
         // Maybe filter out extra whitespace?

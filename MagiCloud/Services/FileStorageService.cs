@@ -1,5 +1,6 @@
 ﻿using MagiCloud.DataManager;
 using MagiCommon;
+using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -82,7 +83,7 @@ public class FileStorageService
         Logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
         if (hashesChanged)
         {
-            doc.Text = await ExtractionHelper.ExtractTextAsync(fileStream, contentType);
+            doc.Text = await ExtractionHelper.ExtractTextAsync(fileStream, doc.GetFileName(), contentType);
         }
 
         await Elastic.UpdateFileAttributesAsync(userId, doc);

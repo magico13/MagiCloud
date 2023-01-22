@@ -257,7 +257,7 @@ public class FileContentController : ControllerBase
         _logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
         if (hashesChanged)
         {
-            doc.Text = await _extractionHelper.ExtractTextAsync(fileStream, contentType);
+            doc.Text = await _extractionHelper.ExtractTextAsync(fileStream, doc.GetFileName(), contentType);
         }
 
         await _elastic.UpdateFileAttributesAsync(userId, doc);

@@ -27,25 +27,30 @@ public class Lens : ILens
 
     public string DetermineContentType(string filename) => ContentTypeAnalyzer.DetermineContentType(filename);
 
-    public async Task<string> ExtractTextAsync(Stream stream, string contentType)
+    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType = null)
     {
         if (stream == null || stream == Stream.Null)
         {
             return null;
         }
+        if (string.IsNullOrWhiteSpace(contentType)) 
+        { 
+            contentType = DetermineContentType(filename);
+        }
+
         foreach (var extractor in Extractors)
         {
             if (extractor.IsValidForContentType(contentType)
                 && (Config.EnableOCR || !extractor.UsesOCR))
             {
-                var text = await ExtractViaExtractor(extractor, stream, contentType);
+                var text = await ExtractViaExtractor(extractor, stream, filename, contentType);
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     return text;
                 }
                 else
                 {
-                    Logger.LogInformation("Extraction did not fail using {Class} but returned empty string.", extractor.GetType());
+                    Logger.LogInformation("Extraction via {Class} returned empty string.", extractor.GetType());
                     // Basically a failure, allow trying a different extractor that will possibly work better
                 }
             }
@@ -54,14 +59,14 @@ public class Lens : ILens
         var plainTextExtractor = Extractors.FirstOrDefault(ext => ext is PlainTextExtractor);
         if (plainTextExtractor is not null)
         {
-            var plainText = await ExtractViaExtractor(plainTextExtractor, stream, contentType);
+            var plainText = await ExtractViaExtractor(plainTextExtractor, stream, filename, contentType);
             // Two null chars in a row means it's probably a binary file and we don't want to return that string
             return string.IsNullOrWhiteSpace(plainText) || plainText.Contains("\0\0") ? null : plainText;
         }
         return null;
     }
 
-    private async Task<string> ExtractViaExtractor(ITextExtractor extractor, Stream stream, string contentType)
+    private async Task<string> ExtractViaExtractor(ITextExtractor extractor, Stream stream, string filename, string contentType)
     {
         Logger.LogInformation(
             "Found suitable extractor {Class} for mimetype {MimeType}",
@@ -69,7 +74,7 @@ public class Lens : ILens
             contentType);
         try
         {
-            var text = await extractor.ExtractTextAsync(stream, contentType);
+            var text = await extractor.ExtractTextAsync(stream, filename, contentType);
             if (!string.IsNullOrWhiteSpace(text))
             {
                 Logger.LogInformation("Text extraction complete. Length: {Count}", text.Length);

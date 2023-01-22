@@ -1,5 +1,6 @@
 ﻿using Goggles.OCR;
 using Goggles.TextExtraction;
+using Goggles.Transcription;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
@@ -30,10 +31,16 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
         }
 
+        // Audio Transcriber(s)
+        services.AddHttpClient<ITranscriptionService, WhisperTranscriptionService>(c =>
+            c.Timeout = TimeSpan.FromMinutes(30)
+        );
+
         // Text extractors
         services.AddScoped<ITextExtractor, PlainTextExtractor>();
         services.AddScoped<ITextExtractor, PdfExtractor>();
         services.AddScoped<ITextExtractor, ImageExtractor>();
+        services.AddScoped<ITextExtractor, AudioExtractor>();
 
         return services;
     }
