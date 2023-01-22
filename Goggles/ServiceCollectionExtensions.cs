@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<ITranscriptionService, WhisperTranscriptionService>(c =>
         {
             c.Timeout = TimeSpan.FromMinutes(30);
-            c.BaseAddress = new Uri(config.WhisperAPIConfiguration.Url);
+            c.BaseAddress = new Uri(config.WhisperTranscriptionConfiguration.Url);
         });
 
         // Text extractors

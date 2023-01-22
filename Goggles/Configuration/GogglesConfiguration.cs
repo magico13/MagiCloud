@@ -6,5 +6,5 @@ public class GogglesConfiguration
     public bool EnableOCR { get; set; } = true;
 
     public AzureOCRConfiguration AzureOCRConfiguration { get; set; } = new();
-    public WhisperTranscriptionConfiguration WhisperAPIConfiguration { get; set; } = new();
+    public WhisperTranscriptionConfiguration WhisperTranscriptionConfiguration { get; set; } = new();
 }
