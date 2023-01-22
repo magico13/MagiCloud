@@ -33,8 +33,10 @@ public static class ServiceCollectionExtensions
 
         // Audio Transcriber(s)
         services.AddHttpClient<ITranscriptionService, WhisperTranscriptionService>(c =>
-            c.Timeout = TimeSpan.FromMinutes(30)
-        );
+        {
+            c.Timeout = TimeSpan.FromMinutes(30);
+            c.BaseAddress = new Uri(config.WhisperAPIConfiguration.Url);
+        });
 
         // Text extractors
         services.AddScoped<ITextExtractor, PlainTextExtractor>();

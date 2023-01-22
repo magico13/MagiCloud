@@ -20,7 +20,7 @@ internal class WhisperTranscriptionService : ITranscriptionService
     {
         // call the API defined by this docker container https://github.com/ahmetoner/whisper-asr-webservice
         // for now assume running locally, but could run on any machine
-        var url = "http://localhost:9000/asr?task=transcribe&language=en&output=vtt";
+        var url = "asr?task=transcribe&language=en&output=vtt";
         var streamContent = new StreamContent(stream);
         streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
 
