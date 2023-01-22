@@ -16,6 +16,7 @@ builder.Services.AddLens(o =>
     o.MaxTextLength = gogglesConfig.MaxTextLength;
     o.EnableOCR = gogglesConfig.EnableOCR;
     o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
+    o.WhisperAPIConfiguration = gogglesConfig.WhisperAPIConfiguration;
 });
 
 var app = builder.Build();
