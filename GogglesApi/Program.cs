@@ -10,7 +10,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Add Lens with the provided values
-var gogglesConfig = builder.Configuration.GetSection(nameof(GogglesConfiguration)).Get<GogglesConfiguration>();
+var gogglesConfig = builder
+    .Configuration
+    .GetSection(nameof(GogglesConfiguration))
+    .Get<GogglesConfiguration>()
+    ?? new();
+
 builder.Services.AddLens(o =>
 {
     o.MaxTextLength = gogglesConfig.MaxTextLength;
