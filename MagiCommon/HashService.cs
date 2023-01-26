@@ -13,15 +13,13 @@ namespace MagiCommon
     {
         public string GenerateContentHash(Stream stream, bool rewind)
         {
-            using (HashAlgorithm alg = SHA256.Create())
+            using HashAlgorithm alg = SHA256.Create();
+            var bytes = alg.ComputeHash(stream);
+            if (rewind && stream.CanSeek)
             {
-                var bytes = alg.ComputeHash(stream);
-                if (rewind && stream.CanSeek)
-                {
-                    stream.Seek(0, SeekOrigin.Begin);
-                }
-                return Convert.ToBase64String(bytes);
+                stream.Seek(0, SeekOrigin.Begin);
             }
+            return Convert.ToBase64String(bytes);
         }
     }
 }

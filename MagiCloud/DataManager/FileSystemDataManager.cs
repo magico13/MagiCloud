@@ -36,7 +36,7 @@ public class FileSystemDataManager : IDataManager
     {
         Directory.CreateDirectory(ROOT);
         var path = GetPath(id);
-        var filestream = File.Create(path);
+        var filestream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
         if (file.Position != 0 && file.CanSeek)
         {
             file.Seek(0, SeekOrigin.Begin);

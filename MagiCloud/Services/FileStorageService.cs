@@ -65,25 +65,31 @@ public class FileStorageService
         return result;
     }
 
-    private async Task UpdateFileAttributesAsync(Stream fileStream,
+    private async Task UpdateFileAttributesAsync(Stream stream,
         string userId,
         ElasticFileInfo doc,
         string contentType)
     {
-        if (fileStream.CanSeek)
+        if (stream.CanSeek)
         {
-            fileStream.Seek(0, SeekOrigin.Begin);
+            stream.Seek(0, SeekOrigin.Begin);
         }
-        var hash = HashService.GenerateContentHash(fileStream, true);
+        var hash = HashService.GenerateContentHash(stream, true);
         var oldHash = doc.Hash;
         var hashesChanged = hash != oldHash;
         doc.Hash = hash;
         doc.MimeType = contentType;
-        doc.Size = fileStream.Length;
+        doc.Size = stream.Length;
         Logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
         if (hashesChanged)
         {
-            doc.Text = await ExtractionHelper.ExtractTextAsync(fileStream, doc.GetFileName(), contentType);
+            // copy filestream to memory so the file can be accessed if extraction is slow
+            using var memoryStream = new MemoryStream();
+            stream.CopyTo(memoryStream);
+            stream.Close();
+            // Not the biggest fan of closing out the file here but we don't want to pull it into memory unless we need to process it
+            memoryStream.Seek(0, SeekOrigin.Begin); // rewind the memory stream for processing
+            doc.Text = await ExtractionHelper.ExtractTextAsync(memoryStream, doc.GetFileName(), contentType);
         }
 
         await Elastic.UpdateFileAttributesAsync(userId, doc);

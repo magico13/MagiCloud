@@ -64,5 +64,5 @@ a, .btn-link {
     }
 
 video::-webkit-media-text-track-container {
-    transform: translateY(-10%);
+    transform: translateY(-25%);
 }
