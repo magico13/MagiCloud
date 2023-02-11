@@ -65,6 +65,10 @@ public class ElasticManager : IElasticManager
             .PrettyJson()
             .RequestTimeout(TimeSpan.FromMinutes(2))
             .ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
+        if (!string.IsNullOrWhiteSpace(_settings.ClientCertPath))
+        {
+            connectionSettings.ClientCertificate(_settings.ClientCertPath);
+        }
 
         Client = new ElasticClient(connectionSettings);
     }
