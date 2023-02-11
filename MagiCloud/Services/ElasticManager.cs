@@ -1,4 +1,5 @@
-﻿using Goggles;
+﻿using Elasticsearch.Net;
+using Goggles;
 using MagiCloud.Configuration;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
@@ -66,11 +67,14 @@ public class ElasticManager : IElasticManager
             .PrettyJson()
             .RequestTimeout(TimeSpan.FromMinutes(2))
             .ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
+
+        
         if (!string.IsNullOrWhiteSpace(_settings.ClientCertPath))
         {
             var cert = new X509Certificate2(_settings.ClientCertPath);
             _logger.LogInformation("Using ca cert for Elastic communication defined at {Path}", _settings.ClientCertPath);
             connectionSettings.ClientCertificate(cert);
+            connectionSettings.ServerCertificateValidationCallback(CertificateValidations.AuthorityPartOfChain(cert));
         }
 
         Client = new ElasticClient(connectionSettings);
