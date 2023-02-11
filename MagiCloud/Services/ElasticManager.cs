@@ -74,7 +74,8 @@ public class ElasticManager : IElasticManager
             var cert = new X509Certificate2(_settings.ClientCertPath);
             _logger.LogInformation("Using ca cert for Elastic communication defined at {Path}", _settings.ClientCertPath);
             connectionSettings.ClientCertificate(cert);
-            connectionSettings.ServerCertificateValidationCallback(CertificateValidations.AuthorityPartOfChain(cert));
+            connectionSettings.ServerCertificateValidationCallback(CertificateValidations.AllowAll);
+            // TODO: Find a better way to do this
         }
 
         Client = new ElasticClient(connectionSettings);
