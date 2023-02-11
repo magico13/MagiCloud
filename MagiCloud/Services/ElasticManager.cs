@@ -72,7 +72,6 @@ public class ElasticManager : IElasticManager
         if (!string.IsNullOrWhiteSpace(_settings.ClientCertPath))
         {
             var cert = new X509Certificate2(_settings.ClientCertPath);
-            _logger.LogInformation("Using ca cert for Elastic communication defined at {Path}", _settings.ClientCertPath);
             connectionSettings.ClientCertificate(cert);
             connectionSettings.ServerCertificateValidationCallback(CertificateValidations.AllowAll);
             // TODO: Find a better way to do this
