@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
@@ -67,7 +68,8 @@ public class ElasticManager : IElasticManager
             .ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
         if (!string.IsNullOrWhiteSpace(_settings.ClientCertPath))
         {
-            connectionSettings.ClientCertificate(_settings.ClientCertPath);
+            var cert = new X509Certificate2(_settings.ClientCertPath);
+            connectionSettings.ClientCertificate(cert);
         }
 
         Client = new ElasticClient(connectionSettings);
