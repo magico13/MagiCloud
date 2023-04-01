@@ -1,5 +1,4 @@
-﻿using Elasticsearch.Net;
-using Goggles;
+﻿using Goggles;
 using MagiCloud.Configuration;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
@@ -11,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
@@ -65,16 +63,17 @@ public class ElasticManager : IElasticManager
             )
             .EnableDebugMode()
             .PrettyJson()
-            .RequestTimeout(TimeSpan.FromMinutes(2))
-            .ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
+            .RequestTimeout(TimeSpan.FromMinutes(2));
 
-        
-        if (!string.IsNullOrWhiteSpace(_settings.ClientCertPath))
+        if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
-            var cert = new X509Certificate2(_settings.ClientCertPath);
-            connectionSettings.ClientCertificate(cert);
-            connectionSettings.ServerCertificateValidationCallback(CertificateValidations.AllowAll);
-            // TODO: Find a better way to do this
+            connectionSettings.ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
+        }
+        
+        if (!string.IsNullOrWhiteSpace(_settings.Thumbprint))
+        {
+            connectionSettings.ServerCertificateValidationCallback((caller, cert, chain, errors) 
+                => string.Equals(cert.GetCertHashString(), _settings.Thumbprint, StringComparison.OrdinalIgnoreCase));
         }
 
         Client = new ElasticClient(connectionSettings);
