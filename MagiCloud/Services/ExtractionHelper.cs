@@ -25,7 +25,7 @@ public class ExtractionHelper
     public Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
         => _lens.ExtractTextAsync(stream, filename, contentType);
 
-    public async Task<(bool, string)> ExtractTextAsync(string userId, string docId, bool force = false)
+    public async Task<(bool updated, string text)> ExtractTextAsync(string userId, string docId, bool force = false)
     {
         var (permission, doc) = await _elasticManager.GetDocumentAsync(userId, docId, !force);
         // get document. If we are forcing an update then we don't care about the current text
@@ -43,5 +43,18 @@ public class ExtractionHelper
         {
             return (false, null);
         }
+    }
+
+    internal async Task<(bool updated, string text)> ExtractTextAsync(string docId, bool force = false)
+    {
+        var doc = await _elasticManager.GetDocumentByIdAsync(docId, !force);
+        // get document. If we are forcing an update then we don't care about the current text
+        // if not forcing, then we might return the existing text instead
+        if (!string.IsNullOrWhiteSpace(doc.Text))
+        {
+            return (false, doc.Text);
+        }
+        using var fileStream = _dataManager.GetFile(doc.Id);
+        return (true, await ExtractTextAsync(fileStream, doc.GetFileName(), doc.MimeType));
     }
 }

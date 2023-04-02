@@ -12,13 +12,18 @@ public class TextExtractionQueueHelper
 
     private ILogger<TextExtractionQueueHelper> Logger { get; }
     private IMessageQueueService<string> TextExtractionQueue { get; }
-
+    private ExtractionHelper ExtractionHelper { get; }
+    private IElasticManager ElasticManager { get; }
 
     public TextExtractionQueueHelper(ILogger<TextExtractionQueueHelper> logger,
-        IMessageQueueService<string> queueService)
+        IMessageQueueService<string> queueService,
+        ExtractionHelper extractionHelper,
+        IElasticManager elasticManager)
     {
         TextExtractionQueue = queueService;
+        ExtractionHelper = extractionHelper;
         Logger = logger;
+        ElasticManager = elasticManager;
     }
 
     public void AddFileToQueue(string fileId) => TextExtractionQueue.AddMessage(fileId);
@@ -55,7 +60,15 @@ public class TextExtractionQueueHelper
             // And then calling the ExtractionHelper to extract the text
             // Then update the file in Elastic
             Logger.LogInformation("Text Processing for file: {FileId}", fileId);
-
+            var (_, text) = await ExtractionHelper.ExtractTextAsync(fileId, true);
+            // Update the document with the new text
+            if (!string.IsNullOrEmpty(text)) 
+            {
+                var fileInfo = await ElasticManager.GetDocumentByIdAsync(fileId, false);
+                fileInfo.Text = text;
+                await ElasticManager.UpdateFileAttributesAsync(fileInfo);
+            }
+            // If we got no text we don't bother updating the file
         }
         catch (Exception ex)
         {

@@ -20,11 +20,12 @@ public interface IElasticManager
     Task<bool> SetupIndicesAsync();
     Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted);
     Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText);
+    Task<ElasticFileInfo> GetDocumentByIdAsync(string id, bool includeText);
     Task<List<SearchResult>> SearchAsync(string userId, string query);
     Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension);
     Task<string> IndexDocumentAsync(string userId, ElasticFileInfo file);
     Task<FileAccessResult> DeleteFileAsync(string userId, string id);
-    Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file);
+    Task UpdateFileAttributesAsync(ElasticFileInfo file);
 }
 
 
@@ -173,6 +174,26 @@ public class ElasticManager : IElasticManager
             FileAccessResult.FullAccess or FileAccessResult.ReadOnly => (accessLevel, source),
             _ => (FileAccessResult.NotPermitted, null),
         };
+    }
+
+    public async Task<ElasticFileInfo> GetDocumentByIdAsync(string id, bool includeText)
+    {
+        Setup();
+        var getRequest = new GetRequest<ElasticFileInfo>(id);
+        if (!includeText)
+        {
+            getRequest.SourceExcludes = new Field("text");
+        }
+        var result = await Client.GetAsync<ElasticFileInfo>(getRequest);
+        if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
+        {
+            _logger.LogWarning("Document with id {Id} not found.", id);
+            return null;
+        }
+        ThrowIfInvalid(result);
+        var source = result.Source;
+        source.Id = result.Id;
+        return source;
     }
 
     public async Task<List<SearchResult>> SearchAsync(string userId, string query)
@@ -364,13 +385,10 @@ public class ElasticManager : IElasticManager
         return FileAccessResult.Unknown;
     }
 
-    public async Task UpdateFileAttributesAsync(string userId, ElasticFileInfo file)
+    public async Task UpdateFileAttributesAsync(ElasticFileInfo file)
     {
-        var (_, existing) = await GetDocumentAsync(userId, file.Id, true);
-        if (existing is null)
-        {
-            throw new FileNotFoundException("Can not find file with id " + file.Id, file.Id);
-        }
+        var existing = await GetDocumentByIdAsync(file.Id, true)
+            ?? throw new FileNotFoundException("Can not find file with id " + file.Id, file.Id);
         existing.Hash = file.Hash;
         existing.Size = file.Size;
         existing.MimeType = file.MimeType;
@@ -399,7 +417,7 @@ public class ElasticManager : IElasticManager
         return file.MimeType;
     }
 
-    private FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
+    private static FileAccessResult VerifyFileAccess(string userId, ElasticFileInfo file)
     {
         if (string.Equals(file.UserId, userId, StringComparison.Ordinal))
         {

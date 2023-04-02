@@ -1,6 +1,5 @@
 ﻿using MagiCloud.DataManager;
 using MagiCommon;
-using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -14,61 +13,62 @@ public class FileStorageService
     public IElasticManager Elastic { get; }
     public IHashService HashService { get; }
     public ILogger<FileStorageService> Logger { get; }
-    public ExtractionHelper ExtractionHelper { get; }
+    public TextExtractionQueueHelper ExtractionQueue { get; }
 
     public FileStorageService(
         IDataManager dataManager,
         IElasticManager elastic,
         IHashService hashService,
         ILogger<FileStorageService> logger,
-        ExtractionHelper extractionHelper)
+        TextExtractionQueueHelper extractionQueue)
     {
         DataManager = dataManager;
         Elastic = elastic;
         HashService = hashService;
         Logger = logger;
-        ExtractionHelper = extractionHelper;
+        ExtractionQueue = extractionQueue;
+    }
+
+    public async Task<FileAccessResult> StoreFile(string userId, string docId, Stream stream)
+    {
+        var (result, doc) = await Elastic.GetDocumentAsync(userId, docId, true);
+        doc.Id = docId;
+        return result != FileAccessResult.FullAccess 
+            ? result 
+            : await StoreFile(userId, doc, stream);
     }
 
     public async Task<FileAccessResult> StoreFile(string userId, ElasticFileInfo fileInfo, Stream stream)
     {
+        if (stream is null || stream.Length < 0)
+        {
+            return FileAccessResult.Unknown;
+        }
+        await Elastic.SetupIndicesAsync();
+
         var docId = await Elastic.IndexDocumentAsync(userId, fileInfo);
         var (result, doc) = await Elastic.GetDocumentAsync(userId, docId, false);
         doc.Id = docId;
-        if (fileInfo.Hash != doc.Hash || string.IsNullOrWhiteSpace(doc.Hash))
+        if (result == FileAccessResult.FullAccess
+            && doc != null
+            && !string.IsNullOrWhiteSpace(doc.Id))
         {
-            if (stream is null || stream.Length < 0)
-            {
-                // TODO: Throw exception
-                return FileAccessResult.Unknown;
-            }
+            // document exists in db, write data to filesystem
+            using var fileStream = await DataManager.WriteFileAsync(doc.Id, stream);
 
-            await Elastic.SetupIndicesAsync();
-            if (result == FileAccessResult.FullAccess
-                && doc != null
-                && !string.IsNullOrWhiteSpace(doc.Id))
-            {
-                // document exists in db, write data to filesystem
-                using var fileStream = await DataManager.WriteFileAsync(doc.Id, stream);
-
-                // Update indexed document
-                await UpdateFileAttributesAsync(fileStream, userId, doc, doc.MimeType);
-                return result;
-            }
-            else if (result == FileAccessResult.NotFound)
-            {
-                //throw
-                return result;
-            }
-            return FileAccessResult.NotPermitted;
+            // Update indexed document
+            await UpdateFileAttributesAsync(fileStream, doc);
+            return result;
         }
-        return result;
+        else if (result == FileAccessResult.NotFound)
+        {
+            return result;
+        }
+        return FileAccessResult.NotPermitted;
     }
 
     private async Task UpdateFileAttributesAsync(Stream stream,
-        string userId,
-        ElasticFileInfo doc,
-        string contentType)
+        ElasticFileInfo doc)
     {
         if (stream.CanSeek)
         {
@@ -78,20 +78,14 @@ public class FileStorageService
         var oldHash = doc.Hash;
         var hashesChanged = hash != oldHash;
         doc.Hash = hash;
-        doc.MimeType = contentType;
+        doc.MimeType = doc.MimeType;
         doc.Size = stream.Length;
         Logger.LogInformation("Hashed file. New: {NewHash} Old: {Hash}", hash, oldHash);
         if (hashesChanged)
         {
-            // copy filestream to memory so the file can be accessed if extraction is slow
-            using var memoryStream = new MemoryStream();
-            stream.CopyTo(memoryStream);
-            stream.Close();
-            // Not the biggest fan of closing out the file here but we don't want to pull it into memory unless we need to process it
-            memoryStream.Seek(0, SeekOrigin.Begin); // rewind the memory stream for processing
-            doc.Text = await ExtractionHelper.ExtractTextAsync(memoryStream, doc.GetFileName(), contentType);
+            ExtractionQueue.AddFileToQueue(doc.Id);
         }
 
-        await Elastic.UpdateFileAttributesAsync(userId, doc);
+        await Elastic.UpdateFileAttributesAsync(doc);
     }
 }
