@@ -1,6 +1,7 @@
 ﻿using MagiCloud.Models;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
@@ -28,31 +29,38 @@ public class TextExtractionQueueHelper
 
     public void AddFileToQueue(string fileId) => TextExtractionQueue.AddMessage(fileId);
 
-    public async Task ProcessQueueAsync()
+    public async Task ProcessQueueAsync(CancellationToken cancellationToken)
     {
-        while (true)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            // while there are messages, process them as fast as possible
-            var message = TextExtractionQueue.PopMessage();
-            while (message != null)
+            try
             {
-                await ProcessMessage(message);
-                message = TextExtractionQueue.PopMessage();
+                // while there are messages, process them as fast as possible
+                Message<string> message;
+                while ((message = TextExtractionQueue.PopMessage()) != null)
+                {
+                    await ProcessMessage(message);
+                }
+
+                // Sleep between polls
+                await Task.Delay(PollingPeriod, cancellationToken);
             }
-            
-            // Sleep between polls
-            await Task.Delay(PollingPeriod);
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Text Extraction Queue processing encountered an exception. Ignoring and continuing.");
+            }
         }
+
+        Logger.LogInformation("Shutting down Text Extraction Queue processing");
     }
 
-    public async Task ProcessMessage(Message<string> message)
+    private async Task ProcessMessage(Message<string> message)
     {
-        if (message == null)
+        var fileId = message?.Content;
+        if (string.IsNullOrWhiteSpace(fileId))
         {
             return;
         }
-
-        var fileId = message.Content;
 
         try
         {

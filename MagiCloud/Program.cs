@@ -16,8 +16,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
+var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
 
 // Add services to the container.
 
@@ -51,6 +53,7 @@ builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nam
 builder.Services.AddScoped<IElasticManager, ElasticManager>();
 builder.Services.AddScoped<IDataManager, FileSystemDataManager>();
 builder.Services.AddScoped<IHashService, HashService>();
+builder.Services.AddScoped<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
 builder.Services.AddScoped<FileStorageService>();
 builder.Services.AddHttpClient();
 
@@ -71,6 +74,9 @@ builder.Services.AddLens(o =>
     o.WhisperTranscriptionConfiguration = gogglesConfig.WhisperTranscriptionConfiguration;
 });
 builder.Services.AddScoped<ExtractionHelper>();
+
+// Add Singletons
+builder.Services.AddSingleton<TextExtractionQueueHelper>();
 
 var app = builder.Build();
 
@@ -109,4 +115,14 @@ app.MapBlazorHub();
 app.MapRazorPages();
 app.MapFallbackToPage("/_Host");
 
-app.Run();
+
+// Start queue monitors
+using (var scope = app.Services.CreateScope())
+{
+    var textExtrationQueue = scope.ServiceProvider.GetRequiredService<TextExtractionQueueHelper>();
+    Task.Factory.StartNew(async ()
+        => await textExtrationQueue.ProcessQueueAsync(applicationCancellationTokenSource.Token),
+        TaskCreationOptions.LongRunning).Start();
+}
+
+await app.RunAsync(applicationCancellationTokenSource.Token);
