@@ -247,7 +247,6 @@ else
 
     private void FilterToFolder(string folder)
     {
-        Logger.LogWarning("Filtering to folder {Folder}", folder);
         CurrentFolder = folder;
         Files = new List<FileWrapper>();
         if (folder.Length > 1)

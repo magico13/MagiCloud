@@ -16,7 +16,7 @@ public static class ServiceCollectionExtensions
         var config = new GogglesConfiguration();
         configureOptions(config);
 
-        services.AddScoped<ILens, Lens>();
+        services.AddSingleton<ILens, Lens>();
 
         // OCR engine(s)
         if (!string.IsNullOrWhiteSpace(config.AzureOCRConfiguration?.SubscriptionKey)
@@ -39,10 +39,10 @@ public static class ServiceCollectionExtensions
         });
 
         // Text extractors
-        services.AddScoped<ITextExtractor, PlainTextExtractor>();
-        services.AddScoped<ITextExtractor, PdfExtractor>();
-        services.AddScoped<ITextExtractor, ImageExtractor>();
-        services.AddScoped<ITextExtractor, AudioExtractor>();
+        services.AddSingleton<ITextExtractor, PlainTextExtractor>();
+        services.AddSingleton<ITextExtractor, PdfExtractor>();
+        services.AddSingleton<ITextExtractor, ImageExtractor>();
+        services.AddSingleton<ITextExtractor, AudioExtractor>();
 
         return services;
     }

@@ -17,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Threading.Tasks;
+using static System.Formats.Asn1.AsnWriter;
 
 var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -50,16 +51,17 @@ builder.Services.AddServerSideBlazor();
 builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
 
-builder.Services.AddScoped<IElasticManager, ElasticManager>();
-builder.Services.AddScoped<IDataManager, FileSystemDataManager>();
-builder.Services.AddScoped<IHashService, HashService>();
-builder.Services.AddScoped<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
-builder.Services.AddScoped<FileStorageService>();
+builder.Services.AddSingleton<IElasticManager, ElasticManager>();
+builder.Services.AddSingleton<IDataManager, FileSystemDataManager>();
+builder.Services.AddSingleton<IHashService, HashService>();
+builder.Services.AddSingleton<FileStorageService>();
 builder.Services.AddHttpClient();
+
+builder.Services.AddTransient<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
 
 if (!string.IsNullOrWhiteSpace(builder.Configuration.Get<GeneralSettings>().SendGridKey))
 {
-    builder.Services.AddTransient<IEmailSender, SendGridEmailService>();
+    builder.Services.AddSingleton<IEmailSender, SendGridEmailService>();
 }
 
 // Add text extraction abilities
@@ -73,7 +75,7 @@ builder.Services.AddLens(o =>
     o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
     o.WhisperTranscriptionConfiguration = gogglesConfig.WhisperTranscriptionConfiguration;
 });
-builder.Services.AddScoped<ExtractionHelper>();
+builder.Services.AddSingleton<ExtractionHelper>();
 
 // Add Singletons
 builder.Services.AddSingleton<TextExtractionQueueHelper>();
@@ -117,12 +119,9 @@ app.MapFallbackToPage("/_Host");
 
 
 // Start queue monitors
-using (var scope = app.Services.CreateScope())
-{
-    var textExtrationQueue = scope.ServiceProvider.GetRequiredService<TextExtractionQueueHelper>();
-    Task.Factory.StartNew(async ()
-        => await textExtrationQueue.ProcessQueueAsync(applicationCancellationTokenSource.Token),
-        TaskCreationOptions.LongRunning).Start();
-}
+var textExtrationQueue = app.Services.GetRequiredService<TextExtractionQueueHelper>();
+_ = Task.Factory.StartNew(async ()
+    => await textExtrationQueue.ProcessQueueAsync(applicationCancellationTokenSource.Token),
+    TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
 await app.RunAsync(applicationCancellationTokenSource.Token);

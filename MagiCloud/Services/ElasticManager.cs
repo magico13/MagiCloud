@@ -42,7 +42,7 @@ public class ElasticManager : IElasticManager
     private readonly ILens _lens;
 
     public ElasticManager(
-        IOptionsSnapshot<ElasticSettings> options,
+        IOptions<ElasticSettings> options,
         ILogger<ElasticManager> logger,
         ILens lens)
     {
