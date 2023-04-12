@@ -6,21 +6,29 @@ namespace Goggles;
 
 internal class ContentTypeAnalyzer
 {
-    private readonly static FileExtensionContentTypeProvider _extensionTypeProvider
-        = new FileExtensionContentTypeProvider();
+    private readonly static FileExtensionContentTypeProvider _extensionTypeProvider = new();
 
-    protected static Dictionary<string, string> CustomExtensionMapping { get; } = new Dictionary<string, string>
+    internal static Dictionary<string, string> CustomExtensionMapping { get; } = new Dictionary<string, string>
     {
         // Text files
         ["csv"] = "text/csv",
         ["gcode"] = "text/x-gcode",
+        ["ini"] = "text/plain",
         ["ino"] = "text/plain",
+        ["log"] = "text/plain",
         ["ofx"] = "text/plain",
         ["py"] = "text/x-python",
         ["yaml"] = "text/x-yaml",
         ["yml"] = "text/x-yaml",
         // Image files
-        ["xcf"] = "image/x-xcf"
+        ["xcf"] = "image/x-xcf",
+        // "Application" types
+        ["msg"] = "application/vnd.ms-outlook",
+        ["odp"] = "application/vnd.oasis.opendocument.presentation",
+        ["ods"] = "application/vnd.oasis.opendocument.spreadsheet",
+        ["odt"] = "application/vnd.oasis.opendocument.text",
+        ["sql"] = "application/sql",
+        ["url"] = "application/internet-shortcut"
     };
 
     internal static string DetermineContentType(string filename)
