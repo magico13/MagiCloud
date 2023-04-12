@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        sdk = '.NET 6.0.100'
+        sdk = '.NET 6.0.408'
     }
 
     stages {
@@ -24,6 +24,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing...'
+                dotnetTest project: 'MagiCloud.sln', configuration: 'Release', logger: 'trx', arguments: '--no-restore', sdk: "${sdk}"
             }
         }
         stage('Deploy') {
