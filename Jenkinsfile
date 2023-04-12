@@ -24,7 +24,8 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing...'
-                dotnetTest configuration: 'Release', logger: 'trx', project: 'MagiCloud.sln', sdk: "${sdk}"
+                dotnetTest configuration: 'Release', logger: 'junit', project: 'MagiCloud.sln', sdk: "${sdk}"
+                junit '**/TestResults/*.xml'
             }
         }
         stage('Deploy') {
