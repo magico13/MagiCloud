@@ -8,6 +8,7 @@ using MagiCloud.DataManager;
 using MagiCloud.Db;
 using MagiCloud.Services;
 using MagiCommon;
+using MagiCommon.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -16,8 +17,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using static System.Formats.Asn1.AsnWriter;
 
 var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -59,10 +61,21 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddTransient<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
 
-if (!string.IsNullOrWhiteSpace(builder.Configuration.Get<GeneralSettings>().SendGridKey))
+var generalSettings = builder.Configuration.GetSection(nameof(GeneralSettings)).Get<GeneralSettings>();
+
+if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 {
     builder.Services.AddSingleton<IEmailSender, SendGridEmailService>();
 }
+
+if (!string.IsNullOrWhiteSpace(generalSettings.OpenAIKey))
+{
+    builder.Services.AddHttpClient<IChatCompletionService, ChatGPTCompletionService>(o =>
+    {
+        o.BaseAddress = new Uri("https://api.openai.com/");
+        o.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", generalSettings.OpenAIKey);
+    });
+};
 
 // Add text extraction abilities
 var gogglesConfig = builder.Configuration

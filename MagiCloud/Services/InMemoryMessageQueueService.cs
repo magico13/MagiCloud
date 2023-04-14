@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System;
-using MagiCloud.Models;
+using MagiCommon.Models;
 
 namespace MagiCloud.Services;
 

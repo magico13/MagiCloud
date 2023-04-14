@@ -1,4 +1,4 @@
-﻿using MagiCloud.Models;
+﻿using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;

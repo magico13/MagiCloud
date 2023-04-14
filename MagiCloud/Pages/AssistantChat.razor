@@ -1,0 +1,92 @@
+@page "/chat/{Id}"
+@using MagiCloud.Services;
+@using MagiCloud;
+@using MagiCommon.Extensions
+@using MagiCommon.Interfaces;
+@using MagiCommon.Models.AssistantChat;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Components.Authorization;
+
+@attribute [Authorize]
+
+@inject IChatCompletionService ChatCompletionService
+@inject IElasticManager ElasticManager
+
+<h2>Chat with Assistant</h2>
+@if (Chat is null)
+{
+    if (ForbiddenMessage is not null)
+    {
+        <Paragraph>@ForbiddenMessage</Paragraph>
+    }
+    else
+    {
+        <Paragraph>The assistant is analyzing the document... Please wait...</Paragraph>
+    }
+}
+else
+{
+    <Card>
+        <CardBody>
+            @foreach(var message in Chat.Messages.Where(m => m.Role != Role.System))
+            {
+                <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {message.Content}")</Paragraph>
+            }
+            <Addons>
+                <Addon AddonType=AddonType.Body>
+                    <TextEdit @bind-Text=UserMessage></TextEdit>
+                </Addon>
+                <Addon AddonType=AddonType.End>
+                    <Button Color="Color.Primary" Clicked="SendUserMessageAsync">Send</Button>
+                </Addon>
+            </Addons>
+        </CardBody>
+    </Card>
+}
+
+
+@code {
+    [CascadingParameter] 
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    private string UserId { get; set; }
+    private Chat Chat { get; set; }
+    private string ForbiddenMessage { get; set; }
+
+    [Parameter] 
+    public string Id { get; set; }
+    protected string UserMessage { get; set; }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (UserId is not null) return;
+        var authState = await AuthenticationStateTask;
+        UserId = authState.User.GetUserId();
+
+        var (access, file) = await ElasticManager.GetDocumentAsync(UserId, Id, true);
+        if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
+            || file is null || file.IsDeleted)
+        {
+            ForbiddenMessage = "You do not have access to the file or the file was not found.";
+            this.StateHasChanged();
+            return;
+        }
+
+        var initialRequest = new ChatCompletionRequest
+        {
+            User = UserId
+        };
+        Chat = ChatCompletionService.CreateNewChat(initialRequest, authState.User.Identity.Name, UserId, file);
+        await Chat.StartChatAsync();
+        this.StateHasChanged();
+    }
+
+    private async Task SendUserMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserMessage)) return;
+
+        var msgCopy = UserMessage;
+        UserMessage = null;
+        _ = await Chat.SendUserMessage(msgCopy);
+    }
+}
