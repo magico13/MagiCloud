@@ -34,12 +34,16 @@ else
             }
             <Addons>
                 <Addon AddonType=AddonType.Body>
-                    <TextEdit @bind-Text=UserMessage></TextEdit>
+                    <TextEdit @bind-Text=UserMessage KeyUp=KeyUpHandler></TextEdit>
                 </Addon>
                 <Addon AddonType=AddonType.End>
                     <Button Color="Color.Primary" Clicked="SendUserMessageAsync">Send</Button>
                 </Addon>
             </Addons>
+            @if(LastResponse is not null)
+            {
+                <Text>@($"{LastResponse.Usage.TotalTokens}/4096")</Text>
+            }
         </CardBody>
     </Card>
 }
@@ -51,6 +55,7 @@ else
     private string UserId { get; set; }
     private Chat Chat { get; set; }
     private string ForbiddenMessage { get; set; }
+    private ChatCompletionResponse LastResponse { get; set; }
 
     [Parameter] 
     public string Id { get; set; }
@@ -77,7 +82,7 @@ else
             User = UserId
         };
         Chat = ChatCompletionService.CreateNewChat(initialRequest, authState.User.Identity.Name, UserId, file);
-        await Chat.StartChatAsync();
+        LastResponse = await Chat.StartChatAsync();
         this.StateHasChanged();
     }
 
@@ -87,6 +92,14 @@ else
 
         var msgCopy = UserMessage;
         UserMessage = null;
-        _ = await Chat.SendUserMessage(msgCopy);
+        LastResponse = await Chat.SendUserMessage(msgCopy);
+    }
+
+    private async Task KeyUpHandler(KeyboardEventArgs keyboardEvent)
+    {
+        if (keyboardEvent.Key == ConsoleKey.Enter.ToString())
+        {
+            await SendUserMessageAsync();
+        }
     }
 }
