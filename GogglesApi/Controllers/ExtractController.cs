@@ -23,9 +23,10 @@ public class ExtractController : ControllerBase
     public async Task<IActionResult> PostAsync(IFormFile file)
     {
         using var fileStream = file.OpenReadStream();
-        var contentType = file.ContentType != "application/octet-stream"
-            ? file.ContentType 
-            : _lens.DetermineContentType(file.FileName);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) 
+            || file.ContentType == "application/octet-stream"
+            ? _lens.DetermineContentType(file.FileName) 
+            : file.ContentType;
         return new JsonResult(new 
         {
             Text = await _lens.ExtractTextAsync(fileStream, file.FileName, contentType),
