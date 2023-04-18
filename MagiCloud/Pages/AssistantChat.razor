@@ -2,6 +2,7 @@
 @page "/chat/{Id}"
 @using MagiCloud.Services;
 @using MagiCloud;
+@using MagiCommon.Comparers.ElasticFileInfoComparers;
 @using MagiCommon.Extensions
 @using MagiCommon.Interfaces;
 @using MagiCommon.Models.AssistantChat;
@@ -101,18 +102,35 @@ else
             // Get the list of documents and send that as additional context
             var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
             // strip out fields that don't matter and shorten property names
-            StringBuilder builder = new("Metadata for stored files, compressed. n=FileName, p=IsPublic, u=LastUpdated, s=Size in bytes.");
+            StringBuilder builder = new();
+            builder.AppendLine("Metadata for stored files, compressed. N=FileName, P=IsPublic, U=LastUpdated (unix s), S=Size in bytes.");
+            builder.AppendLine("Folders change on F= lines, the files that follow are in that folder until the next F= line.");
+
+            string currentFolder = null;
+            docs.Sort(new FilePathComparer());
+
+            builder.AppendLine($"{docs.Count} file count. {docs.Sum(d => d.Size)} bytes used.");
 
             foreach (var doc in docs)
             {
-                builder.AppendLine($"n={doc.GetFullPath()},p={doc.IsPublic},u={doc.LastUpdated},s={doc.Size}");
+                var folder = doc.GetDirectory();
+                if (folder != currentFolder)
+                {
+                    currentFolder = folder;
+                    builder.AppendLine($"F={folder}");
+                }
+
+                builder.AppendLine($"N={doc.GetFileName()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
                 if (builder.Length >= 6000)
                 {
                     builder.Append("More files exist but were cut to save characters.");
+                    break;
                 }
             }
 
-            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, UserId, builder.ToString());
+            var fileContext = builder.ToString();
+
+            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, UserId, fileContext);
         }
         LastResponse = await Chat.StartChatAsync();
         this.StateHasChanged();
