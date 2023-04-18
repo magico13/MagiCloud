@@ -14,24 +14,28 @@ namespace MagiCloud.Services;
 
 public class ChatGPTCompletionService : IChatCompletionService
 {
-    private const string SYSTEM_MESSAGE = @"
-You are an assistant for a cloud storage website called MagiCloud. You help users to work with stored documents by summarizing them, extracting the most relevant information, and answering questions about the documents. Your first message should indicate what you can help with and should make a guess at what the current document is (example: ""This document looks like a PDF of a form 1040 tax document."").
+    private const string DOCUMENT_SYSTEM_MESSAGE = @"
+You are an assistant for a personal cloud storage website called MagiCloud that is a hobby project. You help users to work with stored documents by summarizing them, extracting the most relevant information, and answering questions about the documents. Your first message should indicate what you can help with and should make a guess at what the current document is (example: ""This document looks like a PDF of a form 1040 tax document."").
 
-You are chatting with the user {0} whose id is {1}. The current time is {2}.
+You are chatting with the user {0} whose id is {1}. The current system time is {2} but if the user asks about the time you should give it in a format suitable for Americans..
 
 The JSON below is the document context for this conversation. The text property is the text extracted from the file, either directly, via OCR, audio transcription, etc and is not the file content itself. This context is provided by the system and is not understood by the user so you should avoid referring to 'document context'. The file's name is composed of the name and extension properties and / in the name means a folder separator.
 {3}";
 
+    private const string GENERAL_SYSTEM_MESSAGE = @"You are an assistant for a personal cloud storage website called MagiCloud that is a hobby project. This is a general chat, not specific to any one document. Your first message should be a friendly hello asking the user what they need help with. If you do not know how to do something you should say so and not make a guess.
+You are chatting with the user {0} whose id is {1}. The current system time is {2} but if the user asks about the time you should give it in a format suitable for Americans.
+The following is additional context for this conversation:
+{3}";
+
     private const int MAX_TEXT_LENGTH = 8192;
-    private JsonSerializerOptions JsonSerializerOptions { get; } = new() 
-    { 
+    private JsonSerializerOptions JsonSerializerOptions { get; } = new()
+    {
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
         Converters = { new RoleJsonConverter() },
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     private HttpClient HttpClient { get; }
-
 
     public ChatGPTCompletionService(HttpClient httpClient) => HttpClient = httpClient;
 
@@ -46,7 +50,7 @@ The JSON below is the document context for this conversation. The text property 
         return JsonSerializer.Deserialize<ChatCompletionResponse>(responseContent, JsonSerializerOptions);
     }
 
-    public Chat CreateNewChat(
+    public Chat CreateNewDocumentChat(
         ChatCompletionRequest initialRequest,
         string username,
         string userId,
@@ -66,12 +70,26 @@ The JSON below is the document context for this conversation. The text property 
 
         var serializedContext = JsonSerializer.Serialize(deserialized, JsonSerializerOptions);
 
-        return new (this,
+        return new(this,
             initialRequest,
-            string.Format(SYSTEM_MESSAGE,
+            string.Format(DOCUMENT_SYSTEM_MESSAGE,
                 username,
                 userId,
                 DateTimeOffset.Now.ToString("O"),
                 serializedContext));
     }
+
+    public Chat CreateNewGeneralChat(
+        ChatCompletionRequest initialRequest,
+        string username,
+        string userId,
+        string additionalContext) => new(
+            this,
+            initialRequest,
+            string.Format(
+                GENERAL_SYSTEM_MESSAGE,
+                username,
+                userId,
+                DateTimeOffset.Now.ToString("O"),
+                additionalContext));
 }

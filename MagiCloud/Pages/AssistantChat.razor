@@ -1,11 +1,14 @@
+@page "/chat"
 @page "/chat/{Id}"
 @using MagiCloud.Services;
 @using MagiCloud;
 @using MagiCommon.Extensions
 @using MagiCommon.Interfaces;
 @using MagiCommon.Models.AssistantChat;
+@using Markdig;
 @using Microsoft.AspNetCore.Authorization;
 @using Microsoft.AspNetCore.Components.Authorization;
+@using System.Text;
 
 @attribute [Authorize]
 
@@ -21,7 +24,7 @@
     }
     else
     {
-        <Paragraph>The assistant is analyzing the document... Please wait...</Paragraph>
+        <Paragraph>The assistant is waking up... Please wait...</Paragraph>
     }
 }
 else
@@ -30,7 +33,10 @@ else
         <CardBody>
             @foreach(var message in Chat.Messages.Where(m => m.Role != Role.System))
             {
-                <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {message.Content}")</Paragraph>
+                @*Assistant messages can use markdown but we shouldn't let users do that.*@
+                var text = message.Role == Role.Assistant ? Markdown.ToHtml(message.Content, MarkdownPipeline) : message.Content;
+
+                <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {text}")</Paragraph>
             }
             <Addons>
                 <Addon AddonType=AddonType.Body>
@@ -57,6 +63,8 @@ else
     private string ForbiddenMessage { get; set; }
     private ChatCompletionResponse LastResponse { get; set; }
 
+    private MarkdownPipeline MarkdownPipeline { get; set; } = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+
     [Parameter] 
     public string Id { get; set; }
     protected string UserMessage { get; set; }
@@ -68,20 +76,44 @@ else
         var authState = await AuthenticationStateTask;
         UserId = authState.User.GetUserId();
 
-        var (access, file) = await ElasticManager.GetDocumentAsync(UserId, Id, true);
-        if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
-            || file is null || file.IsDeleted)
-        {
-            ForbiddenMessage = "You do not have access to the file or the file was not found.";
-            this.StateHasChanged();
-            return;
-        }
-
         var initialRequest = new ChatCompletionRequest
         {
             User = UserId
         };
-        Chat = ChatCompletionService.CreateNewChat(initialRequest, authState.User.Identity.Name, UserId, file);
+
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            // Document chat
+            var (access, file) = await ElasticManager.GetDocumentAsync(UserId, Id, true);
+            if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
+                || file is null || file.IsDeleted)
+            {
+                ForbiddenMessage = "You do not have access to the file or the file was not found.";
+                this.StateHasChanged();
+                return;
+            }
+
+            Chat = ChatCompletionService.CreateNewDocumentChat(initialRequest, authState.User.Identity.Name, UserId, file);
+        }
+        else
+        {
+            // General chat
+            // Get the list of documents and send that as additional context
+            var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
+            // strip out fields that don't matter and shorten property names
+            StringBuilder builder = new("Metadata for stored files, compressed. n=FileName, p=IsPublic, u=LastUpdated, s=Size in bytes.");
+
+            foreach (var doc in docs)
+            {
+                builder.AppendLine($"n={doc.GetFullPath()},p={doc.IsPublic},u={doc.LastUpdated},s={doc.Size}");
+                if (builder.Length >= 6000)
+                {
+                    builder.Append("More files exist but were cut to save characters.");
+                }
+            }
+
+            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, UserId, builder.ToString());
+        }
         LastResponse = await Chat.StartChatAsync();
         this.StateHasChanged();
     }
