@@ -22,10 +22,18 @@ You are chatting with the user {0} whose id is {1}. The current system time is {
 The JSON below is the document context for this conversation. The text property is the text extracted from the file, either directly, via OCR, audio transcription, etc and is not the file content itself. This context is provided by the system and is not understood by the user so you should avoid referring to 'document context'. The file's name is composed of the name and extension properties and / in the name means a folder separator.
 {3}";
 
-    private const string GENERAL_SYSTEM_MESSAGE = @"You are an assistant for a personal cloud storage website called MagiCloud that is a hobby project. This is a general chat, not specific to any one document. Your first message should be a friendly hello asking the user what they need help with. If you do not know how to do something you should say so and not make a guess.
-You are chatting with the user {0} whose id is {1}. The current system time is {2} but if the user asks about the time you should give it in a format suitable for Americans.
-The following is additional context for this conversation:
-{3}";
+    private const string GENERAL_SYSTEM_MESSAGE = @"You're a MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help. If unsure, say so, and don't guess. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
+
+Commands: Use #cmd:search {{terms}} and #cmd:process {{ID}} by adding them to the end of Assistant messages for the system to process. Never expose commands to the user.
+
+Document links: Use [link text](/view/{{ID}}) and embed images with ![image name](/api/filecontent/{{ID}})
+
+The chat window supports markdown formatting.
+
+User info: {0}, Chat Start Time: {1}.
+
+{2}
+Remember, MagiCloud is a small hobby project, so avoid giving information or instructions that may be more relevant to larger services like Dropbox.";
 
     private const int MAX_TEXT_LENGTH = 8192;
     private JsonSerializerOptions JsonSerializerOptions { get; } = new()
@@ -82,14 +90,12 @@ The following is additional context for this conversation:
     public Chat CreateNewGeneralChat(
         ChatCompletionRequest initialRequest,
         string username,
-        string userId,
         string additionalContext) => new(
             this,
             initialRequest,
             string.Format(
                 GENERAL_SYSTEM_MESSAGE,
                 username,
-                userId,
-                DateTimeOffset.Now.ToString("O"),
+                DateTimeOffset.Now.ToString("MM/dd/yyyy h:mm tt z"),
                 additionalContext));
 }

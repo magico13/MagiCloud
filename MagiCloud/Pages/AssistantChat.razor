@@ -26,7 +26,7 @@
     }
     else
     {
-        <Paragraph>The assistant is waking up... Please wait...</Paragraph>
+        <Paragraph>The assistant is analyzing your documents... Please wait...</Paragraph>
     }
 }
 else
@@ -101,19 +101,14 @@ else
         {
             // General chat
             // Get the list of documents and send that as additional context
+            var recentFileCount = 5;
             var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
             // strip out fields that don't matter and shorten property names
             StringBuilder builder = new();
-            builder.AppendLine($"{docs.Count} total files stored. {docs.Sum(d => d.Size)} bytes used.");
-            builder.AppendLine("You can invoke system commands behind the scenes to affect the system. The user does not know these commands and they are only for you, put them as new lines at the end of messages to be parsed by the system. You will get a system message with the results which is not shown to user. Commands are: `#cmd:search {search terms}` to full-text search documents, `#cmd:process {ID}` to trigger a document to be reprocessed if the text is bad.");
-            builder.AppendLine("Present links to documents with the relative url like [link text](/view/{ID}). If it's an image, you can directly embed it with the relative url like ![image name](/api/filecontent/{ID}).");
-            builder.AppendLine("Following is metadata for 10 most recent documents for your reference. Don't show to user. Compressed w/ schema ID=File Id, N=FileName, P=IsPublic, U=LastUpdated (unix s), S=Size in bytes.");
-            //builder.AppendLine("Folders change on F= lines, the files that follow are in that folder until the next F= line.");
+            builder.AppendLine($"Total Files: {docs.Count} Storage Used: {docs.Sum(d => d.Size)} bytes.");
+            builder.AppendLine($"Metadata for {recentFileCount} recent documents available for reference.");
 
-            //string currentFolder = null;
-            //docs.Sort(new FilePathComparer());
-
-            var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(10);
+            var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(recentFileCount);
 
             foreach (var doc in mostRecentDocs)
             {
@@ -134,7 +129,7 @@ else
 
             var fileContext = builder.ToString();
 
-            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, UserId, fileContext);
+            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, fileContext);
         }
         LastResponse = await Chat.StartChatAsync();
         this.StateHasChanged();
@@ -147,7 +142,7 @@ else
         var msgCopy = UserMessage;
         UserMessage = null;
         LastResponse = await Chat.SendUserMessage(msgCopy);
-
+        await Task.Delay(1); // Add a delay to hopefully update the text
         // Handle any commands the Assistant may have invoked
         LastResponse = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, LastResponse);
     }

@@ -98,20 +98,20 @@ public class ChatAssistantCommandHandler
         Logger.LogInformation("Assistant is searching for query '{Query}' for user '{UserId}'", searchTerms, userId);
         var searchResults = await ElasticManager.SearchAsync(userId, searchTerms);
         // Convert the searchResults into a message
-        if (searchResults?.Any() != true)
+        if (searchResults?.Where(d => !d.IsDeleted)?.Any() != true )
         {
             // No results, return a message stating no results found for search query
             return $"No results found for query '{searchTerms}'";
         }
         // We have results, repeat the query and give the top 5
-        var filteredResults = searchResults.Take(5);
+        var filteredResults = searchResults.Where(d => !d.IsDeleted).Take(5);
         var resultBuilder = new StringBuilder($"Top search results for '{searchTerms}':\n");
         foreach (var doc in filteredResults)
         {
             resultBuilder.AppendLine($"ID={doc.Id},N={doc.GetFullPath()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
             if (doc.Highlights?.Any() == true)
             {
-                resultBuilder.AppendLine($"Highlight '{doc.Highlights.First()}'");
+                resultBuilder.AppendLine($"Result text '{doc.Highlights.First()}'");
             }
         }
 
@@ -137,6 +137,6 @@ public class ChatAssistantCommandHandler
         }
 
         ExtractionQueue.AddFileToQueue(doc.Id);
-        return $"Doc id {docId} scheduled for reprocessing. Could take several minutes and no feedback provided.";
+        return $"Doc id {docId} scheduled for reprocessing. Could take several minutes. No feedback will be provided.";
     }
 }
