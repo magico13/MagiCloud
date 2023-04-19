@@ -15,6 +15,7 @@
 
 @inject IChatCompletionService ChatCompletionService
 @inject IElasticManager ElasticManager
+@inject ChatAssistantCommandHandler ChatAssistantCommandHandler
 
 <h2>Chat with Assistant</h2>
 @if (Chat is null)
@@ -103,24 +104,27 @@ else
             var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
             // strip out fields that don't matter and shorten property names
             StringBuilder builder = new();
-            builder.AppendLine("Metadata for stored files, compressed. N=FileName, P=IsPublic, U=LastUpdated (unix s), S=Size in bytes.");
-            builder.AppendLine("Folders change on F= lines, the files that follow are in that folder until the next F= line.");
+            builder.AppendLine($"{docs.Count} total files stored. {docs.Sum(d => d.Size)} bytes used.");
+            builder.AppendLine("You can invoke system commands behind the scenes to affect the system. The user does not know these commands and they are only for you, put them as new lines at the end of messages to be parsed by the system. You will get a system message with the results which is not shown to user. Commands are: `#cmd:search {search terms}` to full-text search documents, `#cmd:process {ID}` to trigger a document to be reprocessed if the text is bad.");
+            builder.AppendLine("Present links to documents with the relative url like [link text](/view/{ID}). If it's an image, you can directly embed it with the relative url like ![image name](/api/filecontent/{ID}).");
+            builder.AppendLine("Following is metadata for 10 most recent documents for your reference. Don't show to user. Compressed w/ schema ID=File Id, N=FileName, P=IsPublic, U=LastUpdated (unix s), S=Size in bytes.");
+            //builder.AppendLine("Folders change on F= lines, the files that follow are in that folder until the next F= line.");
 
-            string currentFolder = null;
-            docs.Sort(new FilePathComparer());
+            //string currentFolder = null;
+            //docs.Sort(new FilePathComparer());
 
-            builder.AppendLine($"{docs.Count} file count. {docs.Sum(d => d.Size)} bytes used.");
+            var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(10);
 
-            foreach (var doc in docs)
+            foreach (var doc in mostRecentDocs)
             {
-                var folder = doc.GetDirectory();
-                if (folder != currentFolder)
-                {
-                    currentFolder = folder;
-                    builder.AppendLine($"F={folder}");
-                }
+                //var folder = doc.GetDirectory();
+                //if (folder != currentFolder)
+                //{
+                //    currentFolder = folder;
+                //    builder.AppendLine($"F={folder}");
+                //}
 
-                builder.AppendLine($"N={doc.GetFileName()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
+                builder.AppendLine($"ID={doc.Id},N={doc.GetFullPath()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
                 if (builder.Length >= 6000)
                 {
                     builder.Append("More files exist but were cut to save characters.");
@@ -143,6 +147,9 @@ else
         var msgCopy = UserMessage;
         UserMessage = null;
         LastResponse = await Chat.SendUserMessage(msgCopy);
+
+        // Handle any commands the Assistant may have invoked
+        LastResponse = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, LastResponse);
     }
 
     private async Task KeyUpHandler(KeyboardEventArgs keyboardEvent)

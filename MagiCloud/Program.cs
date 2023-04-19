@@ -92,6 +92,7 @@ builder.Services.AddSingleton<ExtractionHelper>();
 
 // Add Singletons
 builder.Services.AddSingleton<TextExtractionQueueHelper>();
+builder.Services.AddSingleton<ChatAssistantCommandHandler>();
 
 var app = builder.Build();
 
