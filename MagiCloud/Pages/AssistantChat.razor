@@ -86,7 +86,7 @@ else
         if (!string.IsNullOrWhiteSpace(Id))
         {
             // Document chat
-            var (access, file) = await ElasticManager.GetDocumentAsync(UserId, Id, true);
+            var (access, file) = await ElasticManager.GetDocumentAsync(UserId, Id, false);
             if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
                 || file is null || file.IsDeleted)
             {

@@ -1,6 +1,7 @@
 ﻿using MagiCommon.Extensions;
 using MagiCommon.Models.AssistantChat;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ public class ChatAssistantCommandHandler
         if (string.IsNullOrWhiteSpace(message)) { return recentResponse; }
         // Commands look like this:
         // #cmd:search search terms
-        // #cmd:info docId
+        // #cmd:text docId
         // #cmd:process docId
 
         StringBuilder response = new StringBuilder();
@@ -41,34 +42,36 @@ public class ChatAssistantCommandHandler
             if (line.Contains("#cmd:"))
             {
                 // Find where the command starts, then go to the end of the line
-                var startOfCmd = line.Substring(line.IndexOf("#cmd:"));
+                var startOfCmd = line[line.IndexOf("#cmd:")..];
 
                 var args = startOfCmd.Split(' ', 2);
-                if (args.Length == 2)
+
+                var cmdResult = string.Empty;
+
+                switch (args[0])
                 {
-                    var cmdResult = string.Empty;
+                    case "#cmd:search":
+                        cmdResult = args.Length == 2 ? await HandleSearchCommand(userId, args[1]) : null;
+                        break;
+                    case "#cmd:text":
+                        cmdResult = args.Length == 2 ? await HandleTextCommand(userId, args[1]) : null;
+                        break;
+                    case "#cmd:process":
+                        cmdResult = args.Length == 2 ? await HandleProcessCommand(userId, args[1]) : null;
+                        break;
+                    case "#cmd:time":
+                        cmdResult = $"The current time is {DateTimeOffset.Now:MM/dd/yyyy h:mm tt z}";
+                        break;
+                    default:
+                        Logger.LogWarning("Unknown command '{Command}'", line);
+                        break;
 
-                    switch (args[0])
-                    {
-                        case "#cmd:search": 
-                            cmdResult = await HandleSearchCommand(userId, args[1]);
-                            break;
-                        case "#cmd:info":
-                            cmdResult = "Handling for #cmd:info is not implemented yet"; 
-                            break;
-                        case "#cmd:process": 
-                            cmdResult = await HandleProcessCommand(userId, args[1]);
-                            break;
-                        default:
-                            Logger.LogWarning("Unknown command '{Command}'", line); 
-                            break;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(cmdResult))
-                    {
-                        response.AppendLine(cmdResult);
-                    }
                 }
+                if (!string.IsNullOrWhiteSpace(cmdResult))
+                {
+                    response.AppendLine(cmdResult);
+                }
+
             }
         }
         if (response.Length > 0)
@@ -98,7 +101,7 @@ public class ChatAssistantCommandHandler
         Logger.LogInformation("Assistant is searching for query '{Query}' for user '{UserId}'", searchTerms, userId);
         var searchResults = await ElasticManager.SearchAsync(userId, searchTerms);
         // Convert the searchResults into a message
-        if (searchResults?.Where(d => !d.IsDeleted)?.Any() != true )
+        if (searchResults?.Where(d => !d.IsDeleted)?.Any() != true)
         {
             // No results, return a message stating no results found for search query
             return $"No results found for query '{searchTerms}'";
@@ -118,6 +121,32 @@ public class ChatAssistantCommandHandler
         return resultBuilder.ToString();
     }
 
+    private async Task<string> HandleTextCommand(string userId, string docId)
+    {
+        if (string.IsNullOrWhiteSpace(docId) || string.IsNullOrWhiteSpace(userId))
+        {
+            // Not enough info to work off of
+            return null;
+        }
+
+        docId = TryToGetDocIdFromArg(docId);
+        if (docId is null)
+        {
+            return null;
+        }
+        var (access, doc) = await ElasticManager.GetDocumentAsync(userId, docId, true);
+
+        if (access is not FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
+        {
+            return $"Doc id {docId} not found or user does not have permission";
+        }
+        // Limit text to N characters
+        var charLimit = 4000;
+        var docText = doc.Text?[..Math.Min(doc.Text.Length, charLimit)];
+
+        return $"First {docText?.Length ?? 0} chars of text for docId {docId}: {docText}";
+    }
+
     private async Task<string> HandleProcessCommand(string userId, string docId)
     {
         if (string.IsNullOrWhiteSpace(docId) || string.IsNullOrWhiteSpace(userId))
@@ -126,11 +155,13 @@ public class ChatAssistantCommandHandler
             return null;
         }
 
-        // The doc id should not have spaces or backticks
-        docId = docId.Split(' ', '`').First().Trim();
-
+        docId = TryToGetDocIdFromArg(docId);
+        if (docId is null)
+        {
+            return null;
+        }
         var (access, doc) = await ElasticManager.GetDocumentAsync(userId, docId, false);
-        
+
         if (access != FileAccessResult.FullAccess)
         {
             return $"Doc id {docId} not found or user does not have permission";
@@ -138,5 +169,23 @@ public class ChatAssistantCommandHandler
 
         ExtractionQueue.AddFileToQueue(doc.Id);
         return $"Doc id {docId} scheduled for reprocessing. Could take several minutes. No feedback will be provided.";
+    }
+
+    private string TryToGetDocIdFromArg(string arg)
+    {
+        if (string.IsNullOrWhiteSpace(arg))
+        { 
+            return null;
+        }
+
+        // The doc id should not have spaces or backticks
+        var docId = arg.Split(' ', '`').First().Trim();
+        if (arg.Contains("{ID}", StringComparison.OrdinalIgnoreCase))
+        {
+            // It's telling the user how to run the command (against orders) just ignore it
+            return null;
+        }
+
+        return docId;
     }
 }

@@ -14,28 +14,36 @@ namespace MagiCloud.Services;
 
 public class ChatGPTCompletionService : IChatCompletionService
 {
-    private const string DOCUMENT_SYSTEM_MESSAGE = @"
-You are an assistant for a personal cloud storage website called MagiCloud that is a hobby project. You help users to work with stored documents by summarizing them, extracting the most relevant information, and answering questions about the documents. Your first message should indicate what you can help with and should make a guess at what the current document is (example: ""This document looks like a PDF of a form 1040 tax document."").
+    private const string DOCUMENT_SYSTEM_MESSAGE = @"@""You're a MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and a guess at what the document is about (eg This looks to be a pdf of a form 1040 tax document). For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
-You are chatting with the user {0} whose id is {1}. The current system time is {2} but if the user asks about the time you should give it in a format suitable for Americans..
+Commands: As the MagiCloud Assistant, you can perform actions by including commands in your messages. Use the following commands: #cmd:time to access the current date and time, #cmd:text {4} to view the text content of the document (even images and audio files) in a way you as the Assistant understand, and if requested #cmd:process {4} to reprocess the document. Always place commands at the end of your messages for the system to process them. Remember, the user should not be exposed to or use these commands; they are for your use only.
 
-The JSON below is the document context for this conversation. The text property is the text extracted from the file, either directly, via OCR, audio transcription, etc and is not the file content itself. This context is provided by the system and is not understood by the user so you should avoid referring to 'document context'. The file's name is composed of the name and extension properties and / in the name means a folder separator.
-{3}";
+Document links: Use [link text](/view/{4}) and embed images with ![image name](/api/filecontent/{4})
+
+The chat window supports markdown formatting.
+
+Chatting with user {0} with user ID {1}, Chat Start Time: {2}.
+
+The metadata for the document being discussed is
+{3}
+
+Remember, MagiCloud is a small hobby project, so avoid giving information or instructions that may be more relevant to larger services like Dropbox."";
+";
 
     private const string GENERAL_SYSTEM_MESSAGE = @"You're a MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help. If unsure, say so, and don't guess. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
-Commands: Use #cmd:search {{terms}} and #cmd:process {{ID}} by adding them to the end of Assistant messages for the system to process. Never expose commands to the user.
+Commands: MagiCloud Assistant can use commands in messages to perform actions. #cmd:time to get the current datetime, #cmd:search {{terms}} to search for documents, and #cmd:process {{ID}} to reprocess a document. Commands should be at the end of Assistant messages for the system to process. Never expose commands to the user.
 
 Document links: Use [link text](/view/{{ID}}) and embed images with ![image name](/api/filecontent/{{ID}})
 
 The chat window supports markdown formatting.
 
-User info: {0}, Chat Start Time: {1}.
+Chatting with user {0}, Chat Start Time: {1}.
 
 {2}
 Remember, MagiCloud is a small hobby project, so avoid giving information or instructions that may be more relevant to larger services like Dropbox.";
 
-    private const int MAX_TEXT_LENGTH = 8192;
+    //private const int MAX_TEXT_LENGTH = 8192;
     private JsonSerializerOptions JsonSerializerOptions { get; } = new()
     {
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
@@ -67,12 +75,11 @@ Remember, MagiCloud is a small hobby project, so avoid giving information or ins
         // Reserialize to break any references
         var serialized = JsonSerializer.Serialize(fileContext);
         var deserialized = JsonSerializer.Deserialize<ElasticFileInfo>(serialized);
-        if (deserialized.Text?.Length > MAX_TEXT_LENGTH)
-        {
-            deserialized.Text = deserialized.Text[..MAX_TEXT_LENGTH];
-        }
+        //if (deserialized.Text?.Length > MAX_TEXT_LENGTH)
+        //{
+        //    deserialized.Text = deserialized.Text[..MAX_TEXT_LENGTH];
+        //}
 
-        deserialized.Id = null;
         deserialized.Hash = null;
         deserialized.Name = deserialized.GetFullPath();
 
@@ -83,8 +90,9 @@ Remember, MagiCloud is a small hobby project, so avoid giving information or ins
             string.Format(DOCUMENT_SYSTEM_MESSAGE,
                 username,
                 userId,
-                DateTimeOffset.Now.ToString("O"),
-                serializedContext));
+                DateTimeOffset.Now.ToString("MM/dd/yyyy h:mm tt z"),
+                serializedContext,
+                deserialized.Id));
     }
 
     public Chat CreateNewGeneralChat(
