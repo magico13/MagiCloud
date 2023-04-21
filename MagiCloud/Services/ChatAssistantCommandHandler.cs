@@ -141,7 +141,7 @@ public class ChatAssistantCommandHandler
         }
         var (access, doc) = await ElasticManager.GetDocumentAsync(userId, docId, true);
 
-        if (access is not FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
+        if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
         {
             return $"Doc id {docId} not found or user does not have permission";
         }
