@@ -31,47 +31,52 @@ public class ChatAssistantCommandHandler
         var message = recentResponse?.Choices.FirstOrDefault()?.Message.Content;
         if (string.IsNullOrWhiteSpace(message)) { return recentResponse; }
         // Commands look like this:
-        // #cmd:search search terms
-        // #cmd:text docId
-        // #cmd:process docId
+        // [sys:search search terms]
+        // [sys:text docId]
+        // [sys:process docId]
 
-        StringBuilder response = new StringBuilder();
+        var response = new StringBuilder();
 
         foreach (var line in message.Split('\n'))
         {
-            if (line.Contains("#cmd:"))
+            if (line.Contains("[sys:"))
             {
                 // Find where the command starts, then go to the end of the line
-                var startOfCmd = line[line.IndexOf("#cmd:")..];
+                var startIndex = line.IndexOf("[sys:");
+                var endIndex = line.IndexOf(']', startIndex);
 
-                var args = startOfCmd.Split(' ', 2);
-
-                var cmdResult = string.Empty;
-
-                switch (args[0])
+                if (startIndex >= 0 && endIndex >= 0)
                 {
-                    case "#cmd:search":
-                        cmdResult = args.Length == 2 ? await HandleSearchCommand(userId, args[1]) : null;
-                        break;
-                    case "#cmd:text":
-                        cmdResult = args.Length == 2 ? await HandleTextCommand(userId, args[1]) : null;
-                        break;
-                    case "#cmd:process":
-                        cmdResult = args.Length == 2 ? await HandleProcessCommand(userId, args[1]) : null;
-                        break;
-                    case "#cmd:time":
-                        cmdResult = $"The current time is {DateTimeOffset.Now:MM/dd/yyyy h:mm tt z}";
-                        break;
-                    default:
-                        Logger.LogWarning("Unknown command '{Command}'", line);
-                        break;
+                    var commandText = line[(startIndex+5)..endIndex];
 
-                }
-                if (!string.IsNullOrWhiteSpace(cmdResult))
-                {
-                    response.AppendLine(cmdResult);
-                }
+                    var args = commandText.Split(' ', 2);
 
+                    var cmdResult = string.Empty;
+
+                    switch (args[0])
+                    {
+                        case "search":
+                            cmdResult = args.Length == 2 ? await HandleSearchCommand(userId, args[1]) : null;
+                            break;
+                        case "text":
+                            cmdResult = args.Length == 2 ? await HandleTextCommand(userId, args[1]) : null;
+                            break;
+                        case "process":
+                            cmdResult = args.Length == 2 ? await HandleProcessCommand(userId, args[1]) : null;
+                            break;
+                        case "time":
+                            cmdResult = $"The current time is {DateTimeOffset.Now:MM/dd/yyyy h:mm tt z}";
+                            break;
+                        default:
+                            Logger.LogWarning("Unknown command '{Command}'", line);
+                            break;
+
+                    }
+                    if (!string.IsNullOrWhiteSpace(cmdResult))
+                    {
+                        response.AppendLine(cmdResult);
+                    }
+                }
             }
         }
         if (response.Length > 0)
@@ -144,7 +149,7 @@ public class ChatAssistantCommandHandler
         var charLimit = 4000;
         var docText = doc.Text?[..Math.Min(doc.Text.Length, charLimit)];
 
-        return $"First {docText?.Length ?? 0} chars of text for docId {docId}: {docText}";
+        return $"First {docText?.Length ?? 0} chars of text of the document: {docText}";
     }
 
     private async Task<string> HandleProcessCommand(string userId, string docId)

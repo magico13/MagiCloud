@@ -26,7 +26,7 @@ namespace MagiCommon.Models.AssistantChat
         }
 
         public Task<ChatCompletionResponse> StartChatAsync()
-            => SendMessage(new Message { Content = SystemMessage, Role = Role.User });
+            => SendMessage(new Message { Content = SystemMessage, Role = Role.System });
 
         public Task<ChatCompletionResponse> SendUserMessage(string nextMessageContent)
             => SendMessage(new Message

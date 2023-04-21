@@ -33,7 +33,7 @@ else
 {
     <Card>
         <CardBody>
-            @foreach(var message in Chat.Messages.Where(m => m.Role != Role.System))
+            @foreach(var message in Chat.Messages)@*.Where(m => m.Role != Role.System))*@
             {
                 @*Assistant messages can use markdown but we shouldn't let users do that.*@
                 var text = message.Role == Role.Assistant ? Markdown.ToHtml(message.Content, MarkdownPipeline) : message.Content;
@@ -142,6 +142,7 @@ else
         var msgCopy = UserMessage;
         UserMessage = null;
         LastResponse = await Chat.SendUserMessage(msgCopy);
+        this.StateHasChanged();
         await Task.Delay(1); // Add a delay to hopefully update the text
         // Handle any commands the Assistant may have invoked
         LastResponse = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, LastResponse);
