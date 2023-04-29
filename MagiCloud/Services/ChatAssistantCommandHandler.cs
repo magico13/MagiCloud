@@ -81,6 +81,7 @@ public class ChatAssistantCommandHandler
         }
         if (response.Length > 0)
         {
+            response.Insert(0, "Remember the user cannot see this system message and you must inform them of any relevant information.\n");
             var completion = await chat.SendMessage(new Message
             {
                 Role = Role.System,
@@ -116,10 +117,10 @@ public class ChatAssistantCommandHandler
         var resultBuilder = new StringBuilder($"Top search results for '{searchTerms}':\n");
         foreach (var doc in filteredResults)
         {
-            resultBuilder.AppendLine($"ID={doc.Id},N={doc.GetFullPath()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
+            resultBuilder.AppendLine(doc.ToContextString());
             if (doc.Highlights?.Any() == true)
             {
-                resultBuilder.AppendLine($"Result text '{doc.Highlights.First()}'");
+                resultBuilder.AppendLine($"Result text is '{doc.Highlights.First()}'");
             }
         }
 
@@ -143,7 +144,7 @@ public class ChatAssistantCommandHandler
 
         if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
         {
-            return $"Doc id {docId} not found or user does not have permission";
+            return $"Doc id {docId} not found or user does not have permission.";
         }
         // Limit text to N characters
         var charLimit = 4000;
@@ -169,7 +170,7 @@ public class ChatAssistantCommandHandler
 
         if (access != FileAccessResult.FullAccess)
         {
-            return $"Doc id {docId} not found or user does not have permission";
+            return $"Doc id {docId} not found or user does not have permission.";
         }
 
         ExtractionQueue.AddFileToQueue(doc.Id);

@@ -33,7 +33,7 @@ else
 {
     <Card>
         <CardBody>
-            @foreach(var message in Chat.Messages)@*.Where(m => m.Role != Role.System))*@
+            @foreach(var message in Chat.Messages.Where(m => m.Role != Role.System))
             {
                 @*Assistant messages can use markdown but we shouldn't let users do that.*@
                 var text = message.Role == Role.Assistant ? Markdown.ToHtml(message.Content, MarkdownPipeline) : message.Content;
@@ -112,14 +112,7 @@ else
 
             foreach (var doc in mostRecentDocs)
             {
-                //var folder = doc.GetDirectory();
-                //if (folder != currentFolder)
-                //{
-                //    currentFolder = folder;
-                //    builder.AppendLine($"F={folder}");
-                //}
-
-                builder.AppendLine($"ID={doc.Id},N={doc.GetFullPath()},P={(doc.IsPublic ? 1 : 0)},U={doc.LastUpdated.ToUnixTimeSeconds()},S={doc.Size}");
+                builder.AppendLine(doc.ToContextString());
                 if (builder.Length >= 6000)
                 {
                     builder.Append("More files exist but were cut to save characters.");

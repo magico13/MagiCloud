@@ -49,5 +49,13 @@ namespace MagiCommon.Extensions
         /// <returns>Partial path to the file download API</returns>
         public static string GetFileContentUri(this ElasticFileInfo file, bool download = false) 
             => $"api/filecontent/{file.Id}" + (download ? $"?download={download}" : string.Empty);
+
+        /// <summary>
+        /// Create a "context" string for sending to OpenAI. This is a short representation of the file info
+        /// </summary>
+        /// <param name="file">Source file</param>
+        /// <returns>Context string</returns>
+        public static string ToContextString(this ElasticFileInfo file)
+            => $"ID={file.Id},N={file.GetFullPath()},P={(file.IsPublic ? 1 : 0)},U={file.LastUpdated:yyyyMMddTHHmm},S={file.Size}";
     }
 }

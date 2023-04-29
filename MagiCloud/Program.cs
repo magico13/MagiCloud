@@ -17,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Sinks.Elasticsearch;
 using System;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -25,6 +27,42 @@ var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
 
 // Add services to the container.
+
+// Set up configuration first
+builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
+builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
+
+var generalSettings = builder.Configuration.GetSection(nameof(GeneralSettings)).Get<GeneralSettings>();
+var elasticSettings = builder.Configuration.GetSection(nameof(ElasticSettings)).Get<ElasticSettings>();
+
+// Log to Elasticsearch
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(elasticSettings.Url))
+    {
+        AutoRegisterTemplate = true,
+        NumberOfReplicas = 1,
+        NumberOfShards = 1,
+        IndexFormat = "magicloud-logs-{0:yyyy.MM.dd}",
+        ModifyConnectionSettings = x =>
+        {
+            if (!string.IsNullOrWhiteSpace(elasticSettings.ApiKey))
+            {
+                x.ApiKeyAuthentication(elasticSettings.ApiKeyId, elasticSettings.ApiKey);
+            }
+            if (!string.IsNullOrWhiteSpace(elasticSettings.Thumbprint))
+            {
+                x.ServerCertificateValidationCallback((caller, cert, chain, errors)
+                    => string.Equals(cert.GetCertHashString(), elasticSettings.Thumbprint, StringComparison.OrdinalIgnoreCase));
+            }
+            return x;
+        },
+    })
+    .WriteTo.Console()
+    .WriteTo.Debug()
+    .CreateLogger();
+
+builder.Host.UseSerilog(Log.Logger);
 
 // IdentityServer/Auth setup
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -50,8 +88,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
-builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
+
 
 builder.Services.AddSingleton<IElasticManager, ElasticManager>();
 builder.Services.AddSingleton<IDataManager, FileSystemDataManager>();
@@ -61,7 +98,7 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddTransient<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
 
-var generalSettings = builder.Configuration.GetSection(nameof(GeneralSettings)).Get<GeneralSettings>();
+
 
 if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 {

@@ -36,9 +36,7 @@ The chat window supports markdown formatting.
 Chatting with user {0} with user ID {1}, Chat Start Time: {2}.
 
 This chat is in the context of a single document with ID {4}. The details of the document being discussed in this chat are:
-{3}
-
-Remember, MagiCloud is a small hobby project, so avoid giving information or instructions that may be more relevant to larger services like Dropbox.";
+{3}";
 
     private const string GENERAL_SYSTEM_MESSAGE = @"You're a MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help. If unsure, say so, and don't guess. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
@@ -61,8 +59,7 @@ The chat window supports markdown formatting.
 
 Chatting with user {0}, Chat Start Time: {1}.
 
-{2}
-Remember, MagiCloud is a small hobby project, so avoid giving information or instructions that may be more relevant to larger services like Dropbox.";
+{2}";
 
     //private const int MAX_TEXT_LENGTH = 8192;
     private JsonSerializerOptions JsonSerializerOptions { get; } = new()

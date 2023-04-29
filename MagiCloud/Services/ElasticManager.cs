@@ -32,8 +32,6 @@ public interface IElasticManager
 public class ElasticManager : IElasticManager
 {
     public const string FILES_INDEX = "magicloud_files";
-    public const string USER_INDEX = "magicloud_users";
-    public const string TOKEN_INDEX = "magicloud_tokens";
 
     public IElasticClient Client { get; set; }
 
@@ -84,7 +82,7 @@ public class ElasticManager : IElasticManager
     {
         Setup();
 
-        foreach (var indexName in new string[] { FILES_INDEX, USER_INDEX, TOKEN_INDEX })
+        foreach (var indexName in new string[] { FILES_INDEX })
         {
             var index = Indices.Index(indexName);
             var exists = await Client.Indices.ExistsAsync(index);
