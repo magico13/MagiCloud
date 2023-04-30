@@ -114,18 +114,19 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         var result = await Client.SearchAsync<ElasticFileInfo>(s => s
             .Size(10000)
             .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
-            .Query(q => q
-                .Bool(bq => bq
-                    .Filter(
-                        fq => fq.Term(t => t
-                            .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
-                        ),
-                        fq => fq.Term(t => t
-                            .Field(f => f.IsDeleted).Value(false)
-                        )
-                    )
-                )
-            )
+            .Query(q =>
+            {
+                var qc = q.Term(t => t.Field(f => f.IsDeleted).Value(false));
+                if (string.IsNullOrWhiteSpace(folderId))
+                {
+                    qc &= !q.Exists(p => p.Field(f => f.ParentId));
+                }
+                else
+                {
+                    qc &= q.Term(t => t.Field(f => f.ParentId.Suffix("keyword")).Value(folderId));
+                }
+                return qc;
+            })
         );
         if (result.IsValid)
         {
@@ -198,18 +199,31 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         // Same as GetFilesInFolderAsync except with folders instead
         var result = await Client.SearchAsync<ElasticFolder>(s => s
             .Size(10000)
-            .Query(q => q
-                .Bool(bq => bq
-                    .Filter(
-                        fq => fq.Term(t => t
-                            .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
-                        ),
-                        fq => fq.Term(t => t
-                            .Field(f => f.IsDeleted).Value(false)
-                        )
-                    )
-                )
-            )
+            .Query(q =>
+            {
+                var qc = q.Term(t => t.Field(f => f.IsDeleted).Value(false));
+                if (string.IsNullOrWhiteSpace(folderId))
+                {
+                    qc &= !q.Exists(p => p.Field(f => f.ParentId));
+                }
+                else
+                {
+                    qc &= q.Term(t => t.Field(f => f.ParentId.Suffix("keyword")).Value(folderId));
+                }
+                return qc;
+            })
+            //.Query(q => q
+            //    .Bool(bq => bq
+            //        .Filter(
+            //            fq => fq.Term(t => t.Verbatim()
+            //                .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
+            //            ),
+            //            fq => fq.Term(t => t
+            //                .Field(f => f.IsDeleted).Value(false)
+            //            )
+            //        )
+            //    )
+            //)
         );
         if (result.IsValid)
         {

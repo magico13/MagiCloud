@@ -9,6 +9,64 @@
 @inject ILogger<FilesComponent> Logger
 @inject ElasticManager Elastic
 
+<Modal @ref=_newFolderModal>
+    <ModalContent Centered>
+        <Form>
+            <ModalHeader>
+                <ModalTitle>New Folder</ModalTitle>
+                <CloseButton />
+            </ModalHeader>
+            <ModalBody>
+                <Validations @ref=_newFolderValidations StatusChanged=NewFolderValidatorsChanged>
+                    <Field>
+                        <FieldLabel>Folder Name</FieldLabel>
+                        <Validation Validator=ExtendedValidationRules.IsFileName>
+                            <TextEdit @bind-Text=_newFolderText Autofocus />
+                            <ValidationError>
+                                Invalid folder name.
+                            </ValidationError>
+                            <ValidationNone>
+                                Folder name is required.
+                            </ValidationNone>
+                        </Validation>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
+                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Color=Color.Primary Disabled=@(!_newFolderValidatorsPassed) Clicked=@(() => CloseModal(true))>
+                    Create
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+<Div Flex=Flex.JustifyContent.Between>
+    <Span>
+        <Button Color=Color.Link Clicked=@(() => FilterToFolder(null)) Padding=Padding.Is1>
+            <Icon Name=IconName.Home />
+        </Button>
+        @foreach (var parent in Parents)
+        {
+            <Span>/</Span>
+            <Button Color=Color.Link Clicked=@(() => FilterToFolder(parent)) Padding=Padding.Is1>
+                @parent.Name
+            </Button>
+        }
+        @if (CurrentFolder is not null)
+        {
+            <Span>/</Span>
+            <Button Color=Color.Link Clicked=@(() => FilterToFolder(CurrentFolder)) Padding=Padding.Is1>
+                @CurrentFolder.Name
+            </Button>
+        }
+    </Span>
+    <Button Color=Color.Primary Clicked=OpenModal Float=Float.End>
+        New Folder
+    </Button>
+</Div>
+
 @if (FilesAndFolders == null)
 {
     <Paragraph>
@@ -23,12 +81,6 @@ else if (!FilesAndFolders.Any())
 }
 else
 {
-    <Div Flex=Flex.JustifyContent.Between>
-        <Span>@(CurrentFolder?.Name)</Span>
-        <Button Color=Color.Primary Clicked=OpenModal Float=Float.End>
-            New Folder
-        </Button>
-    </Div>
     @*DetailRowTrigger =@(w => (w.Item?.BackingObject as ElasticFileInfo)?.Highlights?.Any() == true)*@
     <DataGrid TItem=FileWrapper
                 Data=FilesAndFolders
@@ -71,8 +123,9 @@ else
                             @fileInfo.GetFileName()
                         </Anchor>
                     }
-                    else if (context.BackingObject is ElasticFolder folderInfo)
+                    else if (context.BackingObject is null || context.BackingObject is ElasticFolder)
                     {
+                        ElasticFolder folderInfo = context.BackingObject as ElasticFolder;
                         <Button Clicked="@(() => FilterToFolder(folderInfo))">
                             @context.Name
                         </Button>
@@ -126,39 +179,6 @@ else
             }
         </DetailRowTemplate>*@
     </DataGrid>
-
-    <Modal @ref="_newFolderModal">
-        <ModalContent Centered>
-            <Form>
-                <ModalHeader>
-                    <ModalTitle>New Folder</ModalTitle>
-                    <CloseButton />
-                </ModalHeader>
-                <ModalBody>
-                    <Validations @ref=_newFolderValidations StatusChanged=NewFolderValidatorsChanged>
-                        <Field>
-                            <FieldLabel>Folder Name</FieldLabel>
-                            <Validation Validator=ExtendedValidationRules.IsFileName>
-                                <TextEdit @bind-Text=_newFolderText Autofocus/>
-                                <ValidationError>
-                                    Invalid folder name.
-                                </ValidationError>
-                                <ValidationNone>
-                                    Folder name is required.
-                                </ValidationNone>
-                            </Validation>
-                        </Field>
-                    </Validations>
-                </ModalBody>
-                <ModalFooter>
-                    <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
-                    <Button Type=ButtonType.Submit PreventDefaultOnSubmit Color=Color.Primary Disabled=@(!_newFolderValidatorsPassed) Clicked=@(() => CloseModal(true))>
-                        Create
-                    </Button>
-                </ModalFooter>
-            </Form>
-        </ModalContent>
-    </Modal>
 }
 
 @code {
@@ -188,7 +208,7 @@ else
         await FilterToFolder(CurrentFolder);
     }
 
-
+    private List<ElasticFolder> Parents { get; set; } = new();
     private List<FileWrapper> FilesAndFolders { get; set; }
     private ElasticFolder CurrentFolder { get => _folder;
         set
@@ -203,7 +223,7 @@ else
     private ElasticFolder _folder = null;
 
     //private List<ElasticObject> _folderChildren;
-
+    private string _folderPath = "/";
     private Modal _newFolderModal;
     private Validations _newFolderValidations;
     private bool _newFolderValidatorsPassed;
@@ -245,17 +265,44 @@ else
     //    }
     //}
 
-    private async Task FilterToFolder(ElasticFolder folder)
+    private async Task FilterToFolder(ElasticFolder folder, int delay = 1000)
     {
+        if (delay > 0) await Task.Delay(delay);
         CurrentFolder = folder;
         FilesAndFolders = new List<FileWrapper>();
-        //if (folder.Length > 1)
+        //if (folder != null)
         //{
-        //    Files.Add(new FileWrapper { Name = ".." });
+        //    var (_, parentFolder) = await Elastic.FolderRepo.GetFolderAsync(UserId, folder.ParentId);
+        //    var parentWrapper = new FileWrapper();
+        //    if (parentFolder != null)
+        //    {
+        //        parentWrapper = new FileWrapper(parentFolder);
+        //    }
+        //    parentWrapper.Name = "..";
+        //    FilesAndFolders.Add(parentWrapper);
         //}
         var (childFolders, childFiles) = await Elastic.GetChildrenOfFolderAsync(UserId, CurrentFolder?.Id);
-        FilesAndFolders.AddRange(childFolders?.Select(f => new FileWrapper(f)).ToList());
-        FilesAndFolders.AddRange(childFiles?.Select(f => new FileWrapper(f)).ToList());
+        if (childFolders?.Any() == true)
+        {
+            FilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).ToList());
+        }
+        if (childFiles?.Any() == true)
+        {
+            FilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).ToList());
+        }
+
+        if (folder is not null)
+        {
+            Parents = await Elastic.GetParentsForObjectAsync(UserId, folder);
+            _folderPath = string.Empty;
+            if (Parents.Any()) _folderPath = "/" + string.Join('/', Parents.Select(p => p.Name));
+            _folderPath += "/" + folder.Name;
+        }
+        else
+        {
+            Parents = new();
+            _folderPath = "/";
+        }
     }
 
     public async Task RowRemoved(FileWrapper wrapper)
@@ -296,29 +343,26 @@ else
 
     public async Task UpdateVisibility(FileWrapper wrapper, bool visible)
     {
-        //var file = wrapper.BackingObject;
-        //if (file == null)
-        //{
-        //    var fullPath = PathAnalog.Combine(CurrentFolder, wrapper.Name);
-        //    Logger.LogInformation("Updating visibility for all items under folder {Path}", fullPath);
-        //    foreach (var item in GetFilesInFolder(FileList, fullPath, true))
-        //    {
-        //        await UpdateVisibility(item.BackingFileInfo, visible);
-        //    }
-        //}
-        //else
-        //{
-        //    await UpdateVisibility(file, visible);
-        //}
-        //FilterToFolder(CurrentFolder);
+        var backing = wrapper.BackingObject;
+        await UpdateVisibility(backing, visible);
+        await FilterToFolder(CurrentFolder);
     }
 
-    private async Task UpdateFileVisibility(ElasticFileInfo file, bool visible)
+    private async Task UpdateVisibility(ElasticObject backing, bool visible)
     {
-        Logger.LogInformation("Setting visibility of {Name} ({Id}) to {Visibility}", file.Name, file.Id, visible);
-        file.IsPublic = visible;
-        await Elastic.FileRepo.IndexDocumentAsync(UserId, file);
+        Logger.LogInformation("Setting visibility of {Name} ({Id}) to {Visibility}", backing.Name, backing.Id, visible);
+        backing.IsPublic = visible;
+        if (backing is ElasticFileInfo file)
+        {
+            await Elastic.FileRepo.IndexDocumentAsync(UserId, file);
+        }
+        else if (backing is ElasticFolder folder)
+        {
+            await Elastic.FolderRepo.UpsertFolderAsync(UserId, folder);
+        }
     }
+
+
 
     private async Task<bool> NewFolder(string folderName = "New Folder")
     {
