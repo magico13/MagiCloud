@@ -14,12 +14,12 @@ public class TextExtractionQueueHelper
     private ILogger<TextExtractionQueueHelper> Logger { get; }
     private IMessageQueueService<string> TextExtractionQueue { get; }
     private ExtractionHelper ExtractionHelper { get; }
-    private IElasticManager ElasticManager { get; }
+    private IElasticFileRepo ElasticManager { get; }
 
     public TextExtractionQueueHelper(ILogger<TextExtractionQueueHelper> logger,
         IMessageQueueService<string> queueService,
         ExtractionHelper extractionHelper,
-        IElasticManager elasticManager)
+        IElasticFileRepo elasticManager)
     {
         TextExtractionQueue = queueService;
         ExtractionHelper = extractionHelper;

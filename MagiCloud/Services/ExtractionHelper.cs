@@ -8,13 +8,13 @@ namespace MagiCloud.Services;
 
 public class ExtractionHelper
 {
-    private readonly IElasticManager _elasticManager;
+    private readonly IElasticFileRepo _elasticManager;
     private readonly IDataManager _dataManager;
     private readonly ILens _lens;
 
     public ExtractionHelper(
         ILens lens,
-        IElasticManager elasticManager,
+        IElasticFileRepo elasticManager,
         IDataManager dataManager)
     {
         _lens = lens;

@@ -13,9 +13,9 @@ namespace MagiCloud.Controllers;
 public class SearchController : Controller
 {
     private readonly ILogger<SearchController> _logger;
-    private readonly IElasticManager _elastic;
+    private readonly IElasticFileRepo _elastic;
 
-    public SearchController(ILogger<SearchController> logger, IElasticManager elastic)
+    public SearchController(ILogger<SearchController> logger, IElasticFileRepo elastic)
     {
         _logger = logger;
         _elastic = elastic;

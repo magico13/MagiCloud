@@ -9,9 +9,9 @@ namespace MagiCloud.Controllers;
 [ApiController]
 public class DefaultController : ControllerBase
 {
-    public IElasticManager Elastic { get; }
+    public IElasticRepository Elastic { get; }
 
-    public DefaultController(IElasticManager elastic) => Elastic = elastic;
+    public DefaultController(IElasticFileRepo elastic) => Elastic = elastic;
 
     [HttpGet]
     public async Task<IActionResult> GetAsync()

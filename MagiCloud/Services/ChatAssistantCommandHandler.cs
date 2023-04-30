@@ -13,12 +13,12 @@ public class ChatAssistantCommandHandler
 
     // This lets the chat service use commands to run searches, get info about a file, queue files for rextraction, etc
     private ILogger<ChatAssistantCommandHandler> Logger { get; }
-    private IElasticManager ElasticManager { get; }
+    private IElasticFileRepo ElasticManager { get; }
     private TextExtractionQueueHelper ExtractionQueue { get; }
 
     public ChatAssistantCommandHandler(
         ILogger<ChatAssistantCommandHandler> logger,
-        IElasticManager elasticManager,
+        IElasticFileRepo elasticManager,
         TextExtractionQueueHelper extractionQueue)
     {
         Logger = logger;
@@ -177,7 +177,7 @@ public class ChatAssistantCommandHandler
         return $"Doc id {docId} scheduled for reprocessing. Could take several minutes. No feedback will be provided.";
     }
 
-    private string TryToGetDocIdFromArg(string arg)
+    private static string TryToGetDocIdFromArg(string arg)
     {
         if (string.IsNullOrWhiteSpace(arg))
         { 

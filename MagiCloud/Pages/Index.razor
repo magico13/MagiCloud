@@ -7,7 +7,7 @@
 
 @attribute [Authorize]
 
-@inject IElasticManager Elastic
+@inject IElasticFileRepo Elastic
 @inject ILogger<Index> Logger
 
 <Upload OnUploadComplete=OnFilesUploaded CurrentDirectory=@CurrentFolder />

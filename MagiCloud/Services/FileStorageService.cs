@@ -10,14 +10,14 @@ namespace MagiCloud.Services;
 public class FileStorageService
 {
     public IDataManager DataManager { get; }
-    public IElasticManager Elastic { get; }
+    public IElasticFileRepo Elastic { get; }
     public IHashService HashService { get; }
     public ILogger<FileStorageService> Logger { get; }
     public TextExtractionQueueHelper ExtractionQueue { get; }
 
     public FileStorageService(
         IDataManager dataManager,
-        IElasticManager elastic,
+        IElasticFileRepo elastic,
         IHashService hashService,
         ILogger<FileStorageService> logger,
         TextExtractionQueueHelper extractionQueue)

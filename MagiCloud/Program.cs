@@ -89,16 +89,14 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
 
-
-builder.Services.AddSingleton<IElasticManager, ElasticManager>();
+builder.Services.AddSingleton<IElasticFileRepo, ElasticFileRepo>();
+builder.Services.AddSingleton<IElasticFolderRepo, ElasticFolderRepo>();
 builder.Services.AddSingleton<IDataManager, FileSystemDataManager>();
 builder.Services.AddSingleton<IHashService, HashService>();
 builder.Services.AddSingleton<FileStorageService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddTransient<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
-
-
 
 if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 {
