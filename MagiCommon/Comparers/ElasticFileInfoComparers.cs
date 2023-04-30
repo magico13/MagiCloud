@@ -14,7 +14,7 @@ namespace MagiCommon.Comparers.ElasticFileInfoComparers
             {
                 return 0;
             }
-            return string.Compare(x?.GetFullPath(), y?.GetFullPath(), StringComparison.OrdinalIgnoreCase);
+            return string.Compare(x?.GetFileName(), y?.GetFileName(), StringComparison.OrdinalIgnoreCase);
         }
     }
 

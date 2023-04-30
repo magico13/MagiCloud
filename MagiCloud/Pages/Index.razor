@@ -7,14 +7,14 @@
 
 @attribute [Authorize]
 
-@inject IElasticFileRepo Elastic
+@inject ElasticManager Elastic
 @inject ILogger<Index> Logger
 
-<Upload OnUploadComplete=OnFilesUploaded CurrentDirectory=@CurrentFolder />
+<Upload OnUploadComplete=OnFilesUploaded CurrentDirectoryId=@CurrentFolderId />
 
 <Heading Size=HeadingSize.Is3>Files</Heading>
 <SearchBar OnSearch=OnSearch />
-<FilesComponent FileList=Files OnFolderChanged=OnFolderChanged />
+<FilesComponent OnFolderChanged=OnFolderChanged />
 
 @code
 {
@@ -22,7 +22,7 @@
     private Task<AuthenticationState> AuthenticationStateTask { get; set; }
     private string UserId { get; set; }
 
-    private string CurrentFolder { get; set; }
+    private string CurrentFolderId { get; set; }
 
     private List<SearchResult> Files { get; set; }
 
@@ -31,26 +31,25 @@
         await base.OnInitializedAsync();
         var authState = await AuthenticationStateTask;
         UserId = authState.User.GetUserId();
-        await GetFileList();
     }
 
-    public async Task GetFileList()
-    {
-        try
-        {
-            Files = await Elastic.GetDocumentsAsync(UserId, false);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to update file list.");
-        }
-    }
+    //public async Task GetFileList()
+    //{
+    //    try
+    //    {
+    //        Files = await Elastic.FolderRepo.get.FileRepo.GetDocumentsAsync(UserId, false);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Logger.LogError(ex, "Failed to update file list.");
+    //    }
+    //}
 
     public async Task OnFilesUploaded()
     {
         // 1 second delay so that the newly uploaded files can make it into elasticsearch
         await Task.Delay(1000);
-        await GetFileList();
+        //await GetFileList();
     }
 
     public void OnSearch(List<SearchResult> results)
@@ -58,8 +57,8 @@
         Files = results;
     }
 
-    public void OnFolderChanged(string folder)
+    public void OnFolderChanged(string folderId)
     {
-        CurrentFolder = folder;
+        CurrentFolderId = folderId;
     }
 }

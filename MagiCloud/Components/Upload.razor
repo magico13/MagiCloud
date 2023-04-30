@@ -86,7 +86,7 @@
     [Parameter]
     public EventCallback OnUploadComplete { get; set; }
     [Parameter]
-    public string CurrentDirectory { get; set; }
+    public string CurrentDirectoryId { get; set; }
 
     private string UrlText { get; set; }
     private string RemoteFileName { get; set; }
@@ -113,7 +113,7 @@
         try
         {
             Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
-            var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
+            var curDir = string.IsNullOrWhiteSpace(CurrentDirectoryId) ? "/" : CurrentDirectoryId;
             var info = new ElasticFileInfo
             {
                 Name = PathAnalog.Combine(curDir, PathAnalog.GetFileNameWithoutExtension(file.Name)),
@@ -178,7 +178,7 @@
                         : Guid.NewGuid().ToString("N");
                     }
 
-                    var curDir = string.IsNullOrWhiteSpace(CurrentDirectory) ? "/" : CurrentDirectory;
+                    var curDir = string.IsNullOrWhiteSpace(CurrentDirectoryId) ? "/" : CurrentDirectoryId;
                     var info = new ElasticFileInfo
                     {
                         Name = PathAnalog.Combine(curDir, name),

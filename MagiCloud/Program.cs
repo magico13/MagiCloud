@@ -91,6 +91,7 @@ builder.Services.AddServerSideBlazor();
 
 builder.Services.AddSingleton<IElasticFileRepo, ElasticFileRepo>();
 builder.Services.AddSingleton<IElasticFolderRepo, ElasticFolderRepo>();
+builder.Services.AddSingleton<ElasticManager>();
 builder.Services.AddSingleton<IDataManager, FileSystemDataManager>();
 builder.Services.AddSingleton<IHashService, HashService>();
 builder.Services.AddSingleton<FileStorageService>();

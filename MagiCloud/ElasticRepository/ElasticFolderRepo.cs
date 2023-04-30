@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Nest;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -22,23 +23,25 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
 
     public async Task<string> UpsertFolderAsync(string userId, ElasticFolder folder)
     {
-        // If the folder has no name or id then it's not valid
-        if (string.IsNullOrWhiteSpace(folder.Id) ||
-            string.IsNullOrWhiteSpace(folder.Name) ||
-            string.IsNullOrWhiteSpace(folder.UserId) ||
-            string.IsNullOrWhiteSpace(folder.ParentId))
+        // If the folder has no name then it's not valid
+        if (string.IsNullOrWhiteSpace(folder.Name) ||
+            string.IsNullOrWhiteSpace(userId))
         {
             return null;
         }
 
         Setup();
+        folder.UserId = userId;
 
         // First check if the folder already exists and if the user has access to it
-        var (access, _) = await GetFolderAsync(userId, folder.Id);
-        if (access is not FileAccessResult.NotFound and not FileAccessResult.FullAccess)
+        if (!string.IsNullOrWhiteSpace(folder.Id))
         {
-            // The folder exists but the user doesn't have full access to it
-            return null;
+            var (access, _) = await GetFolderAsync(userId, folder.Id);
+            if (access is not FileAccessResult.NotFound and not FileAccessResult.FullAccess)
+            {
+                // The folder exists but the user doesn't have full access to it
+                return null;
+            }
         }
 
         // First check the parent of the folder to verify that the user has Full Access to it
@@ -54,7 +57,7 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         //      if so then we have to cancel out
         if (parentAccess is FileAccessResult.FullAccess)
         {
-            var siblingFolders = await GetFoldersInFolderAsync(parentId);
+            var siblingFolders = (await GetFoldersInFolderAsync(parentId)).Where(f => f.UserId == userId);
             foreach (var siblingFolder in siblingFolders)
             {
                 if (string.Equals(siblingFolder.Name, folder.Name, System.StringComparison.OrdinalIgnoreCase)
@@ -64,7 +67,7 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
                     return null;
                 }
             }
-            var siblingFiles = await GetFilesInFolderAsync(parentId);
+            var siblingFiles = (await GetFilesInFolderAsync(parentId)).Where(f => f.UserId == userId);
             foreach (var siblingFile in siblingFiles)
             {
                 if (siblingFile.Name == folder.Name
@@ -99,7 +102,6 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         //    parentFolder.ChildFolders.Add(folder.Id);
         //    await UpsertFolderAsync(userId, parentFolder);
         //}
-
         return result.Id;
     }
 
@@ -210,5 +212,26 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         }
         _logger.LogError("Invalid GetFoldersInFolderAsync call. {ServerError}", result.ServerError);
         return new();
+    }
+
+    public async Task<FileAccessResult> DeleteFolderAsync(string userId, string folderId)
+    {
+        Setup();
+        var (getResult, doc) = await GetFolderAsync(userId, folderId);
+        if (getResult != FileAccessResult.FullAccess || doc is null)
+        {
+            return getResult;
+        }
+        var result = await Client.DeleteAsync<ElasticFolder>(folderId);
+        if (result.IsValid)
+        {
+            return FileAccessResult.FullAccess;
+        }
+        else if (result.ApiCall.HttpStatusCode == (int)HttpStatusCode.NotFound)
+        {
+            return FileAccessResult.NotFound;
+        }
+        ThrowIfInvalid(result);
+        return FileAccessResult.Unknown;
     }
 }

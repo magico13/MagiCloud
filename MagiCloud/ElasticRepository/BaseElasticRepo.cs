@@ -77,7 +77,7 @@ public class BaseElasticRepo : IElasticRepository
         return true;
     }
 
-    protected static FileAccessResult DetermineAccessForUser(string userId, ElasticObject toCheck)
+    public static FileAccessResult DetermineAccessForUser(string userId, ElasticObject toCheck)
     {
         if (string.Equals(toCheck.UserId, userId, StringComparison.Ordinal))
         {

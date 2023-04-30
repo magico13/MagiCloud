@@ -43,6 +43,9 @@ public interface IElasticFileRepo : IElasticRepository
 
 public interface IElasticFolderRepo : IElasticRepository
 {
+    // Delete a folder if the user has permission
+    Task<FileAccessResult> DeleteFolderAsync(string userId, string folderId);
+
     // Create a folder if the user has permission to create it there
     Task<string> UpsertFolderAsync(string userId, ElasticFolder folder);
 
