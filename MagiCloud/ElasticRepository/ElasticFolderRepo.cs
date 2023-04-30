@@ -115,9 +115,15 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
             .Size(10000)
             .Source(filter => filter.Excludes(e => e.Field(f => f.Text)))
             .Query(q => q
-                .Term(t => t
-                    .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
-                    .Field(f => f.IsDeleted).Value(false) // This doesn't account for if IsDeleted isn't on the doc
+                .Bool(bq => bq
+                    .Filter(
+                        fq => fq.Term(t => t
+                            .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
+                        ),
+                        fq => fq.Term(t => t
+                            .Field(f => f.IsDeleted).Value(false)
+                        )
+                    )
                 )
             )
         );
@@ -193,9 +199,15 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
         var result = await Client.SearchAsync<ElasticFolder>(s => s
             .Size(10000)
             .Query(q => q
-                .Term(t => t
-                    .Field(f => f.ParentId.Suffix("keyword")).Value(folderId) //TODO: Will this handle nulls ok?
-                    .Field(f => f.IsDeleted).Value(false)
+                .Bool(bq => bq
+                    .Filter(
+                        fq => fq.Term(t => t
+                            .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
+                        ),
+                        fq => fq.Term(t => t
+                            .Field(f => f.IsDeleted).Value(false)
+                        )
+                    )
                 )
             )
         );
