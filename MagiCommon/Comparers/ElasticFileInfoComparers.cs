@@ -6,15 +6,15 @@ using System.Linq;
 
 namespace MagiCommon.Comparers.ElasticFileInfoComparers
 {
-    public class NameComparer : IComparer<ElasticFileInfo>
+    public class NameComparer : IComparer<ElasticObject>
     {
-        public int Compare(ElasticFileInfo x, ElasticFileInfo y)
+        public int Compare(ElasticObject x, ElasticObject y)
         {
             if (x is null && y is null)
             {
                 return 0;
             }
-            return string.Compare(x?.GetFileName(), y?.GetFileName(), StringComparison.OrdinalIgnoreCase);
+            return string.Compare(x?.Name, y?.Name, StringComparison.OrdinalIgnoreCase);
         }
     }
 

@@ -116,9 +116,6 @@ else
                 <DisplayTemplate>
                     @if(context.BackingObject is ElasticFileInfo fileInfo)
                     {
-                        @*<Button Type="ButtonType.Link" To="@context.BackingFileInfo.GetFileContentUri(true)" Target="Target.Blank">
-                            <Icon Name="IconName.Download" />
-                        </Button>*@
                         <Anchor To="@("/view/" + fileInfo.Id)" Target="Target.Blank">
                             @fileInfo.GetFileName()
                         </Anchor>
@@ -189,17 +186,6 @@ else
     [Parameter]
     public EventCallback<string> OnFolderChanged { get; set; }
 
-    //[Parameter]
-    //public List<ElasticObject> FolderContents
-    //{
-    //    get => _folderChildren;
-    //    set
-    //    {
-    //        _folderChildren = value;
-    //        //SortFiles();
-    //    }
-    //}
-
     protected async override Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateTask;
@@ -210,7 +196,7 @@ else
 
     private List<ElasticFolder> Parents { get; set; } = new();
     private List<FileWrapper> FilesAndFolders { get; set; }
-    private ElasticFolder CurrentFolder { get => _folder;
+    public ElasticFolder CurrentFolder { get => _folder;
         set
         {
             if (_folder?.Id != value?.Id)
@@ -221,9 +207,6 @@ else
         }
     }
     private ElasticFolder _folder = null;
-
-    //private List<ElasticObject> _folderChildren;
-    private string _folderPath = "/";
     private Modal _newFolderModal;
     private Validations _newFolderValidations;
     private bool _newFolderValidatorsPassed;
@@ -265,22 +248,11 @@ else
     //    }
     //}
 
-    private async Task FilterToFolder(ElasticFolder folder, int delay = 1000)
+    public async Task FilterToFolder(ElasticFolder folder, int delay = 1000)
     {
         if (delay > 0) await Task.Delay(delay);
         CurrentFolder = folder;
         FilesAndFolders = new List<FileWrapper>();
-        //if (folder != null)
-        //{
-        //    var (_, parentFolder) = await Elastic.FolderRepo.GetFolderAsync(UserId, folder.ParentId);
-        //    var parentWrapper = new FileWrapper();
-        //    if (parentFolder != null)
-        //    {
-        //        parentWrapper = new FileWrapper(parentFolder);
-        //    }
-        //    parentWrapper.Name = "..";
-        //    FilesAndFolders.Add(parentWrapper);
-        //}
         var (childFolders, childFiles) = await Elastic.GetChildrenOfFolderAsync(UserId, CurrentFolder?.Id);
         if (childFolders?.Any() == true)
         {
@@ -291,18 +263,7 @@ else
             FilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).ToList());
         }
 
-        if (folder is not null)
-        {
-            Parents = await Elastic.GetParentsForObjectAsync(UserId, folder);
-            _folderPath = string.Empty;
-            if (Parents.Any()) _folderPath = "/" + string.Join('/', Parents.Select(p => p.Name));
-            _folderPath += "/" + folder.Name;
-        }
-        else
-        {
-            Parents = new();
-            _folderPath = "/";
-        }
+        Parents = folder is null ? new() : await Elastic.GetParentsForObjectAsync(UserId, folder);
     }
 
     public async Task RowRemoved(FileWrapper wrapper)
@@ -362,8 +323,6 @@ else
         }
     }
 
-
-
     private async Task<bool> NewFolder(string folderName = "New Folder")
     {
         // Creates a new folder under the current one
@@ -378,8 +337,7 @@ else
         if (!string.IsNullOrWhiteSpace(newId))
         {
             newFolder.Id = newId;
-            //FolderContents.Add(newFolder);
-            FilesAndFolders.Add(new FileWrapper(newFolder));
+            FilesAndFolders.Insert(0, new FileWrapper(newFolder));
             return true;
         }
         return false;

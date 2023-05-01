@@ -114,6 +114,7 @@
         var file = e.File;
         try
         {
+            //TODO: When uploading into a folder that is public, the file should be public as well
             Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
             var extension = PathAnalog.GetExtension(file.Name);
             if (string.IsNullOrWhiteSpace(extension) || extension == file.Name)
@@ -161,6 +162,7 @@
         FileStream tempStream = null;
         try
         {
+            //TODO: When uploading into a folder that is public, the file should be public as well
             if (await validations.ValidateAll() && Uri.TryCreate(UrlText, UriKind.Absolute, out var uri))
             {
                 errorMessages.Clear();

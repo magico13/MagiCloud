@@ -13,8 +13,8 @@
 <Upload OnUploadComplete=OnFilesUploaded CurrentDirectoryId=@CurrentFolderId />
 
 <Heading Size=HeadingSize.Is3>Files</Heading>
-<SearchBar OnSearch=OnSearch />
-<FilesComponent OnFolderChanged=OnFolderChanged />
+@*<SearchBar OnSearch=OnSearch />*@
+<FilesComponent OnFolderChanged=OnFolderChanged @ref=FileComponent />
 
 @code
 {
@@ -25,6 +25,7 @@
     private string CurrentFolderId { get; set; }
 
     private List<SearchResult> Files { get; set; }
+    private FilesComponent FileComponent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -48,8 +49,7 @@
     public async Task OnFilesUploaded()
     {
         // 1 second delay so that the newly uploaded files can make it into elasticsearch
-        await Task.Delay(1000);
-        //await GetFileList();
+        await FileComponent.FilterToFolder(FileComponent.CurrentFolder, 1000);
     }
 
     public void OnSearch(List<SearchResult> results)
