@@ -7,4 +7,5 @@ public interface ILens
 {
     Task<string> ExtractTextAsync(Stream stream, string filename, string contentType = null);
     string DetermineContentType(string filename);
+    string DetermineExtension(string contentType);
 }

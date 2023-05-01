@@ -1,3 +1,4 @@
+@using Goggles;
 @using Humanizer
 @using MagiCloud.DataManager;
 @using MagiCommon
@@ -10,6 +11,7 @@
 @inject FileStorageService FileStorage
 @inject HttpClient Client
 @inject ILogger<Upload> Logger
+@inject ILens Lens
 
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
@@ -113,11 +115,17 @@
         try
         {
             Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
-            var curDir = string.IsNullOrWhiteSpace(CurrentDirectoryId) ? "/" : CurrentDirectoryId;
+            var extension = PathAnalog.GetExtension(file.Name);
+            if (string.IsNullOrWhiteSpace(extension) || extension == file.Name)
+            {
+                // Determine extension from the content type
+                extension = Lens.DetermineExtension(file.Type);
+            }
             var info = new ElasticFileInfo
             {
-                Name = PathAnalog.Combine(curDir, PathAnalog.GetFileNameWithoutExtension(file.Name)),
-                Extension = PathAnalog.GetExtension(file.Name),
+                Name = PathAnalog.GetFileNameWithoutExtension(file.Name),
+                ParentId = CurrentDirectoryId,
+                Extension = extension,
                 MimeType = file.Type,
                 LastModified = file.LastModified,
                 Size = file.Size
@@ -177,12 +185,23 @@
                         ? uri.AbsolutePath.Trim('/').Split('/').Last() 
                         : Guid.NewGuid().ToString("N");
                     }
-
-                    var curDir = string.IsNullOrWhiteSpace(CurrentDirectoryId) ? "/" : CurrentDirectoryId;
+                    var extension = PathAnalog.GetExtension(name);
+                    if (string.IsNullOrWhiteSpace(extension) || extension == name)
+                    {
+                        // Determine extension from the uri
+                        var lastPartOfUri = uri.AbsolutePath.Trim('/').Split('/').Last();
+                        extension = PathAnalog.GetExtension(lastPartOfUri);
+                        if (string.IsNullOrWhiteSpace(extension) || extension == lastPartOfUri)
+                        {
+                            // Determine extension from the content type
+                            extension = Lens.DetermineExtension(contentType);
+                        }
+                    }
                     var info = new ElasticFileInfo
                     {
-                        Name = PathAnalog.Combine(curDir, name),
-                        Extension = null,
+                        Name = PathAnalog.GetFileNameWithoutExtension(name),
+                        ParentId = CurrentDirectoryId,
+                        Extension = extension,
                         MimeType = contentType,
                         LastModified = lastModified,
                         Size = size ?? 0
