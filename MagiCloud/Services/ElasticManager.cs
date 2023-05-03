@@ -1,7 +1,6 @@
 ﻿using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
-using Nest;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,9 +22,7 @@ public class ElasticManager
         FolderRepo = folderRepo;
     }
 
-    // Handle things like moving files/folders, deleting files/folders, creating? files/folders
-
-    public async Task<(List<ElasticFolder> folders, List<ElasticFileInfo> files)> GetChildrenOfFolderAsync(string userId, string folderId, bool onlyOwned = true)
+    public async Task<(List<ElasticFolder> folders, List<ElasticFileInfo> files)> GetFolderContentsAsync(string userId, string folderId, bool onlyOwned = true)
     {
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -179,26 +176,44 @@ public class ElasticManager
         }
         else if (elasticObject is ElasticFolder)
         {
-            if (permanentDelete)
+            var sourceFolder = await FolderRepo.GetFolderByIdAsync(elasticObject.Id);
+            var (folders, files) = await GetFolderContentsAsync(userId, elasticObject.Id, true);
+            if (BaseElasticRepo.DetermineAccessForUser(userId, sourceFolder) is FileAccessResult.FullAccess)
             {
-                // fully remove the folder
-                return await FolderRepo.DeleteFolderAsync(userId, elasticObject.Id) == FileAccessResult.FullAccess;
-            }
-            else
-            {
-                // just mark it soft deleted
-                var sourceFolder = await FolderRepo.GetFolderByIdAsync(elasticObject.Id);
-                if (BaseElasticRepo.DetermineAccessForUser(userId, sourceFolder) is FileAccessResult.FullAccess)
+                if (permanentDelete)
                 {
+                    // It's not safe to permanent delete a folder that still has children
+                    if (folders.Any() || files.Any())
+                    {
+                        Logger.LogWarning("Cannot delete folder with ID {FolderId} because it still has children", elasticObject.Id);
+                        return false;
+                    }
+
+                    // fully remove the folder
+                    return await FolderRepo.DeleteFolderAsync(userId, elasticObject.Id) == FileAccessResult.FullAccess;
+                }
+                else
+                {
+                    // Delete every child of the folder, recursively, using the same settings
+                    foreach (var file in files)
+                    {
+                        Logger.LogInformation("Recursively deleting file {Id} from folder {FolderId}", file.Id, elasticObject.Id);
+                        await DeleteObject(userId, file, false);
+                    }
+                    foreach (var folder in folders)
+                    {
+                        Logger.LogInformation("Recursively deleting folder {Id} from folder {FolderId}", folder.Id, elasticObject.Id);
+                        await DeleteObject(userId, folder, false);
+                    }
+
+                    // just mark it soft deleted
                     sourceFolder.IsDeleted = true;
                     var id = await FolderRepo.UpsertFolderAsync(userId, sourceFolder);
                     return id == elasticObject.Id;
                 }
-                else
-                {
-                    return false;
-                }
             }
+
+            return false;
         }
         else
         {

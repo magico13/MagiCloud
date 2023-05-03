@@ -164,7 +164,37 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
             _ => (accessLevel: FileAccessResult.NotPermitted, folder: null),
         };
     }
-    
+
+    public async Task<List<ElasticFolder>> GetFoldersAsync(string userId, bool? deleted = null)
+    {
+        Setup();
+        var result = await Client.SearchAsync<ElasticFolder>(s => s
+            .Size(10000)
+            .Query(q =>
+            {
+                var qc = q.Term(t => t.Field(f => f.UserId.Suffix("keyword")).Value(userId));
+                if (deleted.HasValue)
+                {
+                    qc &= q.Term(t => t.Field(f => f.IsDeleted).Value(deleted.Value));
+                }
+                return qc;
+            })
+        );
+        if (result.IsValid)
+        {
+            var list = new List<ElasticFolder>();
+            foreach (var hit in result.Hits)
+            {
+                var source = hit.Source;
+                source.Id = hit.Id;
+                list.Add(source);
+            }
+            return list;
+        }
+        _logger.LogError("Invalid GetFoldersAsync call. {ServerError}", result.ServerError);
+        return new();
+    }
+
     public async Task<ElasticFolder> GetFolderByIdAsync(string id)
     {
         Setup();
@@ -212,18 +242,6 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
                 }
                 return qc;
             })
-            //.Query(q => q
-            //    .Bool(bq => bq
-            //        .Filter(
-            //            fq => fq.Term(t => t.Verbatim()
-            //                .Field(f => f.ParentId.Suffix("keyword")).Value(folderId)
-            //            ),
-            //            fq => fq.Term(t => t
-            //                .Field(f => f.IsDeleted).Value(false)
-            //            )
-            //        )
-            //    )
-            //)
         );
         if (result.IsValid)
         {

@@ -99,7 +99,7 @@ Chatting with user {0}, Chat Start Time: {1}.
         //}
 
         deserialized.Hash = null;
-        deserialized.Name = deserialized.GetFullPath();
+        deserialized.Name = deserialized.GetFileName();
 
         var serializedContext = JsonSerializer.Serialize(deserialized, JsonSerializerOptions);
 

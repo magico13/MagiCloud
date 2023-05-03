@@ -250,7 +250,7 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
                 _logger.LogWarning("Forcing provided file with id {Id} to id {Id2} because of name conflict '{Name}'",
                                    file.Id,
                                    existingByName.Id,
-                                   file.GetFullPath());
+                                   file.GetFileName());
                 file.Id = existingByName.Id;
             }
             else
@@ -260,9 +260,9 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
                     "Unresolvable name conflict between new id {Id} and existing id {Id2} with name '{Name}'",
                     file.Id,
                     existingByName.Id,
-                    file.GetFullPath());
+                    file.GetFileName());
 
-                throw new ArgumentException($"File with name '{file.GetFullPath()}' cannot be indexed due to unresolvable id conflict.");
+                throw new ArgumentException($"File with name '{file.GetFileName()}' cannot be indexed due to unresolvable id conflict.");
             }
         }
         // TODO: We should be able to avoid getting the document twice, if you provide an id then the name probably matches too

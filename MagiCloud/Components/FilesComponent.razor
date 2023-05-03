@@ -253,7 +253,7 @@ else
         if (delay > 0) await Task.Delay(delay);
         CurrentFolder = folder;
         FilesAndFolders = new List<FileWrapper>();
-        var (childFolders, childFiles) = await Elastic.GetChildrenOfFolderAsync(UserId, CurrentFolder?.Id);
+        var (childFolders, childFiles) = await Elastic.GetFolderContentsAsync(UserId, CurrentFolder?.Id);
         if (childFolders?.Any() == true)
         {
             FilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).ToList());
@@ -273,10 +273,12 @@ else
         {
             return;
         }
-        Logger.LogInformation("Removing object {Name} ({Id})", backing.Name, backing.Id);
-        backing.IsDeleted = true;
-        FilesAndFolders.Remove(wrapper);
-        await Elastic.DeleteObject(UserId, backing, false);
+        Logger.LogInformation("Attempting to remove object {Name} ({Id})", backing.Name, backing.Id);
+        if (await Elastic.DeleteObject(UserId, backing, false))
+        {
+            backing.IsDeleted = true;
+            FilesAndFolders.Remove(wrapper);
+        }
         await FilterToFolder(CurrentFolder);
     }
 

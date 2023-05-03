@@ -17,7 +17,7 @@
 
 @if (files?.Any() == true)
 {
-    <Button Color="Color.Danger" Clicked=EmptyTrash>Empty Trash</Button>
+    <Button Color=Color.Danger Clicked=EmptyTrash>Empty Trash</Button>
     <DataGrid
             TItem=ElasticObject
             Data=files
@@ -28,16 +28,28 @@
             Sortable
             SelectionMode=DataGridSelectionMode.Single>
         <DataGridColumns>
-            <DataGridColumn Field="@nameof(ElasticFileInfo.Name)" Caption="Name" />
-            <DataGridColumn Field="@nameof(ElasticFileInfo.LastUpdated)" Caption="Last Updated">
+            <DataGridColumn Field="@nameof(ElasticObject.Name)" Caption="Name" />
+            <DataGridColumn Field="@nameof(ElasticObject.LastUpdated)" Caption="Last Updated">
                 <DisplayTemplate>
                     @(context.LastUpdated.LocalDateTime)
                 </DisplayTemplate>
             </DataGridColumn>
+            <DataGridColumn Field="@nameof(ElasticObject.Name)" Caption="Type" Sortable=false>
+                <DisplayTemplate>
+                    @if(context is ElasticFileInfo efi)
+                    {
+                        @(efi.MimeType)
+                    }
+                    else if (context is ElasticFolder)
+                    {
+                        @("Folder")
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
             <DataGridColumn Sortable=false>
                 <DisplayTemplate>
-                    <Button Color="Color.Primary" Clicked="@(async () => await UndeleteAsync(context))">Restore</Button>
-                    <Button Color="Color.Danger" Clicked="@(async () => await PermanentlyDeleteAsync(context.Id))">Perma-Delete</Button>
+                    <Button Color="Color.Primary" Clicked=@(async () => await UndeleteAsync(context))>Restore</Button>
+                    <Button Color="Color.Danger" Clicked=@(async () => await PermanentlyDeleteAsync(context))>Perma-Delete</Button>
                 </DisplayTemplate>
             </DataGridColumn>
         </DataGridColumns>
@@ -70,12 +82,16 @@ else
     {
         try
         {
-            files = null;
-            // TODO: Get Folders await Elastic.FolderRepo.
+            files = new();
+            var foldersList = await Elastic.FolderRepo.GetFoldersAsync(UserId, true);
+            if (foldersList?.Any() == true)
+            {
+                files.AddRange(foldersList.OrderBy(f => f.Name));
+            }
             var fileList = await Elastic.FileRepo.GetDocumentsAsync(UserId, true);
             if (fileList?.Any() == true)
             {
-                files = fileList.Select(f => f as ElasticObject).OrderBy(f => f.Name).ToList();
+                files.AddRange(fileList.OrderBy(f => f.Name));
             }
         }
         catch (Exception ex)
@@ -84,15 +100,26 @@ else
         }
     }
 
-    private async Task PermanentlyDeleteAsync(string id)
+    private async Task PermanentlyDeleteAsync(ElasticObject elasticObject)
     {
-        await DeleteObject(id);
-        files.RemoveAll(f => f.Id == id);
+        await DeleteObject(elasticObject);
+        files.RemoveAll(f => f.Id == elasticObject.Id);
     }
 
     private async Task UndeleteAsync(ElasticObject elasticObject)
     {
         elasticObject.IsDeleted = false;
+        if (!string.IsNullOrWhiteSpace(elasticObject.ParentId))
+        {
+            var parents = await Elastic.GetParentsForObjectAsync(UserId, elasticObject);
+            foreach (var parent in parents)
+            {
+                if (parent.IsDeleted)
+                {
+                    await UndeleteAsync(parent);
+                }
+            }
+        }
         if (elasticObject is ElasticFileInfo fileInfo)
         {
             await Elastic.FileRepo.IndexDocumentAsync(UserId, fileInfo);
