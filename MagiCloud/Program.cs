@@ -7,6 +7,7 @@ using MagiCloud.Configuration;
 using MagiCloud.DataManager;
 using MagiCloud.Db;
 using MagiCloud.Services;
+using MagiCloud.Services.ChatServices;
 using MagiCommon;
 using MagiCommon.Interfaces;
 using Microsoft.AspNetCore.Builder;

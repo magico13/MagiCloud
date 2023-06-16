@@ -32,7 +32,8 @@ namespace MagiCommon.Models.AssistantChat
             => SendMessage(new Message
             {
                 Role = Role.User,
-                Content = nextMessageContent
+                Content = nextMessageContent,
+                Name = InitialRequest.User
             });
 
         public async Task<ChatCompletionResponse> SendMessage(Message message)
@@ -42,6 +43,7 @@ namespace MagiCommon.Models.AssistantChat
             {
                 Model = InitialRequest.Model,
                 Messages = Messages,
+                Functions = InitialRequest.Functions,
                 Temperature = InitialRequest.Temperature,
                 TopP = InitialRequest.TopP,
                 N = InitialRequest.N,
@@ -55,7 +57,9 @@ namespace MagiCommon.Models.AssistantChat
             };
 
             var completed = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
-            Messages.Add(completed.Choices.First().Message);
+            var firstChoice = completed.Choices.First().Message;
+            firstChoice.Content ??= string.Empty;
+            Messages.Add(firstChoice);
             return completed;
         }
     }
@@ -64,6 +68,7 @@ namespace MagiCommon.Models.AssistantChat
     {
         public string Model { get; set; } = "gpt-3.5-turbo";
         public List<Message> Messages { get; set; } = new List<Message>();
+        public List<Function> Functions { get; set; }
         public double? Temperature { get; set; }
         public double? TopP { get; set; }
         public int? N { get; set; }
@@ -90,6 +95,36 @@ namespace MagiCommon.Models.AssistantChat
         [JsonConverter(typeof(RoleJsonConverter))]
         public Role Role { get; set; }
         public string Content { get; set; }
+        public string Name { get; set; }
+        public FunctionCall FunctionCall { get; set; }
+    }
+
+    public class FunctionCall
+    {
+        public string Name { get; set; }
+        public string Arguments { get; set; }
+    }
+
+    public class Function
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public FunctionParameters Parameters { get; set; } 
+            = new FunctionParameters() { Properties = new Dictionary<string, FunctionProperty>() };
+    }
+
+    public class FunctionParameters
+    {
+        public string Type { get; set; } = "object";
+        public Dictionary<string, FunctionProperty> Properties { get; set; }
+        public string[] Required { get; set; }
+    }
+
+    public class FunctionProperty
+    {
+        public string Type { get; set; }
+        public string Description { get; set; }
+        public string[] Enum { get; set; }
     }
 
     public class Choice
@@ -112,13 +147,15 @@ namespace MagiCommon.Models.AssistantChat
     {
         System,
         User,
-        Assistant
+        Assistant,
+        Function
     }
 
     public enum FinishReason
     {
         Stop,
         Length,
-        ContentFilter
+        Content_Filter,
+        Function_Call
     }
 }
