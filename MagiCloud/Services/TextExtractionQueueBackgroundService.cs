@@ -84,6 +84,8 @@ public class TextExtractionQueueBackgroundService : BackgroundService
                     && !stoppingToken.IsCancellationRequested)
                 {
                     await ProcessMessage(message);
+                    // TODO: If cancellation is requested while ProcessMessage is running,
+                    // it may not stop within the allowed time. Extract Text should allow cancellation.
                 }
 
                 // Sleep between polls
