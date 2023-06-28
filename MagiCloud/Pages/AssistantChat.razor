@@ -2,6 +2,7 @@
 @page "/chat/{Id}"
 @using MagiCloud.Services;
 @using MagiCloud;
+@using MagiCloud.Services.ChatServices;
 @using MagiCommon.Comparers.ElasticFileInfoComparers;
 @using MagiCommon.Extensions
 @using MagiCommon.Interfaces;
@@ -80,7 +81,9 @@ else
 
         var initialRequest = new ChatCompletionRequest
         {
-            User = UserId
+            User = UserId,
+            Model = "gpt-3.5-turbo-0613",
+
         };
 
         if (!string.IsNullOrWhiteSpace(Id))
@@ -95,6 +98,13 @@ else
                 return;
             }
 
+            initialRequest.Functions = new()
+            {
+                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
+                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_text"],
+                ChatAssistantCommandHandler.AvailableFunctionDefinitions["process"]
+            };
+
             Chat = ChatCompletionService.CreateNewDocumentChat(initialRequest, authState.User.Identity.Name, UserId, file);
         }
         else
@@ -106,21 +116,27 @@ else
             // strip out fields that don't matter and shorten property names
             StringBuilder builder = new();
             builder.AppendLine($"Total Files: {docs.Count} Storage Used: {docs.Sum(d => d.Size)} bytes.");
-            builder.AppendLine($"Metadata for {recentFileCount} recent documents available for reference.");
+            //builder.AppendLine($"Metadata for {recentFileCount} recent documents available for reference.");
 
-            var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(recentFileCount);
+            //var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(recentFileCount);
 
-            foreach (var doc in mostRecentDocs)
-            {
-                builder.AppendLine(doc.ToContextString());
-                if (builder.Length >= 6000)
-                {
-                    builder.Append("More files exist but were cut to save characters.");
-                    break;
-                }
-            }
+            //foreach (var doc in mostRecentDocs)
+            //{
+            //    builder.AppendLine(doc.ToContextString());
+            //    if (builder.Length >= 6000)
+            //    {
+            //        builder.Append("More files exist but were cut to save characters.");
+            //        break;
+            //    }
+            //}
 
             var fileContext = builder.ToString();
+
+            initialRequest.Functions = new()
+            {
+                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
+                ChatAssistantCommandHandler.AvailableFunctionDefinitions["search"]
+            };
 
             Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, fileContext);
         }
@@ -134,11 +150,22 @@ else
 
         var msgCopy = UserMessage;
         UserMessage = null;
-        LastResponse = await Chat.SendUserMessage(msgCopy);
-        this.StateHasChanged();
-        await Task.Delay(1); // Add a delay to hopefully update the text
-        // Handle any commands the Assistant may have invoked
-        LastResponse = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, LastResponse);
+        var response = await Chat.SendUserMessage(msgCopy);
+        while (response is not null)
+        {
+            LastResponse = response;
+            var choice = response.Choices.First();
+            response = null;
+
+            this.StateHasChanged();
+            await Task.Delay(1); // Add a delay to hopefully update the text
+            
+            // Handle any commands the Assistant may have invoked
+            if (choice.FinishReason == FinishReason.Function_Call && choice.Message.FunctionCall is not null)
+            {
+                response = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, choice.Message);
+            }
+        }
     }
 
     private async Task KeyUpHandler(KeyboardEventArgs keyboardEvent)
