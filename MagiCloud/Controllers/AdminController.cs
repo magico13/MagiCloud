@@ -14,12 +14,12 @@ public class AdminController : ControllerBase
 {
     private ILogger<AdminController> Logger { get; }
     private IElasticFileRepo Elastic { get; }
-    private TextExtractionQueueHelper ExtractionQueue { get; }
+    private TextExtractionQueueWrapper ExtractionQueue { get; }
 
     public AdminController(
         ILogger<AdminController> logger, 
         IElasticFileRepo elastic,
-        TextExtractionQueueHelper extractionQueue)
+        TextExtractionQueueWrapper extractionQueue)
     {
         Logger = logger;
         Elastic = elastic;

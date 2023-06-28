@@ -48,6 +48,10 @@ public class ExtractionHelper
     internal async Task<(bool updated, string text)> ExtractTextAsync(string docId, bool force = false)
     {
         var doc = await _elasticManager.GetDocumentByIdAsync(docId, !force);
+        if (doc is null)
+        {
+            return (false, null);
+        }
         // get document. If we are forcing an update then we don't care about the current text
         // if not forcing, then we might return the existing text instead
         if (!string.IsNullOrWhiteSpace(doc.Text))

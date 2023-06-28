@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -89,7 +90,6 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-
 builder.Services.AddSingleton<IElasticFileRepo, ElasticFileRepo>();
 builder.Services.AddSingleton<IElasticFolderRepo, ElasticFolderRepo>();
 builder.Services.AddSingleton<ElasticManager>();
@@ -127,9 +127,11 @@ builder.Services.AddLens(o =>
 });
 builder.Services.AddSingleton<ExtractionHelper>();
 
-// Add Singletons
-builder.Services.AddSingleton<TextExtractionQueueHelper>();
+builder.Services.AddSingleton<TextExtractionQueueWrapper>();
+builder.Services.AddHostedService<TextExtractionQueueBackgroundService>();
+
 builder.Services.AddSingleton<ChatAssistantCommandHandler>();
+
 
 var app = builder.Build();
 
@@ -169,10 +171,5 @@ app.MapRazorPages();
 app.MapFallbackToPage("/_Host");
 
 
-// Start queue monitors
-var textExtrationQueue = app.Services.GetRequiredService<TextExtractionQueueHelper>();
-_ = Task.Factory.StartNew(async ()
-    => await textExtrationQueue.ProcessQueueAsync(applicationCancellationTokenSource.Token),
-    TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
 await app.RunAsync(applicationCancellationTokenSource.Token);

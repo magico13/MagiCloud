@@ -13,14 +13,14 @@ public class FileStorageService
     public IElasticFileRepo Elastic { get; }
     public IHashService HashService { get; }
     public ILogger<FileStorageService> Logger { get; }
-    public TextExtractionQueueHelper ExtractionQueue { get; }
+    public TextExtractionQueueWrapper ExtractionQueue { get; }
 
     public FileStorageService(
         IDataManager dataManager,
         IElasticFileRepo elastic,
         IHashService hashService,
         ILogger<FileStorageService> logger,
-        TextExtractionQueueHelper extractionQueue)
+        TextExtractionQueueWrapper extractionQueue)
     {
         DataManager = dataManager;
         Elastic = elastic;

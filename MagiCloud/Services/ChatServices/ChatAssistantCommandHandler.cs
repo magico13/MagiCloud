@@ -75,13 +75,13 @@ public class ChatAssistantCommandHandler
 
     // This lets the chat service use commands to run searches, get info about a file, queue files for rextraction, etc
     private ILogger<ChatAssistantCommandHandler> Logger { get; }
-    private IElasticManager ElasticManager { get; }
-    private TextExtractionQueueHelper ExtractionQueue { get; }
+    private ElasticManager ElasticManager { get; }
+    private TextExtractionQueueWrapper ExtractionQueue { get; }
 
     public ChatAssistantCommandHandler(
         ILogger<ChatAssistantCommandHandler> logger,
-        IElasticManager elasticManager,
-        TextExtractionQueueHelper extractionQueue)
+        ElasticManager elasticManager,
+        TextExtractionQueueWrapper extractionQueue)
     {
         Logger = logger;
         ElasticManager = elasticManager;
@@ -152,7 +152,7 @@ public class ChatAssistantCommandHandler
             ["results"] = null
         };
 
-        var searchResults = await ElasticManager.SearchAsync(userId, searchTerms);
+        var searchResults = await ElasticManager.FileRepo.SearchAsync(userId, searchTerms);
         // Convert the searchResults into a message
         if (searchResults?.Where(d => !d.IsDeleted)?.Any() != true)
         {
@@ -169,7 +169,7 @@ public class ChatAssistantCommandHandler
             jsonResultList.Add(new()
             {
                 ["doc_id"] = doc.Id,
-                ["path"] = doc.GetFullPath(),
+                ["filename"] = doc.GetFileName(),
                 ["highlight"] = doc.Highlights?.FirstOrDefault()
             });
         }
@@ -190,7 +190,7 @@ public class ChatAssistantCommandHandler
         {
             return null;
         }
-        var (access, doc) = await ElasticManager.GetDocumentAsync(userId, docId, true);
+        var (access, doc) = await ElasticManager.FileRepo.GetDocumentAsync(userId, docId, true);
 
         if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
         {
@@ -227,7 +227,7 @@ public class ChatAssistantCommandHandler
         {
             return null;
         }
-        var (access, doc) = await ElasticManager.GetDocumentAsync(userId, docId, false);
+        var (access, doc) = await ElasticManager.FileRepo.GetDocumentAsync(userId, docId, false);
 
         if (access != FileAccessResult.FullAccess)
         {
