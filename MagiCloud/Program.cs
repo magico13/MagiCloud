@@ -14,16 +14,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using System;
 using System.Net.Http.Headers;
-using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -62,6 +61,8 @@ Log.Logger = new LoggerConfiguration()
     })
     .WriteTo.Console()
     .WriteTo.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
     .CreateLogger();
 
 builder.Host.UseSerilog(Log.Logger);

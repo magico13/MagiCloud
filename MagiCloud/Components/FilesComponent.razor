@@ -33,8 +33,8 @@
                 </Validations>
             </ModalBody>
             <ModalFooter>
-                <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
-                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Color=Color.Primary Disabled=@(!_newFolderValidatorsPassed) Clicked=@(() => CloseModal(true))>
+                <Button Color=Color.Secondary Clicked=@(() => CloseNewFolderModal(false))>Cancel</Button>
+                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Color=Color.Primary Disabled=@(!_newFolderValidatorsPassed) Clicked=@(() => CloseNewFolderModal(true))>
                     Create
                 </Button>
             </ModalFooter>
@@ -62,7 +62,7 @@
             </Button>
         }
     </Span>
-    <Button Color=Color.Primary Clicked=OpenModal Float=Float.End>
+    <Button Color=Color.Primary Clicked=OpenNewFolderModal Float=Float.End>
         New Folder
     </Button>
 </Div>
@@ -81,10 +81,9 @@ else if (!FilesAndFolders.Any())
 }
 else
 {
-    @*DetailRowTrigger =@(w => (w.Item?.BackingObject as ElasticFileInfo)?.Highlights?.Any() == true)*@
-    <DataGrid TItem=FileWrapper
+    <DataGrid   TItem=FileWrapper
                 Data=FilesAndFolders
-                
+                DetailRowTrigger=@(w => (w.Item?.BackingObject as SearchResult)?.Highlights?.Any() == true)
                 Sortable
                 SelectionMode=DataGridSelectionMode.Single
                 CommandMode=DataGridCommandMode.Default
@@ -168,13 +167,13 @@ else
                 </DisplayTemplate>
             </DataGridColumn>
         </DataGridColumns>
-        @*<DetailRowTemplate>
-            @if(context?.BackingObject?.Highlights?.Any() == true)
+        <DetailRowTemplate>
+            @if(context?.BackingObject is SearchResult searchResult && searchResult.Highlights?.Any() == true)
             {
                 // print out all the highlights
-               @((MarkupString)string.Join("<br/>", context.BackingObject.Highlights))
+               @((MarkupString)string.Join("<br/>", searchResult.Highlights))
             }
-        </DetailRowTemplate>*@
+        </DetailRowTemplate>
     </DataGrid>
 }
 
@@ -186,12 +185,16 @@ else
     [Parameter]
     public EventCallback<string> OnFolderChanged { get; set; }
 
-    protected async override Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var authState = await AuthenticationStateTask;
-        UserId = authState.User.GetUserId();
-        await base.OnInitializedAsync();
-        await FilterToFolder(CurrentFolder);
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            var authState = await AuthenticationStateTask;
+            UserId = authState.User.GetUserId();
+            await FilterToFolder(CurrentFolder);
+            this.StateHasChanged();
+        }
     }
 
     private List<ElasticFolder> Parents { get; set; } = new();
@@ -216,13 +219,13 @@ else
     {
         _newFolderValidatorsPassed = e.Status == ValidationStatus.Success;
     }
-    private async void OpenModal()
+    private async void OpenNewFolderModal()
     {
         _newFolderText = null;
         await _newFolderModal.Show();
     }
 
-    private async void CloseModal(bool isOk)
+    private async void CloseNewFolderModal(bool isOk)
     {
         if (isOk && (await _newFolderValidations.ValidateAll()))
         {
@@ -248,22 +251,25 @@ else
     //    }
     //}
 
-    public async Task FilterToFolder(ElasticFolder folder, int delay = 1000)
+    public async Task FilterToFolder(ElasticFolder folder, int delay = 0)
     {
         if (delay > 0) await Task.Delay(delay);
-        CurrentFolder = folder;
-        FilesAndFolders = new List<FileWrapper>();
-        var (childFolders, childFiles) = await Elastic.GetFolderContentsAsync(UserId, CurrentFolder?.Id);
+        var newFilesAndFolders = new List<FileWrapper>();
+        var (childFolders, childFiles) = await Elastic.GetFolderContentsAsync(UserId, folder?.Id);
         if (childFolders?.Any() == true)
         {
-            FilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).ToList());
+            newFilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).ToList());
         }
         if (childFiles?.Any() == true)
         {
-            FilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).ToList());
+            newFilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).ToList());
         }
+        var newParents = folder is null ? new() : await Elastic.GetParentsForObjectAsync(UserId, folder);
 
-        Parents = folder is null ? new() : await Elastic.GetParentsForObjectAsync(UserId, folder);
+        // Update properties last so we don't do a partial visual update
+        Parents = newParents;
+        FilesAndFolders = newFilesAndFolders;
+        CurrentFolder = folder;
     }
 
     public async Task RowRemoved(FileWrapper wrapper)
@@ -279,7 +285,7 @@ else
             backing.IsDeleted = true;
             FilesAndFolders.Remove(wrapper);
         }
-        await FilterToFolder(CurrentFolder);
+        await FilterToFolder(CurrentFolder, 1000);
     }
 
     public async Task RowUpdated(SavedRowItem<FileWrapper, Dictionary<string, object>> saved)
@@ -301,14 +307,14 @@ else
             await Elastic.FolderRepo.UpsertFolderAsync(UserId, folderInfo);
         }
 
-        await FilterToFolder(CurrentFolder);
+        await FilterToFolder(CurrentFolder, 1000);
     }
 
     public async Task UpdateVisibility(FileWrapper wrapper, bool visible)
     {
         var backing = wrapper.BackingObject;
         await UpdateVisibility(backing, visible);
-        await FilterToFolder(CurrentFolder);
+        await FilterToFolder(CurrentFolder, 1000);
     }
 
     private async Task UpdateVisibility(ElasticObject backing, bool visible)

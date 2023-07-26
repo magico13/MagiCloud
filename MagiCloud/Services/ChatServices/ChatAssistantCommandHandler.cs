@@ -209,8 +209,8 @@ public class ChatAssistantCommandHandler
         {
             ["doc_id"] = doc.Id,
             ["text"] = docText,
-            ["length"] = docText.Length.ToString(),
-            ["untrimmed_length"] = originalLength.ToString()
+            ["excerpt_length"] = docText.Length.ToString(),
+            ["original_length"] = originalLength.ToString()
         };
     }
 

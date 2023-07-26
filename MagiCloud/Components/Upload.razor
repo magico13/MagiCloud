@@ -16,7 +16,7 @@
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
 <FilePicker @ref=filePicker Multiple Upload=OnFileUpload ShowMode=FilePickerShowMode.List MaxChunkSize=Constants.UPLOAD_CHUNK_SIZE MaxFileSize=maxFileSize Ended=OnEnded Changed=OnFilesChanged/>
-<Button Loading=RemoteDownloadInProgress Disabled=RemoteDownloadInProgress Color=Color.Primary Clicked=OpenModal>Download Remote File</Button>
+<Button Loading=RemoteDownloadInProgress Disabled=RemoteDownloadInProgress Color=Color.Primary Clicked=OpenRemoteDownloadModal>Download Remote File</Button>
 
 <Modal @ref=remoteDownloadModal>
     <ModalContent Centered>
@@ -51,8 +51,8 @@
                 </Validations>
             </ModalBody>
             <ModalFooter>
-                <Button Color=Color.Secondary Clicked=@(() => CloseModal(false))>Cancel</Button>
-                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Disabled=@(!validatorsPassed) Color=Color.Primary Clicked=@(() => CloseModal(true))>
+                <Button Color=Color.Secondary Clicked=@(() => CloseRemoteDownloadModal(false))>Cancel</Button>
+                <Button Type=ButtonType.Submit PreventDefaultOnSubmit Disabled=@(!validatorsPassed) Color=Color.Primary Clicked=@(() => CloseRemoteDownloadModal(true))>
                     Download
                 </Button>
             </ModalFooter>
@@ -245,14 +245,14 @@
         }
     }
 
-    private async void OpenModal()
+    private async void OpenRemoteDownloadModal()
     {
         UrlText = null;
         RemoteFileName = null;
         await remoteDownloadModal.Show();
     }
 
-    private async void CloseModal(bool isOk)
+    private async void CloseRemoteDownloadModal(bool isOk)
     {
         await remoteDownloadModal.Hide();
         if (isOk && (await validations.ValidateAll()))

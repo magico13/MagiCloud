@@ -70,12 +70,16 @@ else
 
     private List<ElasticObject> files;
 
-    protected async override Task OnInitializedAsync()
+    protected async override Task OnAfterRenderAsync(bool firstRender)
     {
-        await base.OnInitializedAsync();
-        var authState = await AuthenticationStateTask;
-        UserId = authState.User.GetUserId();
-        await GetDeletedObjects();
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            var authState = await AuthenticationStateTask;
+            UserId = authState.User.GetUserId();
+            await GetDeletedObjects();
+            this.StateHasChanged();
+        }
     }
 
     private async Task GetDeletedObjects()
