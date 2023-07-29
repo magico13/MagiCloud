@@ -1,4 +1,5 @@
 ﻿using MagiCommon.Models;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -6,52 +7,29 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 
-public class TextExtractionQueueHelper
+/// <summary>
+/// The service that actually processes the text extraction queue.
+/// </summary>
+public class TextExtractionQueueBackgroundService : BackgroundService
 {
     public int DefaultMaxAttempts { get; set; } = 5;
     public TimeSpan PollingPeriod { get; set; } = TimeSpan.FromSeconds(30);
 
-    private ILogger<TextExtractionQueueHelper> Logger { get; }
-    private IMessageQueueService<string> TextExtractionQueue { get; }
+    private ILogger<TextExtractionQueueBackgroundService> Logger { get; }
     private ExtractionHelper ExtractionHelper { get; }
-    private IElasticManager ElasticManager { get; }
+    private IElasticFileRepo ElasticManager { get; }
+    private TextExtractionQueueWrapper ExtractionQueueWrapper { get; }
 
-    public TextExtractionQueueHelper(ILogger<TextExtractionQueueHelper> logger,
-        IMessageQueueService<string> queueService,
+    public TextExtractionQueueBackgroundService(
+        ILogger<TextExtractionQueueBackgroundService> logger,
+        TextExtractionQueueWrapper extractionQueueWrapper,
         ExtractionHelper extractionHelper,
-        IElasticManager elasticManager)
+        IElasticFileRepo elasticManager)
     {
-        TextExtractionQueue = queueService;
         ExtractionHelper = extractionHelper;
         Logger = logger;
         ElasticManager = elasticManager;
-    }
-
-    public void AddFileToQueue(string fileId) => TextExtractionQueue.AddMessage(fileId);
-
-    public async Task ProcessQueueAsync(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                // while there are messages, process them as fast as possible
-                Message<string> message;
-                while ((message = TextExtractionQueue.PopMessage()) != null)
-                {
-                    await ProcessMessage(message);
-                }
-
-                // Sleep between polls
-                await Task.Delay(PollingPeriod, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Text Extraction Queue processing encountered an exception. Ignoring and continuing.");
-            }
-        }
-
-        Logger.LogInformation("Shutting down Text Extraction Queue processing");
+        ExtractionQueueWrapper = extractionQueueWrapper;
     }
 
     private async Task ProcessMessage(Message<string> message)
@@ -70,7 +48,7 @@ public class TextExtractionQueueHelper
             Logger.LogInformation("Text Processing for file: {FileId}", fileId);
             var (_, text) = await ExtractionHelper.ExtractTextAsync(fileId, true);
             // Update the document with the new text
-            if (!string.IsNullOrEmpty(text)) 
+            if (!string.IsNullOrEmpty(text))
             {
                 var fileInfo = await ElasticManager.GetDocumentByIdAsync(fileId, false);
                 fileInfo.Text = text;
@@ -89,9 +67,36 @@ public class TextExtractionQueueHelper
 
             // Log error and retry
             Logger.LogError(ex, "Error processing file {FileId}: {Message}", fileId, ex.Message);
-           
-            TextExtractionQueue.AddMessage(message);
+
+            ExtractionQueueWrapper.AddMessage(message);
         }
     }
 
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // while there are messages, process them as fast as possible
+                Message<string> message;
+                while ((message = ExtractionQueueWrapper.PopMessage()) != null
+                    && !stoppingToken.IsCancellationRequested)
+                {
+                    await ProcessMessage(message);
+                    // TODO: If cancellation is requested while ProcessMessage is running,
+                    // it may not stop within the allowed time. Extract Text should allow cancellation.
+                }
+
+                // Sleep between polls
+                await Task.Delay(PollingPeriod, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Text Extraction Queue processing encountered an exception. Ignoring and continuing.");
+            }
+        }
+
+        Logger.LogInformation("Shutting down Text Extraction Queue processing");
+    }
 }

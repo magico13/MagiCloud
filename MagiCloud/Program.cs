@@ -19,10 +19,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using System;
 using System.Net.Http.Headers;
-using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -61,6 +61,8 @@ Log.Logger = new LoggerConfiguration()
     })
     .WriteTo.Console()
     .WriteTo.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
     .CreateLogger();
 
 builder.Host.UseSerilog(Log.Logger);
@@ -89,17 +91,15 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-
-
-builder.Services.AddSingleton<IElasticManager, ElasticManager>();
+builder.Services.AddSingleton<IElasticFileRepo, ElasticFileRepo>();
+builder.Services.AddSingleton<IElasticFolderRepo, ElasticFolderRepo>();
+builder.Services.AddSingleton<ElasticManager>();
 builder.Services.AddSingleton<IDataManager, FileSystemDataManager>();
 builder.Services.AddSingleton<IHashService, HashService>();
 builder.Services.AddSingleton<FileStorageService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddTransient<IMessageQueueService<string>, InMemoryMessageQueueService<string>>();
-
-
 
 if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 {
@@ -128,9 +128,11 @@ builder.Services.AddLens(o =>
 });
 builder.Services.AddSingleton<ExtractionHelper>();
 
-// Add Singletons
-builder.Services.AddSingleton<TextExtractionQueueHelper>();
+builder.Services.AddSingleton<TextExtractionQueueWrapper>();
+builder.Services.AddHostedService<TextExtractionQueueBackgroundService>();
+
 builder.Services.AddSingleton<ChatAssistantCommandHandler>();
+
 
 var app = builder.Build();
 
@@ -170,10 +172,5 @@ app.MapRazorPages();
 app.MapFallbackToPage("/_Host");
 
 
-// Start queue monitors
-var textExtrationQueue = app.Services.GetRequiredService<TextExtractionQueueHelper>();
-_ = Task.Factory.StartNew(async ()
-    => await textExtrationQueue.ProcessQueueAsync(applicationCancellationTokenSource.Token),
-    TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
 await app.RunAsync(applicationCancellationTokenSource.Token);

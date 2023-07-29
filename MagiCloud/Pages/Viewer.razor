@@ -7,7 +7,7 @@
 @using System.IO;
 
 @inject IDataManager DataManager
-@inject IElasticManager Elastic
+@inject IElasticFileRepo Elastic
 @inject ILogger<Viewer> Logger
 
 @if (FileInfo is not null)
@@ -78,12 +78,16 @@
         </Row>
     </Column>
 }
-else
+else if (FileAccess is not null)
 {
     <Heading>Not Found</Heading>
     <Paragraph>
         File not found or you do not have access.
     </Paragraph>
+}
+else
+{
+    <Heading>Loading...</Heading>
 }
 
 @code {
@@ -94,15 +98,20 @@ else
     [Parameter]
     public string Id { get; set; }
     protected ElasticFileInfo FileInfo { get; set; }
+    protected FileAccessResult? FileAccess { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await base.OnInitializedAsync();
-        var authState = await AuthenticationStateTask;
-        UserId = authState.User.GetUserId();
-        if (!string.IsNullOrWhiteSpace(Id))
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
         {
-            await PopulateFileInfo(Id);
+            var authState = await AuthenticationStateTask;
+            UserId = authState.User.GetUserId();
+            if (!string.IsNullOrWhiteSpace(Id))
+            {
+                await PopulateFileInfo(Id);
+            }
+            this.StateHasChanged();
         }
     }
 
@@ -113,6 +122,7 @@ else
             && info is not null && !info.IsDeleted)
         {
             FileInfo = info;
+            FileAccess = accessResult;
         }
     }
 }

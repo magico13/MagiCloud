@@ -13,13 +13,13 @@ namespace MagiCloud.Controllers;
 public class AdminController : ControllerBase
 {
     private ILogger<AdminController> Logger { get; }
-    private IElasticManager Elastic { get; }
-    private TextExtractionQueueHelper ExtractionQueue { get; }
+    private IElasticFileRepo Elastic { get; }
+    private TextExtractionQueueWrapper ExtractionQueue { get; }
 
     public AdminController(
         ILogger<AdminController> logger, 
-        IElasticManager elastic,
-        TextExtractionQueueHelper extractionQueue)
+        IElasticFileRepo elastic,
+        TextExtractionQueueWrapper extractionQueue)
     {
         Logger = logger;
         Elastic = elastic;

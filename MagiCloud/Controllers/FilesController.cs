@@ -16,13 +16,13 @@ namespace MagiCloud.Controllers;
 public class FilesController : Controller
 {
     private readonly ILogger<FilesController> _logger;
-    private readonly IElasticManager _elastic;
+    private readonly IElasticFileRepo _elastic;
     private readonly IDataManager _dataManager;
     private readonly UserManager<IdentityUser> _userManager;
 
     public FilesController(
         ILogger<FilesController> logger,
-        IElasticManager elastic,
+        IElasticFileRepo elastic,
         IDataManager dataManager,
         UserManager<IdentityUser> userManager)
     {

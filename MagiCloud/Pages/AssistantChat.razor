@@ -15,7 +15,7 @@
 @attribute [Authorize]
 
 @inject IChatCompletionService ChatCompletionService
-@inject IElasticManager ElasticManager
+@inject IElasticFileRepo ElasticManager
 @inject ChatAssistantCommandHandler ChatAssistantCommandHandler
 
 <h2>Chat with Assistant</h2>
@@ -75,7 +75,7 @@ else
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
-        if (UserId is not null) return;
+        if (!firstRender) return;
         var authState = await AuthenticationStateTask;
         UserId = authState.User.GetUserId();
 
@@ -100,7 +100,7 @@ else
 
             initialRequest.Functions = new()
             {
-                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
+                //ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
                 ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_text"],
                 ChatAssistantCommandHandler.AvailableFunctionDefinitions["process"]
             };
@@ -111,7 +111,7 @@ else
         {
             // General chat
             // Get the list of documents and send that as additional context
-            var recentFileCount = 5;
+            //var recentFileCount = 5;
             var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
             // strip out fields that don't matter and shorten property names
             StringBuilder builder = new();
@@ -134,7 +134,7 @@ else
 
             initialRequest.Functions = new()
             {
-                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
+                //ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
                 ChatAssistantCommandHandler.AvailableFunctionDefinitions["search"]
             };
 

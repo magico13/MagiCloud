@@ -50,4 +50,23 @@ internal class ContentTypeAnalyzer
         }
         return type;
     }
+
+    internal static string DetermineExtension(string contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return string.Empty;
+        }
+        var customMappedExt = CustomExtensionMapping
+            .FirstOrDefault(x => string.Equals(x.Value, contentType, System.StringComparison.OrdinalIgnoreCase)).Key;
+
+        if (!string.IsNullOrWhiteSpace(customMappedExt))
+        {
+            return customMappedExt;
+        }
+
+        var extension = _extensionTypeProvider.Mappings
+            .FirstOrDefault(x => string.Equals(x.Value, contentType, System.StringComparison.OrdinalIgnoreCase)).Key;
+        return extension?.TrimStart('.');
+    }
 }

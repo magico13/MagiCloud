@@ -27,6 +27,8 @@ public class Lens : ILens
 
     public string DetermineContentType(string filename) => ContentTypeAnalyzer.DetermineContentType(filename);
 
+    public string DetermineExtension(string contentType) => ContentTypeAnalyzer.DetermineExtension(contentType);
+
     public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType = null)
     {
         if (stream == null || stream == Stream.Null)

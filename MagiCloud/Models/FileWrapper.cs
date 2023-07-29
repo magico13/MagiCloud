@@ -6,35 +6,35 @@ namespace MagiCloud.Models;
 public class FileWrapper
 {
     public FileWrapper() { }
-    public FileWrapper(SearchResult backing)
+    public FileWrapper(ElasticObject backing)
     {
         Name = backing.Name;
-        BackingFileInfo = backing;
+        BackingObject = backing;
     }
 
     public string Name { get; set; }
     //public string Path { get; set; }
-    public SearchResult BackingFileInfo { get; set; }
+    public ElasticObject BackingObject { get; set; }
 
     private DateTimeOffset? _lastUpdated;
     public DateTimeOffset? LastUpdated
     {
-        get => BackingFileInfo?.LastUpdated ?? _lastUpdated;
+        get => BackingObject?.LastUpdated ?? _lastUpdated;
         set => _lastUpdated = value;
     }
-    public string MimeType => BackingFileInfo?.MimeType ?? "folder";
+    public string MimeType => BackingObject is ElasticFileInfo info ? info?.MimeType : "folder";
 
     private long? _size;
     public long? Size
     {
-        get => BackingFileInfo?.Size ?? _size;
+        get => BackingObject is ElasticFileInfo info ? info?.Size : _size;
         set => _size = value;
     }
 
     private bool? _isPublic;
     public bool? IsPublic
     {
-        get => BackingFileInfo?.IsPublic ?? _isPublic;
+        get => BackingObject?.IsPublic ?? _isPublic;
         set => _isPublic = value;
     }
 }

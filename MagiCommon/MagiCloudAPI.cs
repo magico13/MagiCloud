@@ -70,19 +70,17 @@ namespace MagiCommon
                     {
                         var final = i + 1 == chunks;
 
-                        using (var partialStream = new MemoryStream(chunkSize))
-                        {
-                            var buffer = new byte[chunkSize];
-                            var actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
-                            var content = new MultipartFormDataContent
+                        using var partialStream = new MemoryStream(chunkSize);
+                        var buffer = new byte[chunkSize];
+                        var actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
+                        var content = new MultipartFormDataContent
                             {
                                 { new ByteArrayContent(buffer, 0, actual), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
                             };
 
 
-                            response = await Client.PutAsync($"api/filecontent/{returnedInfo.Id}/{i}?final={final}", content);
-                            response.EnsureSuccessStatusCode();
-                        }
+                        response = await Client.PutAsync($"api/filecontent/{returnedInfo.Id}/{i}?final={final}", content);
+                        response.EnsureSuccessStatusCode();
                     }
                 }
                 
