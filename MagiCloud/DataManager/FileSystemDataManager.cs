@@ -17,10 +17,7 @@ public class FileSystemDataManager : IDataManager
         }
     }
 
-    public bool FileExists(string id)
-    {
-        return File.Exists(GetPath(id));
-    }
+    public bool FileExists(string id) => File.Exists(GetPath(id));
 
     public Stream GetFile(string id)
     {
@@ -62,8 +59,5 @@ public class FileSystemDataManager : IDataManager
         await filePart.CopyToAsync(filestream);
     }
 
-    private string GetPath(string id)
-    {
-        return Path.Combine(ROOT, id);
-    }
+    private string GetPath(string id) => Path.Combine(ROOT, id);
 }

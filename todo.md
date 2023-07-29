@@ -1,7 +1,5 @@
 # Must do
 
-- Conversion process from old folder structure to new.
-- Trash restores to the root instead of the original location.
 - You can't move items from one folder to another.
 
 ## Should do

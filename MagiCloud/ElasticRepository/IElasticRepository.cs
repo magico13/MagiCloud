@@ -20,7 +20,7 @@ public interface IElasticFileRepo : IElasticRepository
     Task<FileAccessResult> DeleteFileAsync(string userId, string id);
 
     // Search for files by name
-    Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension);
+    Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension, string parentId);
 
     // Get a file by id if the user has permission
     Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText);

@@ -161,8 +161,8 @@ public class ElasticManager
             else
             {
                 // just mark it soft deleted
-                var sourceFile = await FileRepo.GetDocumentByIdAsync(elasticObject.Id, true);
-                if (BaseElasticRepo.DetermineAccessForUser(userId, sourceFile) is FileAccessResult.FullAccess)
+                var (access, sourceFile) = await FileRepo.GetDocumentAsync(userId, elasticObject.Id, false);
+                if (access is FileAccessResult.FullAccess)
                 {
                     sourceFile.IsDeleted = true;
                     var id = await FileRepo.IndexDocumentAsync(userId, sourceFile);

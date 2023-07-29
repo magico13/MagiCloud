@@ -1,5 +1,4 @@
-﻿using Goggles;
-using MagiCloud.Configuration;
+﻿using MagiCloud.Configuration;
 using MagiCommon.Extensions;
 using MagiCommon.Models;
 using Microsoft.Extensions.Logging;
@@ -16,14 +15,12 @@ namespace MagiCloud.Services;
 
 public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
 {
-    protected readonly ILens _lens;
 
     public ElasticFileRepo(
         IOptions<ElasticSettings> options,
-        ILogger<ElasticFileRepo> logger,
-        ILens lens) 
-        : base(options, logger) 
-        => _lens = lens;
+        ILogger<ElasticFileRepo> logger)
+        : base(options, logger)
+    { }
 
     public async Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted = null)
     {
@@ -172,7 +169,7 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
         return new List<SearchResult>();
     }
 
-    public async Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension)
+    public async Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension, string parentId)
     {
         Setup();
         var result = await Client.SearchAsync<ElasticFileInfo>(s => s
@@ -184,6 +181,9 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
                     .Term(t => t
                         .Field(f => f.UserId.Suffix("keyword"))
                         .Value(userId)
+                    ) && q.Term(t => t
+                        .Field(f => f.ParentId)
+                        .Value(parentId)
                     ) && q.Match(m => m
                         .Field(f => f.Name)
                         .Query(filename)
@@ -232,41 +232,7 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
         file.Hash = null;
         file.UserId = userId;
 
-        // Check to see if a file already exists with that name for this user
-        var (findResult, existingByName) = await FindDocumentByNameAsync(userId, file.Name, file.Extension);
-        if (findResult != FileAccessResult.NotFound)
-        {
-            // A file with that name already exists, if we're using the same id then we can safely overwrite
-            // if we have no id then we can overwrite and use the existing id
-            if ((string.IsNullOrWhiteSpace(file.Id) || existingByName.Id == file.Id)
-                && findResult == FileAccessResult.FullAccess)
-            {
-                file.Id = existingByName.Id;
-            }
-            else if (findResult == FileAccessResult.FullAccess)
-            {
-                // CONFLICT - Ids are different and there is a conflict in names.
-                // If we have permission to overwrite, then we can just do so, but should log this
-                _logger.LogWarning("Forcing provided file with id {Id} to id {Id2} because of name conflict '{Name}'",
-                                   file.Id,
-                                   existingByName.Id,
-                                   file.GetFileName());
-                file.Id = existingByName.Id;
-            }
-            else
-            {
-                // If we can't overwrite we must throw an exception
-                _logger.LogError(
-                    "Unresolvable name conflict between new id {Id} and existing id {Id2} with name '{Name}'",
-                    file.Id,
-                    existingByName.Id,
-                    file.GetFileName());
-
-                throw new ArgumentException($"File with name '{file.GetFileName()}' cannot be indexed due to unresolvable id conflict.");
-            }
-        }
-        // TODO: We should be able to avoid getting the document twice, if you provide an id then the name probably matches too
-        // eg if the name didn't change then we don't really need to check for duplicate names at all
+        var shouldCheckName = true;
 
         // if an id is provided, check if that file actually exists, if not throw that out
         if (!string.IsNullOrWhiteSpace(file.Id))
@@ -275,16 +241,46 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
             if (getResult == FileAccessResult.FullAccess) //if existing file (that we can access) overwrite it
             {
                 CopyExistingAttributes(file, existing);
+                // We need to recheck the name if it changed or the parent changed
+                shouldCheckName = string.Equals(file.Name, existing.Name, StringComparison.CurrentCultureIgnoreCase) is false
+                    || string.Equals(file.ParentId, existing.ParentId, StringComparison.OrdinalIgnoreCase) is false;
             }
             else
             {
+                // if we can't access the file, throw out the id and treat it as a new file
                 file.Id = null;
             }
         }
-        if (string.IsNullOrEmpty(file.MimeType))
+
+        if (shouldCheckName)
         {
-            // TODO: This is the only reference to Lens in the whole file, see about removing it
-            file.MimeType = GetMimeType(file);
+            // We only need to check for name conflicts if the name or parent has changed or the file is new
+            var (findResult, existingByName) = await FindDocumentByNameAsync(userId, file.Name, file.Extension, file.ParentId);
+            if (findResult != FileAccessResult.NotFound)
+            {
+                // A file with that name already exists in the folder. If we provided no id then we can assume we are overwriting it
+                if (findResult == FileAccessResult.FullAccess &&
+                    (string.IsNullOrEmpty(file.Id) || file.Id == existingByName.Id))
+                {
+                    file.Id = existingByName.Id;
+                    CopyExistingAttributes(file, existingByName);
+                    _logger.LogWarning(
+                        "Overwriting existing file with id {Id} and name '{Name}'",
+                        file.Id,
+                        file.GetFileName());
+                }
+                else
+                {
+                    // If we can't overwrite we must throw an exception
+                    _logger.LogError(
+                        "Unresolvable name conflict between new id {Id} and existing id {Id2} with name '{Name}'",
+                        file.Id,
+                        existingByName.Id,
+                        file.GetFileName());
+
+                    throw new ArgumentException($"File with name '{file.GetFileName()}' cannot be indexed due to unresolvable id conflict.");
+                }
+            }
         }
 
         var result = await Client.IndexDocumentAsync(file);
@@ -334,14 +330,6 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
         newFile.Size = existingFile?.Size ?? 0;
         newFile.MimeType = existingFile?.MimeType;
         newFile.Text ??= existingFile?.Text;
-    }
-
-    private string GetMimeType(ElasticFileInfo file)
-    {
-        if (string.IsNullOrWhiteSpace(file.MimeType))
-        {
-            return _lens.DetermineContentType(file.Extension);
-        }
-        return file.MimeType;
+        newFile.ParentId = existingFile?.ParentId;
     }
 }
