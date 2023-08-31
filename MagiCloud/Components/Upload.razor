@@ -1,4 +1,3 @@
-@using Goggles;
 @using Humanizer
 @using MagiCloud.DataManager;
 @using MagiCommon
@@ -11,8 +10,6 @@
 @inject FileStorageService FileStorage
 @inject HttpClient Client
 @inject ILogger<Upload> Logger
-@inject ILens Lens
-
 <Heading Size=HeadingSize.Is3>Upload Files</Heading>
 
 <FilePicker @ref=filePicker Multiple Upload=OnFileUpload ShowMode=FilePickerShowMode.List MaxChunkSize=Constants.UPLOAD_CHUNK_SIZE MaxFileSize=maxFileSize Ended=OnEnded Changed=OnFilesChanged/>
@@ -117,11 +114,11 @@
             //TODO: When uploading into a folder that is public, the file should be public as well
             Logger.LogInformation("Starting upload of file {FileName} of size {Size} bytes", file.Name, file.Size);
             var extension = PathAnalog.GetExtension(file.Name);
-            if (string.IsNullOrWhiteSpace(extension) || extension == file.Name)
-            {
-                // Determine extension from the content type
-                extension = Lens.DetermineExtension(file.Type);
-            }
+            // if (string.IsNullOrWhiteSpace(extension) || extension == file.Name) // TODO: Find a replacement for this that doesn't require Lens. Could call the APIs to do it
+            // {
+            //     // Determine extension from the content type
+            //     extension = Lens.DetermineExtension(file.Type);
+            // }
             var info = new ElasticFileInfo
             {
                 Name = PathAnalog.GetFileNameWithoutExtension(file.Name),
@@ -193,11 +190,11 @@
                         // Determine extension from the uri
                         var lastPartOfUri = uri.AbsolutePath.Trim('/').Split('/').Last();
                         extension = PathAnalog.GetExtension(lastPartOfUri);
-                        if (string.IsNullOrWhiteSpace(extension) || extension == lastPartOfUri)
-                        {
-                            // Determine extension from the content type
-                            extension = Lens.DetermineExtension(contentType);
-                        }
+                        // if (string.IsNullOrWhiteSpace(extension) || extension == lastPartOfUri)
+                        // {
+                        //     // Determine extension from the content type
+                        //     extension = Lens.DetermineExtension(contentType);
+                        // }
                     }
                     var info = new ElasticFileInfo
                     {

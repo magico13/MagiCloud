@@ -11,6 +11,7 @@ internal class AudioExtractor : ITextExtractor
     public ILogger<AudioExtractor> Logger { get; }
 
     public bool UsesOCR => false;
+    public bool UsesAudioTranscription => true;
     public bool IsValidForContentType(string contentType) 
         => contentType.StartsWith("audio") || contentType.StartsWith("video");
 

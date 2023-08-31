@@ -21,6 +21,7 @@ public class ImageExtractor : ITextExtractor
         => contentType?.StartsWith("image/") == true;
 
     public bool UsesOCR => true;
+    public bool UsesAudioTranscription => false;
 
     public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
     {

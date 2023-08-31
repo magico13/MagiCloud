@@ -18,6 +18,7 @@ public class PdfExtractor : ITextExtractor
         => string.Equals(contentType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
 
     public bool UsesOCR => false;
+    public bool UsesAudioTranscription => false;
 
     public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType) =>
         // Spin up in a separate Task to run in the background

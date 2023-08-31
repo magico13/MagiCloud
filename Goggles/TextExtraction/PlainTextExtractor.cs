@@ -17,6 +17,7 @@ public class PlainTextExtractor : ITextExtractor
     }
 
     public bool UsesOCR => false;
+    public bool UsesAudioTranscription => false;
 
     public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
     {

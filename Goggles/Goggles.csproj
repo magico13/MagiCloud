@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.3" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
-    <PackageReference Include="PdfPig" Version="0.1.7" />
+    <PackageReference Include="PdfPig" Version="0.1.8" />
     <PackageReference Include="Tesseract" Version="4.1.1" />
   </ItemGroup>
 

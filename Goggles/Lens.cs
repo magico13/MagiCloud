@@ -14,6 +14,9 @@ public class Lens : ILens
     private ILogger<Lens> Logger { get; }
     private IEnumerable<ITextExtractor> Extractors { get; }
     private GogglesConfiguration Config { get; }
+
+    public bool SupportsOCR => Config.EnableOCR;
+    public bool SupportsAudioTranscription => Config.EnableAudioTranscription;
     
     public Lens(
         ILogger<Lens> logger,
@@ -43,7 +46,8 @@ public class Lens : ILens
         foreach (var extractor in Extractors)
         {
             if (extractor.IsValidForContentType(contentType)
-                && (Config.EnableOCR || !extractor.UsesOCR))
+                && (Config.EnableOCR || !extractor.UsesOCR)
+                && (Config.EnableAudioTranscription || !extractor.UsesAudioTranscription))
             {
                 var text = await ExtractViaExtractor(extractor, stream, filename, contentType);
                 if (!string.IsNullOrWhiteSpace(text))

@@ -20,6 +20,7 @@ builder.Services.AddLens(o =>
 {
     o.MaxTextLength = gogglesConfig.MaxTextLength;
     o.EnableOCR = gogglesConfig.EnableOCR;
+    o.EnableAudioTranscription = gogglesConfig.EnableAudioTranscription;
     o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
     o.WhisperTranscriptionConfiguration = gogglesConfig.WhisperTranscriptionConfiguration;
 });

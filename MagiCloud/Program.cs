@@ -1,7 +1,6 @@
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
-using Goggles;
 using MagiCloud.Areas.Identity;
 using MagiCloud.Configuration;
 using MagiCloud.DataManager;
@@ -32,9 +31,11 @@ var applicationCancellationTokenSource = new System.Threading.CancellationTokenS
 // Set up configuration first
 builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
+builder.Services.Configure<ExtractionSettings>(builder.Configuration.GetSection(nameof(ExtractionSettings)));
 
 var generalSettings = builder.Configuration.GetSection(nameof(GeneralSettings)).Get<GeneralSettings>();
 var elasticSettings = builder.Configuration.GetSection(nameof(ElasticSettings)).Get<ElasticSettings>();
+var extractionSettings = builder.Configuration.GetSection(nameof(ExtractionSettings)).Get<ExtractionSettings>();
 
 // Log to Elasticsearch
 Log.Logger = new LoggerConfiguration()
@@ -116,16 +117,6 @@ if (!string.IsNullOrWhiteSpace(generalSettings.OpenAIKey))
 };
 
 // Add text extraction abilities
-var gogglesConfig = builder.Configuration
-    .GetSection(nameof(GogglesConfiguration))
-    .Get<GogglesConfiguration>();
-builder.Services.AddLens(o =>
-{
-    o.MaxTextLength = gogglesConfig.MaxTextLength;
-    o.EnableOCR = gogglesConfig.EnableOCR;
-    o.AzureOCRConfiguration = gogglesConfig.AzureOCRConfiguration;
-    o.WhisperTranscriptionConfiguration = gogglesConfig.WhisperTranscriptionConfiguration;
-});
 builder.Services.AddSingleton<ExtractionHelper>();
 
 builder.Services.AddSingleton<TextExtractionQueueWrapper>();

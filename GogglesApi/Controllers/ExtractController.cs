@@ -7,19 +7,18 @@ namespace GogglesApi.Controllers;
 [Route("api/[controller]")]
 public class ExtractController : ControllerBase
 {
-    private readonly ILogger<ExtractController> _logger;
     private readonly ILens _lens;
+    private const int MaxFileSize = 2_147_483_647; //2GB
 
-    public ExtractController(ILogger<ExtractController> logger, ILens lens)
+    public ExtractController(ILens lens)
     {
-        _logger = logger;
         _lens = lens;
     }
 
     [HttpPost]
     [Route("text")]
-    [RequestSizeLimit(104857600)] //100MB
-    [RequestFormLimits(ValueLengthLimit = 104857600, MultipartBodyLengthLimit = 104857600)]
+    [RequestSizeLimit(MaxFileSize)]
+    [RequestFormLimits(ValueLengthLimit = MaxFileSize, MultipartBodyLengthLimit = MaxFileSize)]
     public async Task<IActionResult> PostAsync(IFormFile file)
     {
         using var fileStream = file.OpenReadStream();

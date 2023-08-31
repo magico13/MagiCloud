@@ -1,29 +1,98 @@
-﻿using Goggles;
+﻿using MagiCloud.Configuration;
 using MagiCloud.DataManager;
 using MagiCommon.Extensions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 
 public class ExtractionHelper
 {
+    private readonly HttpClient _generalClient;
+    private readonly HttpClient _statusClient;
+    private readonly ILogger<ExtractionHelper> _logger;
+    private readonly IOptions<ExtractionSettings> _settings;
     private readonly IElasticFileRepo _elasticManager;
     private readonly IDataManager _dataManager;
-    private readonly ILens _lens;
 
     public ExtractionHelper(
-        ILens lens,
+        IHttpClientFactory httpClientFactory,
+        ILogger<ExtractionHelper> logger,
+        IOptions<ExtractionSettings> settings,
         IElasticFileRepo elasticManager,
         IDataManager dataManager)
     {
-        _lens = lens;
+        _statusClient = httpClientFactory.CreateClient("statusClient");
+        _statusClient.Timeout = TimeSpan.FromSeconds(5);
+        _generalClient = httpClientFactory.CreateClient("generalClient");
+        _generalClient.Timeout = TimeSpan.FromMinutes(30);
+        _logger = logger;
+        _settings = settings;
         _elasticManager = elasticManager;
         _dataManager = dataManager;
     }
 
-    public Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
-        => _lens.ExtractTextAsync(stream, filename, contentType);
+    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+    {
+        // Call the Goggles API to extract text from the file
+        var content = new MultipartFormDataContent
+        {
+            { new StreamContent(stream), "file", filename }
+        };
+
+        // loop through the extractors and see if any of them can handle this content type
+        foreach (var uri in _settings.Value.GogglesAPIEndpoints)
+        {
+            var baseUri = new Uri(uri);
+            var statusUri = new Uri(baseUri, $"api/status/support?contentType={contentType}");
+            HttpResponseMessage statusResponse = null;
+            try
+            {
+                statusResponse = await _statusClient.GetAsync(statusUri);
+            }
+            catch (Exception ex)
+            {
+                // If the status check fails, then we can't use this extractor
+                _logger.LogWarning(ex, "Extractor at {Uri} failed to respond to status check.", statusUri);
+            }
+            try
+            {
+                if (statusResponse?.IsSuccessStatusCode is true)
+                {
+                    // check if the extractor supports this content type
+                    var status = await statusResponse.Content.ReadFromJsonAsync<Dictionary<string, bool>>();
+
+                    if (status.TryGetValue("supported", out var supported) && supported as bool? is true)
+                    {
+                        // if the extractor supports this content type, then call the API to extract the text
+                        var extractUri = new Uri(baseUri, "api/extract/text");
+                        var response = await _generalClient.PostAsync(extractUri, content);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                            if (result.TryGetValue("text", out var text) && !string.IsNullOrEmpty(text))
+                            {
+                                // If we got text, return it. Otherwise we try the next server
+                                return text;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Extractor at {Uri} completed failed to extract file {Filename} with content type {ContentType}", uri, filename, contentType);
+            }
+        }
+        return null;
+    }
 
     public async Task<(bool updated, string text)> ExtractTextAsync(string userId, string docId, bool force = false)
     {
