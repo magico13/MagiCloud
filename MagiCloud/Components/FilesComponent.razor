@@ -290,12 +290,12 @@ else
 
     public async Task RowUpdated(SavedRowItem<FileWrapper, Dictionary<string, object>> saved)
     {
-        var backing = saved.Item.BackingObject;
+        var backing = saved.OldItem.BackingObject;
         if (backing == null)
         {
             return;
         }
-        backing.Name = saved.Item.Name;
+        backing.Name = saved.OldItem.Name;
         Logger.LogInformation("Updating object {Name} ({Id})", backing.Name, backing.Id);
 
         if (backing is ElasticFileInfo fileInfo)

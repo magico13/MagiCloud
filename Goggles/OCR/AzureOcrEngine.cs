@@ -32,7 +32,7 @@ internal class AzureOcrEngine : IOcrEngine
             return null;
         }
 
-        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2022-10-12-preview&features=read";
+        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2023-04-01-preview&features=read,caption";
 
         _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _azureConfig.SubscriptionKey);
 
@@ -41,7 +41,13 @@ internal class AzureOcrEngine : IOcrEngine
         var response = await _httpClient.PostAsync(endpoint, httpContent);
         response.EnsureSuccessStatusCode();
         var ocrResponse = await response.Content.ReadFromJsonAsync<AzureOcrResponse>();
-        return ocrResponse.ReadResult?.Content;
+        var text = ocrResponse.ReadResult?.Content;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            // If we didn't get any text, use the generated caption as the text
+            text = ocrResponse.CaptionResult?.Text;
+        }
+        return text;
     }
 
     public class AzureOcrResponse
@@ -49,12 +55,19 @@ internal class AzureOcrEngine : IOcrEngine
         public string ModelVersion { get; set; }
         public Metadata Metadata { get; set; }
         public ReadResult ReadResult { get; set; }
+        public CaptionResult CaptionResult { get; set; }
     }
 
     public class Metadata
     {
         public int Width { get; set; }
         public int Height { get; set; }
+    }
+
+    public class CaptionResult
+    {
+        public string Text { get; set; }
+        public float Confidence { get; set; }
     }
 
     public class ReadResult
