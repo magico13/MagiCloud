@@ -24,12 +24,12 @@ internal class AzureOcrEngine : IOcrEngine
         _azureConfig = options.Value.AzureOCRConfiguration;
     }
 
-    public async Task<string> ExtractText(Stream stream, string filename, string contentType)
+    public async Task<OcrResult> ExtractText(Stream stream, string filename, string contentType)
     {
         if (string.IsNullOrWhiteSpace(_azureConfig?.VisionEndpoint) || string.IsNullOrWhiteSpace(_azureConfig?.SubscriptionKey))
         {
             _logger.LogWarning("Azure OCR is not configured.");
-            return null;
+            return new(null, null);
         }
 
         var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2023-04-01-preview&features=read,caption";
@@ -41,21 +41,16 @@ internal class AzureOcrEngine : IOcrEngine
         var response = await _httpClient.PostAsync(endpoint, httpContent);
         response.EnsureSuccessStatusCode();
         var ocrResponse = await response.Content.ReadFromJsonAsync<AzureOcrResponse>();
-        var text = ocrResponse.ReadResult?.Content;
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            // If we didn't get any text, use the generated caption as the text
-            text = ocrResponse.CaptionResult?.Text;
-        }
-        return text;
+        return new OcrResult(ocrResponse?.ReadResult?.Content, ocrResponse?.CaptionResult?.Text);
+        
     }
 
     public class AzureOcrResponse
     {
-        public string ModelVersion { get; set; }
-        public Metadata Metadata { get; set; }
-        public ReadResult ReadResult { get; set; }
-        public CaptionResult CaptionResult { get; set; }
+        public string? ModelVersion { get; set; }
+        public Metadata? Metadata { get; set; }
+        public ReadResult? ReadResult { get; set; }
+        public CaptionResult? CaptionResult { get; set; }
     }
 
     public class Metadata
@@ -66,17 +61,17 @@ internal class AzureOcrEngine : IOcrEngine
 
     public class CaptionResult
     {
-        public string Text { get; set; }
+        public string? Text { get; set; }
         public float Confidence { get; set; }
     }
 
     public class ReadResult
     {
-        public string StringIndexType { get; set; }
-        public string Content { get; set; }
-        public Page[] Pages { get; set; }
-        public object[] Styles { get; set; }
-        public string ModelVersion { get; set; }
+        public string? StringIndexType { get; set; }
+        public string? Content { get; set; }
+        public Page[]? Pages { get; set; }
+        public object[]? Styles { get; set; }
+        public string? ModelVersion { get; set; }
     }
 
     public class Page
@@ -85,23 +80,23 @@ internal class AzureOcrEngine : IOcrEngine
         public float Width { get; set; }
         public float Angle { get; set; }
         public int PageNumber { get; set; }
-        public Word[] Words { get; set; }
-        public Span[] Spans { get; set; }
-        public Line[] Lines { get; set; }
+        public Word[]? Words { get; set; }
+        public Span[]? Spans { get; set; }
+        public Line[]? Lines { get; set; }
     }
     public class Line
     {
-        public string Content { get; set; }
-        public float[] BoundingBox { get; set; }
-        public Span[] Spans { get; set; }
+        public string? Content { get; set; }
+        public float[]? BoundingBox { get; set; }
+        public Span[]? Spans { get; set; }
     }
 
     public class Word
     {
-        public string Content { get; set; }
-        public float[] BoundingBox { get; set; }
+        public string? Content { get; set; }
+        public float[]? BoundingBox { get; set; }
         public float Confidence { get; set; }
-        public Span Span { get; set; }
+        public Span? Span { get; set; }
     }
 
     public class Span

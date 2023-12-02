@@ -5,5 +5,5 @@ namespace Goggles.OCR;
 
 public interface IOcrEngine
 {
-    Task<string> ExtractText(Stream stream, string filename, string contentType);
+    Task<OcrResult> ExtractText(Stream stream, string filename, string contentType);
 }

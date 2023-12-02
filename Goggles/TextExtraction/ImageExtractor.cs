@@ -6,16 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Goggles.TextExtraction;
 
-public class ImageExtractor : ITextExtractor
+public class ImageExtractor(ILogger<ImageExtractor> logger, IOcrEngine ocrEngine) : ITextExtractor
 {
-    private readonly ILogger<ImageExtractor> _logger;
-    private readonly IOcrEngine _ocrEngine;
-
-    public ImageExtractor(ILogger<ImageExtractor> logger, IOcrEngine ocrEngine)
-    {
-        _logger = logger;
-        _ocrEngine = ocrEngine;
-    }
+    private readonly static char[] separator = ['\n'];
 
     public bool IsValidForContentType(string contentType)
         => contentType?.StartsWith("image/") == true;
@@ -23,24 +16,25 @@ public class ImageExtractor : ITextExtractor
     public bool UsesOCR => true;
     public bool UsesAudioTranscription => false;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+    public async Task<ExtractionResult> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         try
         {
-            var rawText = await _ocrEngine.ExtractText(stream, filename, contentType);
-            if (string.IsNullOrWhiteSpace(rawText))
+            var ocrResult = await ocrEngine.ExtractText(stream, filename, contentType);
+            var rawText = ocrResult.Text;
+            if (!string.IsNullOrWhiteSpace(rawText))
             {
-                return null;
+                // Remove any lines that are completely empty
+                var lines = rawText.Split(separator,
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                rawText = string.Join("\n", lines);
             }
-            // Remove any lines that are completely empty
-            var lines = rawText.Split(new char[] { '\n' }, 
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            return string.Join("\n", lines);
+            return new(rawText, contentType, ocrResult.Description);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to extract text from image");
-            return null;
+            logger.LogError(ex, "Failed to extract text from image");
+            return new(null, contentType, null);
         }
     }
 }

@@ -5,36 +5,27 @@ using System.IO;
 using System.Threading.Tasks;
 
 namespace Goggles.TextExtraction;
-internal class AudioExtractor : ITextExtractor
+internal class AudioExtractor(ITranscriptionService transcriptionService, ILogger<AudioExtractor> logger) : ITextExtractor
 {
-    public ITranscriptionService TranscriptionService { get; }
-    public ILogger<AudioExtractor> Logger { get; }
-
     public bool UsesOCR => false;
     public bool UsesAudioTranscription => true;
     public bool IsValidForContentType(string contentType) 
         => contentType.StartsWith("audio") || contentType.StartsWith("video");
 
-    public AudioExtractor(ITranscriptionService transcriptionService, ILogger<AudioExtractor> logger)
-    {
-        TranscriptionService = transcriptionService;
-        Logger = logger;
-    }
-
-    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+    public async Task<ExtractionResult> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         try
         {
-            var text = await TranscriptionService.TranscribeStreamAsync(stream, filename, contentType);
+            var text = await transcriptionService.TranscribeStreamAsync(stream, filename, contentType);
             if (!string.IsNullOrWhiteSpace(text))
             {
-                return text;
+                return new(text, contentType, null);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to transcribe audio. Content type was {ContentType}.", contentType);
+            logger.LogError(ex, "Failed to transcribe audio. Content type was {ContentType}.", contentType);
         }
-        return null;
+        return new(null, contentType, null);
     }
 }

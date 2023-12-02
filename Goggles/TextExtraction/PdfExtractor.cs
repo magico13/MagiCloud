@@ -8,19 +8,15 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Goggles.TextExtraction;
 
-public class PdfExtractor : ITextExtractor
+public class PdfExtractor(ILogger<PdfExtractor> logger) : ITextExtractor
 {
-    private readonly ILogger<PdfExtractor> _logger;
-
-    public PdfExtractor(ILogger<PdfExtractor> logger) => _logger = logger;
-
     public bool IsValidForContentType(string contentType)
         => string.Equals(contentType, "application/pdf", System.StringComparison.OrdinalIgnoreCase);
 
     public bool UsesOCR => false;
     public bool UsesAudioTranscription => false;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType) =>
+    public async Task<ExtractionResult> ExtractTextAsync(Stream stream, string filename, string contentType) =>
         // Spin up in a separate Task to run in the background
         await Task.Run(() =>
         {
@@ -29,23 +25,18 @@ public class PdfExtractor : ITextExtractor
                 var builder = new StringBuilder();
                 using (var pdf = PdfDocument.Open(stream))
                 {
-                    // if (pdf.IsEncrypted)
-                    // {
-                    //     _logger.LogError("PDF extraction faild: PDF encrypted");
-                    //     return null;
-                    // }
                     foreach (var page in pdf.GetPages())
                     {
                         var text = ContentOrderTextExtractor.GetText(page);
                         builder.Append(text);
                     }
                 }
-                return builder.ToString();
+                return new ExtractionResult(builder.ToString(), contentType, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to extract text from PDF");
-                return null;
+                logger.LogError(ex, "Failed to extract text from PDF");
+                return new(null, contentType, null);
             }
         });
 }

@@ -5,15 +5,9 @@ namespace GogglesApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ExtractController : ControllerBase
+public class ExtractController(ILens lens) : ControllerBase
 {
-    private readonly ILens _lens;
     private const int MaxFileSize = 2_147_483_647; //2GB
-
-    public ExtractController(ILens lens)
-    {
-        _lens = lens;
-    }
 
     [HttpPost]
     [Route("text")]
@@ -24,13 +18,10 @@ public class ExtractController : ControllerBase
         using var fileStream = file.OpenReadStream();
         var contentType = string.IsNullOrWhiteSpace(file.ContentType) 
             || file.ContentType == "application/octet-stream"
-            ? _lens.DetermineContentType(file.FileName) 
+            ? lens.DetermineContentType(file.FileName) 
             : file.ContentType;
-        return new JsonResult(new 
-        {
-            Text = await _lens.ExtractTextAsync(fileStream, file.FileName, contentType),
-            contentType 
-        });
+        var result = await lens.ExtractTextAsync(fileStream, file.FileName, contentType);
+        return new JsonResult(result);
     }
 
     [HttpGet]
@@ -38,6 +29,6 @@ public class ExtractController : ControllerBase
     public IActionResult Get([FromQuery] string extension) 
         => new JsonResult(new
             {
-                ContentType = _lens.DetermineContentType(extension)
+                ContentType = lens.DetermineContentType(extension)
             });
 }

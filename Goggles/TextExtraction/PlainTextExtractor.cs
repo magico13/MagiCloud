@@ -19,11 +19,12 @@ public class PlainTextExtractor : ITextExtractor
     public bool UsesOCR => false;
     public bool UsesAudioTranscription => false;
 
-    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+    public async Task<ExtractionResult> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         // Plain text, so we just extract the content as-is
         // Maybe filter out extra whitespace?
         var streamReader = new StreamReader(stream);
-        return await streamReader.ReadToEndAsync();
+        var text = await streamReader.ReadToEndAsync();
+        return new(text, contentType, null);
     }
 }

@@ -30,7 +30,7 @@ public class TesseractOcrEngine : IOcrEngine, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public async Task<string> ExtractText(Stream stream, string filename, string contentType)
+    public async Task<OcrResult> ExtractText(Stream stream, string filename, string contentType)
     {
         var imageBytes = new byte[stream.Length];
         await stream.ReadAsync(imageBytes);
@@ -38,6 +38,6 @@ public class TesseractOcrEngine : IOcrEngine, IDisposable
         using var page = _engine.Process(img);
         var text = page.GetText();
         _logger.LogDebug("Tesseract extracted {Count} characters.", text.Length);
-        return text;
+        return new(text, null);
     }
 }
