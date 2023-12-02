@@ -6,7 +6,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 EXPOSE 80
 EXPOSE 443
 
-RUN apt-get update && apt-get install libgif7 libjpeg62 libopenjp2-7 libpng16-16 libtiff5 libwebp6 libc6-dev libgdiplus libleptonica-dev libtesseract-dev -y
+RUN apt-get update && apt-get install libgif7 libjpeg62 libopenjp2-7 libpng16-16 libc6-dev libgdiplus libleptonica-dev libtesseract-dev -y
 
 WORKDIR /app
 
