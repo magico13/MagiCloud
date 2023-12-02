@@ -9,7 +9,10 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services.ChatServices;
 
-public class ChatAssistantCommandHandler
+public class ChatAssistantCommandHandler(
+    ILogger<ChatAssistantCommandHandler> logger,
+    ElasticManager elasticManager,
+    TextExtractionQueueWrapper extractionQueue)
 {
     public static Dictionary<string, Function> AvailableFunctionDefinitions { get; } = new()
     {
@@ -32,7 +35,7 @@ public class ChatAssistantCommandHandler
                         Type = "string"
                     }
                 },
-                Required = new[] { "doc_id" }
+                Required = ["doc_id"]
             }
         },
         ["process"] = new()
@@ -49,7 +52,7 @@ public class ChatAssistantCommandHandler
                         Type = "string"
                     }
                 },
-                Required = new[] { "doc_id" }
+                Required = ["doc_id"]
             }
         },
         ["search"] = new()
@@ -66,27 +69,10 @@ public class ChatAssistantCommandHandler
                         Type = "string"
                     }
                 },
-                Required = new[] { "keywords" }
+                Required = ["keywords"]
             }
         }
     };
-
-
-
-    // This lets the chat service use commands to run searches, get info about a file, queue files for rextraction, etc
-    private ILogger<ChatAssistantCommandHandler> Logger { get; }
-    private ElasticManager ElasticManager { get; }
-    private TextExtractionQueueWrapper ExtractionQueue { get; }
-
-    public ChatAssistantCommandHandler(
-        ILogger<ChatAssistantCommandHandler> logger,
-        ElasticManager elasticManager,
-        TextExtractionQueueWrapper extractionQueue)
-    {
-        Logger = logger;
-        ElasticManager = elasticManager;
-        ExtractionQueue = extractionQueue;
-    }
 
     public async Task<ChatCompletionResponse> HandleCommandsAsync(Chat chat, string userId, Message functionMessage)
     {
@@ -133,7 +119,7 @@ public class ChatAssistantCommandHandler
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to deserialize arguments '{Arguments}' for user '{UserId}'", arguments, userId);
+            logger.LogError(ex, "Failed to deserialize arguments '{Arguments}' for user '{UserId}'", arguments, userId);
         }
         if (string.IsNullOrWhiteSpace(searchTerms))
         {
@@ -143,7 +129,7 @@ public class ChatAssistantCommandHandler
             };
         }
 
-        Logger.LogInformation("Assistant is searching for query '{Query}' for user '{UserId}'", searchTerms, userId);
+        logger.LogInformation("Assistant is searching for query '{Query}' for user '{UserId}'", searchTerms, userId);
 
         var response = new Dictionary<string, object>
         {
@@ -152,7 +138,7 @@ public class ChatAssistantCommandHandler
             ["results"] = null
         };
 
-        var searchResults = await ElasticManager.FileRepo.SearchAsync(userId, searchTerms);
+        var searchResults = await elasticManager.FileRepo.SearchAsync(userId, searchTerms);
         // Convert the searchResults into a message
         if (searchResults?.Where(d => !d.IsDeleted)?.Any() != true)
         {
@@ -190,7 +176,7 @@ public class ChatAssistantCommandHandler
         {
             return null;
         }
-        var (access, doc) = await ElasticManager.FileRepo.GetDocumentAsync(userId, docId, true);
+        var (access, doc) = await elasticManager.FileRepo.GetDocumentAsync(userId, docId, true);
 
         if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
         {
@@ -227,7 +213,7 @@ public class ChatAssistantCommandHandler
         {
             return null;
         }
-        var (access, doc) = await ElasticManager.FileRepo.GetDocumentAsync(userId, docId, false);
+        var (access, doc) = await elasticManager.FileRepo.GetDocumentAsync(userId, docId, false);
 
         if (access != FileAccessResult.FullAccess)
         {
@@ -238,7 +224,7 @@ public class ChatAssistantCommandHandler
             };
         }
 
-        ExtractionQueue.AddFileToQueue(doc.Id);
+        extractionQueue.AddFileToQueue(doc.Id);
         return new()
         {
             ["doc_id"] = doc.Id,
@@ -265,7 +251,7 @@ public class ChatAssistantCommandHandler
         catch (Exception)
         {
             // Couldn't deserialize so we could try regex or something but for now just log it
-            Logger.LogError("Could not deserialize arguments '{Arguments}'", arg);
+            logger.LogError("Could not deserialize arguments '{Arguments}'", arg);
         }
         return null;
     }

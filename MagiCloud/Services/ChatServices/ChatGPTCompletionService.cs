@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services.ChatServices;
 
-public class ChatGPTCompletionService : IChatCompletionService
+public class ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger) : IChatCompletionService
 {
     private const string DOCUMENT_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and a guess at what the document is about without using a function (eg This looks to be a pdf of a form 1040 tax document). For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
@@ -44,23 +44,14 @@ Chatting with user {0}, Chat Start Time: {1}.
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    private HttpClient HttpClient { get; }
-    private ILogger<ChatGPTCompletionService> Logger { get; }
-
-    public ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger)
-    {
-        HttpClient = httpClient;
-        Logger = logger;
-    }
-
     public async Task<ChatCompletionResponse> CreateCompletionAsync(ChatCompletionRequest request)
     {
         var strContent = JsonSerializer.Serialize(request, JsonSerializerOptions);
         var content = new StringContent(strContent, Encoding.UTF8, "application/json");
-        var response = await HttpClient.PostAsync("v1/chat/completions", content);
+        var response = await httpClient.PostAsync("v1/chat/completions", content);
         if (!response.IsSuccessStatusCode)
         {
-            Logger.LogError("Failed to create completion: {ResponseText}", await response.Content.ReadAsStringAsync());
+            logger.LogError("Failed to create completion: {ResponseText}", await response.Content.ReadAsStringAsync());
         }
         response.EnsureSuccessStatusCode();
 

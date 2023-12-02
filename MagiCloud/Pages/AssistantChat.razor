@@ -51,7 +51,7 @@ else
             </Addons>
             @if(LastResponse is not null)
             {
-                <Text>@($"{LastResponse.Usage.TotalTokens}/4096")</Text>
+                <Text>@($"{LastResponse.Usage.TotalTokens}/16384")</Text>
             }
         </CardBody>
     </Card>
