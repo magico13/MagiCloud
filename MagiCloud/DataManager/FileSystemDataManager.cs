@@ -59,5 +59,5 @@ public class FileSystemDataManager : IDataManager
         await filePart.CopyToAsync(filestream);
     }
 
-    private string GetPath(string id) => Path.Combine(ROOT, id);
+    private static string GetPath(string id) => Path.Combine(ROOT, id);
 }

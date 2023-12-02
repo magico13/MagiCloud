@@ -258,11 +258,11 @@ else
         var (childFolders, childFiles) = await Elastic.GetFolderContentsAsync(UserId, folder?.Id);
         if (childFolders?.Any() == true)
         {
-            newFilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).ToList());
+            newFilesAndFolders.AddRange(childFolders.Select(f => new FileWrapper(f)).OrderBy(f => f.Name).ToList());
         }
         if (childFiles?.Any() == true)
         {
-            newFilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).ToList());
+            newFilesAndFolders.AddRange(childFiles.Select(f => new FileWrapper(f)).OrderBy(f => f.Name).ToList());
         }
         var newParents = folder is null ? new() : await Elastic.GetParentsForObjectAsync(UserId, folder);
 

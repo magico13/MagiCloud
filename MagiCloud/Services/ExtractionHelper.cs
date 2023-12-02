@@ -77,10 +77,23 @@ public class ExtractionHelper
                         if (response.IsSuccessStatusCode)
                         {
                             var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                            if (result.TryGetValue("text", out var text) && !string.IsNullOrEmpty(text))
+
+                            //We'll merge the text and description together into one text blob
+                            var finalText = string.Empty;
+                            if (result.TryGetValue("text", out var text) && !string.IsNullOrWhiteSpace(text))
                             {
-                                // If we got text, return it. Otherwise we try the next server
-                                return text;
+                                finalText = text;
+                            }
+                            if (result.TryGetValue("description", out var description) && !string.IsNullOrWhiteSpace(description))
+                            {
+                                
+                                finalText += $"\n{description}";
+                            }
+
+                            // If we got text, return it. Otherwise we try the next server
+                            if (!string.IsNullOrWhiteSpace(finalText))
+                            {
+                                return finalText.Trim();
                             }
                         }
                     }
