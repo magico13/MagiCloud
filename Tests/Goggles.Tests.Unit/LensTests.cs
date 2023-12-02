@@ -48,7 +48,7 @@ public class LensTests
             new object[] { ".ino", "text/plain" },
             new object[] { ".jpeg", "image/jpeg" },
             new object[] { ".jpg", "image/jpeg" },
-            new object[] { ".js", "application/javascript" },
+            new object[] { ".js", "text/javascript" },
             new object[] { ".json", "application/json" },
             new object[] { ".log", "text/plain" },
             new object[] { ".mht", "message/rfc822" },

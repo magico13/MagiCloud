@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        sdk = '.NET 6.0'
+        sdk = '.NET 8.0'
     }
 
     stages {
@@ -31,10 +31,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying....'
-                sh 'mv MagiCloud/bin/Release/net6.0/linux-x64/publish zMagiCloud'
+                sh 'mv MagiCloud/bin/Release/net8.0/linux-x64/publish zMagiCloud'
                 sh 'cd zMagiCloud && zip -r MagiCloud.zip .'
 
-                sh 'mv GogglesApi/bin/Release/net6.0/linux-x64/publish zGogglesApi'
+                sh 'mv GogglesApi/bin/Release/net8.0/linux-x64/publish zGogglesApi'
                 sh 'cd zGogglesApi && zip -r GogglesApi.zip .'
 
                 archiveArtifacts artifacts: '*/*.zip'
