@@ -67,6 +67,6 @@ internal class ContentTypeAnalyzer
 
         var extension = _extensionTypeProvider.Mappings
             .FirstOrDefault(x => string.Equals(x.Value, contentType, System.StringComparison.OrdinalIgnoreCase)).Key;
-        return extension?.TrimStart('.');
+        return extension?.TrimStart('.') ?? string.Empty;
     }
 }

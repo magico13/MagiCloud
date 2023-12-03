@@ -43,7 +43,7 @@ else
             }
             <Addons>
                 <Addon AddonType=AddonType.Body>
-                    <TextEdit @bind-Text=UserMessage KeyUp=KeyUpHandler></TextEdit>
+                    <TextEdit @bind-Text=UserMessage KeyUp=KeyUpHandler Role="TextRole.Text"></TextEdit>
                 </Addon>
                 <Addon AddonType=AddonType.End>
                     <Button Color="Color.Primary" Clicked="SendUserMessageAsync">Send</Button>
@@ -81,10 +81,11 @@ else
 
         var initialRequest = new ChatCompletionRequest
         {
-            User = UserId,
-            Model = "gpt-3.5-turbo-0613",
-
+            User = UserId
         };
+
+        MagiCommon.Models.ElasticFileInfo fileContext = null;
+        string additionalContext = null;
 
         if (!string.IsNullOrWhiteSpace(Id))
         {
@@ -97,49 +98,28 @@ else
                 this.StateHasChanged();
                 return;
             }
-
-            initialRequest.Functions = new()
-            {
-                //ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
-                ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_text"],
-                ChatAssistantCommandHandler.AvailableFunctionDefinitions["process"]
-            };
-
-            Chat = ChatCompletionService.CreateNewDocumentChat(initialRequest, authState.User.Identity.Name, UserId, file);
+            fileContext = file;
         }
-        else
+
+        // Grab some overall document stats
+        var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
+        additionalContext = $"Number of user's files in storage: {docs.Count}. Total storage space of user's files: {docs.Sum(d => d.Size)} bytes.";
+
+        initialRequest.Functions = new()
         {
-            // General chat
-            // Get the list of documents and send that as additional context
-            //var recentFileCount = 5;
-            var docs = await ElasticManager.GetDocumentsAsync(UserId, false);
-            // strip out fields that don't matter and shorten property names
-            StringBuilder builder = new();
-            builder.AppendLine($"Total Files: {docs.Count} Storage Used: {docs.Sum(d => d.Size)} bytes.");
-            //builder.AppendLine($"Metadata for {recentFileCount} recent documents available for reference.");
+            ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
+            ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_text"],
+            ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_metadata"],
+            ChatAssistantCommandHandler.AvailableFunctionDefinitions["process"],
+            ChatAssistantCommandHandler.AvailableFunctionDefinitions["search"]
+        };
 
-            //var mostRecentDocs = docs.OrderByDescending(d => d.LastUpdated).Take(recentFileCount);
-
-            //foreach (var doc in mostRecentDocs)
-            //{
-            //    builder.AppendLine(doc.ToContextString());
-            //    if (builder.Length >= 6000)
-            //    {
-            //        builder.Append("More files exist but were cut to save characters.");
-            //        break;
-            //    }
-            //}
-
-            var fileContext = builder.ToString();
-
-            initialRequest.Functions = new()
-            {
-                //ChatAssistantCommandHandler.AvailableFunctionDefinitions["get_time"],
-                ChatAssistantCommandHandler.AvailableFunctionDefinitions["search"]
-            };
-
-            Chat = ChatCompletionService.CreateNewGeneralChat(initialRequest, authState.User.Identity.Name, fileContext);
-        }
+        Chat = ChatCompletionService.CreateNewGeneralChat(
+            initialRequest,
+            authState.User.Identity.Name,
+            UserId,
+            additionalContext,
+            fileContext);
         LastResponse = await Chat.StartChatAsync();
         this.StateHasChanged();
     }

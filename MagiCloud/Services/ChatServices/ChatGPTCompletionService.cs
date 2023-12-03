@@ -15,26 +15,15 @@ namespace MagiCloud.Services.ChatServices;
 
 public class ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger) : IChatCompletionService
 {
-    private const string DOCUMENT_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and a guess at what the document is about without using a function (eg This looks to be a pdf of a form 1040 tax document). For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
-
-Document links: Use [link text](/view/{4}) and embed images with ![image name](/api/filecontent/{4})
-
-The chat window supports markdown formatting.
-
-Chatting with user {0} with user ID {1}, Chat Start Time: {2}.
-
-This chat is in the context of a single document with ID {4}. The details of the document being discussed in this chat are:
-{3}";
-
     private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
 Document links: Use [link text](/view/{{ID}}) and embed images with ![image name](/api/filecontent/{{ID}})
 
 The chat window supports markdown formatting.
 
-Chatting with user {0}, Chat Start Time: {1}.
+Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
-{2}";
+{3}";
 
     //private const int MAX_TEXT_LENGTH = 8192;
     private JsonSerializerOptions JsonSerializerOptions { get; } = new()
@@ -59,44 +48,37 @@ Chatting with user {0}, Chat Start Time: {1}.
         return JsonSerializer.Deserialize<ChatCompletionResponse>(responseContent, JsonSerializerOptions);
     }
 
-    public Chat CreateNewDocumentChat(
-        ChatCompletionRequest initialRequest,
-        string username,
-        string userId,
-        ElasticFileInfo fileContext)
-    {
-        // Reserialize to break any references
-        var serialized = JsonSerializer.Serialize(fileContext);
-        var deserialized = JsonSerializer.Deserialize<ElasticFileInfo>(serialized);
-        //if (deserialized.Text?.Length > MAX_TEXT_LENGTH)
-        //{
-        //    deserialized.Text = deserialized.Text[..MAX_TEXT_LENGTH];
-        //}
-
-        deserialized.Hash = null;
-        deserialized.Name = deserialized.GetFileName();
-
-        var serializedContext = JsonSerializer.Serialize(deserialized, JsonSerializerOptions);
-
-        return new(this,
-            initialRequest,
-            string.Format(DOCUMENT_SYSTEM_MESSAGE,
-                username,
-                userId,
-                DateTimeOffset.Now.ToString("MM/dd/yyyy h:mm tt z"),
-                serializedContext,
-                deserialized.Id));
-    }
-
     public Chat CreateNewGeneralChat(
         ChatCompletionRequest initialRequest,
         string username,
-        string additionalContext) => new(
+        string userId,
+        string additionalContext,
+        ElasticFileInfo fileContext = null)
+    {
+        additionalContext ??= string.Empty;
+        // Reserialize to break any references
+        if (fileContext is not null)
+        {
+            var serialized = JsonSerializer.Serialize(fileContext);
+            var deserialized = JsonSerializer.Deserialize<ElasticFileInfo>(serialized);
+
+            deserialized.Hash = null;
+            deserialized.Name = deserialized.GetFileName();
+
+            var serializedContext = JsonSerializer.Serialize(deserialized, JsonSerializerOptions);
+            additionalContext += "The file context is: " + serializedContext ?? "null";
+        }
+
+        var finalSystemMessage = string.Format(
+            GENERAL_SYSTEM_MESSAGE,
+            username,
+            userId,
+            DateTimeOffset.Now.ToString("MM/dd/yyyy h:mm tt z"),
+            additionalContext);
+
+        return new(
             this,
             initialRequest,
-            string.Format(
-                GENERAL_SYSTEM_MESSAGE,
-                username,
-                DateTimeOffset.Now.ToString("MM/dd/yyyy h:mm tt z"),
-                additionalContext));
+            finalSystemMessage);
+    }
 }

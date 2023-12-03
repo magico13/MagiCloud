@@ -1,4 +1,5 @@
 ﻿using MagiCommon.Extensions;
+using MagiCommon.Models;
 using MagiCommon.Models.AssistantChat;
 using Microsoft.Extensions.Logging;
 using System;
@@ -32,6 +33,23 @@ public class ChatAssistantCommandHandler(
                     ["doc_id"] = new()
                     {
                         Description = "The ID of the document to get the text of.",
+                        Type = "string"
+                    }
+                },
+                Required = ["doc_id"]
+            }
+        },
+        ["get_metadata"] = new()
+        {
+            Name = "get_metadata",
+            Description = "Gets the metadata of a document, such as owner, last modified, etc.",
+            Parameters = new()
+            {
+                Properties = new()
+                {
+                    ["doc_id"] = new()
+                    {
+                        Description = "The ID of the document to get the metadata of.",
                         Type = "string"
                     }
                 },
@@ -84,6 +102,7 @@ public class ChatAssistantCommandHandler(
         {
             "get_time" => new Dictionary<string, object> { ["time"] = DateTimeOffset.Now },
             "get_text" => await HandleTextCommand(userId, functionCall.Arguments),
+            "get_metadata" => await HandleMetadataCommand(userId, functionCall.Arguments),
             "process" => await HandleProcessCommand(userId, functionCall.Arguments),
             "search" => await HandleSearchCommand(userId, functionCall.Arguments),
             _ => new Dictionary<string, object> { ["message"] = "Unknown command" }
@@ -172,7 +191,7 @@ public class ChatAssistantCommandHandler(
         }
 
         var docId = TryToGetDocIdFromArg(arguments);
-        if (docId is null)
+        if (string.IsNullOrWhiteSpace(docId))
         {
             return null;
         }
@@ -182,7 +201,7 @@ public class ChatAssistantCommandHandler(
         {
             return new()
             {
-                ["doc_id"] = doc.Id,
+                ["doc_id"] = docId,
                 ["message"] = "Document not found or user does not have permission."
             };
         }
@@ -197,6 +216,45 @@ public class ChatAssistantCommandHandler(
             ["text"] = docText,
             ["excerpt_length"] = docText.Length.ToString(),
             ["original_length"] = originalLength.ToString()
+        };
+    }
+
+    private async Task<Dictionary<string, string>> HandleMetadataCommand(string userId, string arguments)
+    {
+        if (string.IsNullOrWhiteSpace(arguments) || string.IsNullOrWhiteSpace(userId))
+        {
+            // Not enough info to work off of
+            return null;
+        }
+
+        var docId = TryToGetDocIdFromArg(arguments);
+        if (string.IsNullOrWhiteSpace(docId))
+        {
+            return null;
+        }
+        var (access, doc) = await elasticManager.FileRepo.GetDocumentAsync(userId, docId, false);
+
+        if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
+        {
+            return new()
+            {
+                ["doc_id"] = docId,
+                ["message"] = "Document not found or user does not have permission."
+            };
+        }
+
+
+        var serialized = JsonSerializer.Serialize(doc);
+        var deserialized = JsonSerializer.Deserialize<ElasticFileInfo>(serialized);
+
+        deserialized.Hash = null;
+        deserialized.Name = deserialized.GetFileName();
+
+        var reserializedDoc = JsonSerializer.Serialize(deserialized);
+        return new()
+        {
+            ["doc_id"] = doc.Id,
+            ["metadata"] = reserializedDoc
         };
     }
 

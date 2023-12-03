@@ -2,6 +2,6 @@
 
 public class AzureOCRConfiguration
 {
-    public string VisionEndpoint { get; set; }
-    public string SubscriptionKey { get; set; }
+    public string? VisionEndpoint { get; init; }
+    public string? SubscriptionKey { get; init; }
 }
