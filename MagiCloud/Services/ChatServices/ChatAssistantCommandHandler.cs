@@ -25,7 +25,7 @@ public class ChatAssistantCommandHandler(
         ["get_text"] = new()
         {
             Name = "get_text",
-            Description = "Gets the text of a document.",
+            Description = "Gets the text rendition of a document. Provide a segment number to page through the document. Segments are blocks of 4000 characters.",
             Parameters = new()
             {
                 Properties = new()
@@ -33,6 +33,11 @@ public class ChatAssistantCommandHandler(
                     ["doc_id"] = new()
                     {
                         Description = "The ID of the document to get the text of.",
+                        Type = "string"
+                    },
+                    ["segment"] = new()
+                    {
+                        Description = "The segment number of document to get. Defaults to the first segment (0).",
                         Type = "string"
                     }
                 },
@@ -59,7 +64,7 @@ public class ChatAssistantCommandHandler(
         ["process"] = new()
         {
             Name = "process",
-            Description = "Runs text extraction on a document. Requires user confirmation and is only needed when failing to get text.",
+            Description = "Runs text extraction on a document. This is a long process and requires user confirmation.",
             Parameters = new()
             {
                 Properties = new()
@@ -190,7 +195,8 @@ public class ChatAssistantCommandHandler(
             return null;
         }
 
-        var docId = TryToGetDocIdFromArg(arguments);
+        var extractedArgs = ExtractArguments(arguments);
+        var docId = extractedArgs?.GetValueOrDefault("doc_id");
         if (string.IsNullOrWhiteSpace(docId))
         {
             return null;
@@ -206,16 +212,39 @@ public class ChatAssistantCommandHandler(
             };
         }
         // Limit text to N characters
+        var segment = 0;
+        var segmentStr = extractedArgs?.GetValueOrDefault("segment");
+        if (!string.IsNullOrWhiteSpace(segmentStr) && int.TryParse(segmentStr, out var segmentInt))
+        {
+            segment = segmentInt;
+        }
+
         var charLimit = 4000;
         var originalLength = doc.Text?.Length ?? 0;
-        var docText = doc.Text?[..Math.Min(doc.Text.Length, charLimit)] ?? string.Empty;
+        var startIndex = segment * charLimit;
+        var endIndex = startIndex + charLimit;
+        if (startIndex >= originalLength)
+        {
+            return new()
+            {
+                ["doc_id"] = doc.Id,
+                ["segment"] = segment.ToString(),
+                ["message"] = "Segment out of range."
+            };
+        }
+        if (endIndex > originalLength)
+        {
+            endIndex = originalLength;
+        }
+        var docText = doc.Text?[startIndex..endIndex] ?? string.Empty;
 
         return new()
         {
             ["doc_id"] = doc.Id,
             ["text"] = docText,
-            ["excerpt_length"] = docText.Length.ToString(),
-            ["original_length"] = originalLength.ToString()
+            ["segment"] = segment.ToString(),
+            ["segment_length"] = docText.Length.ToString(),
+            ["total_length"] = originalLength.ToString()
         };
     }
 
@@ -292,6 +321,19 @@ public class ChatAssistantCommandHandler(
 
     private string TryToGetDocIdFromArg(string arg)
     {
+        var args = ExtractArguments(arg);
+
+        if (args?.TryGetValue("doc_id", out var obj) == true 
+            && obj is string docId)
+        {
+            return docId;
+        }
+        
+        return null;
+    }
+
+    private Dictionary<string, string> ExtractArguments(string arg)
+    {
         if (string.IsNullOrWhiteSpace(arg))
         {
             return null;
@@ -300,11 +342,7 @@ public class ChatAssistantCommandHandler(
         // In theory the arguments should be json like {"doc_id": "1234" }
         try
         {
-            var deserialized = JsonSerializer.Deserialize<Dictionary<string, string>>(arg);
-            if (deserialized?.TryGetValue("doc_id", out var docId) == true)
-            {
-                return docId;
-            }
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(arg);
         }
         catch (Exception)
         {
