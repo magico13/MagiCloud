@@ -26,9 +26,17 @@ public class ExtractController(ILens lens) : ControllerBase
 
     [HttpGet]
     [Route("contentType")]
-    public IActionResult Get([FromQuery] string extension) 
+    public IActionResult GetContentType([FromQuery] string extension) 
         => new JsonResult(new
             {
                 ContentType = lens.DetermineContentType(extension)
+            });
+
+    [HttpGet]
+    [Route("extension")]
+    public IActionResult GetExtension([FromQuery] string contentType) 
+        => new JsonResult(new
+            {
+                Extension = lens.DetermineExtension(contentType)
             });
 }

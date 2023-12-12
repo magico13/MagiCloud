@@ -37,6 +37,9 @@ public interface IElasticFileRepo : IElasticRepository
     // Run a search for files, including content, matching the query
     Task<List<SearchResult>> SearchAsync(string userId, string query);
 
+    // Search within a file
+    Task<SearchResult> SearchWithinAsync(string userId, string query, string docId);
+
     // Update the file attributess
     Task UpdateFileAttributesAsync(ElasticFileInfo file);
 }

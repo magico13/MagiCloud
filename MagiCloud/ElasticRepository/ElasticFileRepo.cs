@@ -13,15 +13,10 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 
-public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
+public class ElasticFileRepo(
+    IOptions<ElasticSettings> options,
+    ILogger<ElasticFileRepo> logger) : BaseElasticRepo(options, logger), IElasticFileRepo
 {
-
-    public ElasticFileRepo(
-        IOptions<ElasticSettings> options,
-        ILogger<ElasticFileRepo> logger)
-        : base(options, logger)
-    { }
-
     public async Task<List<SearchResult>> GetDocumentsAsync(string userId, bool? deleted = null)
     {
         Setup();
@@ -166,7 +161,57 @@ public class ElasticFileRepo : BaseElasticRepo, IElasticFileRepo
             return list;
         }
         _logger.LogError("Invalid Search call. {ServerError}", result.ServerError);
-        return new List<SearchResult>();
+        return [];
+    }
+
+    public async Task<SearchResult> SearchWithinAsync(string userId, string query, string docId)
+    {
+        Setup();
+        var result = await Client.SearchAsync<ElasticFileInfo>(s => s
+            .Size(1)
+            .Highlight(h => h
+                .Fields(f => f.Field(i => i.Text))
+                .PreTags("") // No tags, want the highlight to be exact
+                .PostTags("")
+            )
+            .Query(q =>
+            {
+                var qc = q.QueryString(qs => qs
+                    .Query(query)
+                    .Fields(f => f
+                        .Field(i => i.Text) // Only search the text field
+                    ));
+                qc &= q
+                    .Term(t => t // Require the user id to match
+                        .Field(f => f.UserId.Suffix("keyword"))
+                        .Value(userId)
+                    );
+                qc &= q
+                    .Term(t => t // Require the doc id to match
+                        .Field(f => f.Id.Suffix("keyword"))
+                        .Value(docId)
+                    );
+                return qc;
+            }));
+        if (result.IsValid)
+        {
+            var hit = result.Hits.FirstOrDefault();
+            if (hit is not null)
+            {
+                var finalResult = new SearchResult(hit.Source)
+                {
+                    Id = hit.Id
+                };
+                if (hit.Highlight.TryGetValue(nameof(SearchResult.Text).ToLower(), out var value)
+                    && value?.Count > 0)
+                {
+                    finalResult.Highlights = [.. value];
+                }
+                return finalResult;
+            }
+        }
+        _logger.LogError("Invalid Search call. {ServerError}", result.ServerError);
+        return null;
     }
 
     public async Task<(FileAccessResult, ElasticFileInfo)> FindDocumentByNameAsync(string userId, string filename, string extension, string parentId)

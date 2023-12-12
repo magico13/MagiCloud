@@ -39,7 +39,7 @@ public class ExtractionHelper
         _dataManager = dataManager;
     }
 
-    public async Task<string> ExtractTextAsync(Stream stream, string filename, string contentType)
+    public async Task<(string text, string contentType)> ExtractTextAsync(Stream stream, string filename, string contentType)
     {
         // Call the Goggles API to extract text from the file
         var content = new MultipartFormDataContent
@@ -51,6 +51,10 @@ public class ExtractionHelper
         foreach (var uri in _settings.Value.GogglesAPIEndpoints)
         {
             var baseUri = new Uri(uri);
+            if (string.IsNullOrEmpty(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
             var statusUri = new Uri(baseUri, $"api/status/support?contentType={contentType}");
             HttpResponseMessage statusResponse = null;
             try
@@ -93,7 +97,8 @@ public class ExtractionHelper
                             // If we got text, return it. Otherwise we try the next server
                             if (!string.IsNullOrWhiteSpace(finalText))
                             {
-                                return finalText.Trim();
+                                var newContentType = result.TryGetValue("contentType", out var contentTypeValue) ? contentTypeValue : contentType;
+                                return (finalText.Trim(), newContentType);
                             }
                         }
                     }
@@ -104,43 +109,24 @@ public class ExtractionHelper
                 _logger.LogError(ex, "Extractor at {Uri} completed failed to extract file {Filename} with content type {ContentType}", uri, filename, contentType);
             }
         }
-        return null;
+        return (null, contentType);
     }
 
-    public async Task<(bool updated, string text)> ExtractTextAsync(string userId, string docId, bool force = false)
-    {
-        var (permission, doc) = await _elasticManager.GetDocumentAsync(userId, docId, !force);
-        // get document. If we are forcing an update then we don't care about the current text
-        // if not forcing, then we might return the existing text instead
-        if (permission == FileAccessResult.FullAccess)
-        {
-            if (!string.IsNullOrWhiteSpace(doc.Text))
-            {
-                return (false, doc.Text);
-            }
-            using var fileStream = _dataManager.GetFile(doc.Id);
-            return (true, await ExtractTextAsync(fileStream, doc.GetFileName(), doc.MimeType));
-        }
-        else
-        {
-            return (false, null);
-        }
-    }
-
-    internal async Task<(bool updated, string text)> ExtractTextAsync(string docId, bool force = false)
+    internal async Task<(bool updated, string text, string contentType)> ExtractTextAsync(string docId, bool force = false)
     {
         var doc = await _elasticManager.GetDocumentByIdAsync(docId, !force);
         if (doc is null)
         {
-            return (false, null);
+            return (false, null, null);
         }
         // get document. If we are forcing an update then we don't care about the current text
         // if not forcing, then we might return the existing text instead
         if (!string.IsNullOrWhiteSpace(doc.Text))
         {
-            return (false, doc.Text);
+            return (false, doc.Text, doc.MimeType);
         }
         using var fileStream = _dataManager.GetFile(doc.Id);
-        return (true, await ExtractTextAsync(fileStream, doc.GetFileName(), doc.MimeType));
+        var (text, contentType) = await ExtractTextAsync(fileStream, doc.GetFileName(), doc.MimeType);
+        return (true, text, contentType);
     }
 }

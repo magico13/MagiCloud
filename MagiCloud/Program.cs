@@ -29,13 +29,14 @@ var applicationCancellationTokenSource = new System.Threading.CancellationTokenS
 // Add services to the container.
 
 // Set up configuration first
+builder.Services.Configure<AssistantSettings>(builder.Configuration.GetSection(nameof(AssistantSettings)));
 builder.Services.Configure<GeneralSettings>(builder.Configuration.GetSection(nameof(GeneralSettings)));
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection(nameof(ElasticSettings)));
 builder.Services.Configure<ExtractionSettings>(builder.Configuration.GetSection(nameof(ExtractionSettings)));
 
+var assistantSettings = builder.Configuration.GetSection(nameof(AssistantSettings)).Get<AssistantSettings>();
 var generalSettings = builder.Configuration.GetSection(nameof(GeneralSettings)).Get<GeneralSettings>();
 var elasticSettings = builder.Configuration.GetSection(nameof(ElasticSettings)).Get<ElasticSettings>();
-var extractionSettings = builder.Configuration.GetSection(nameof(ExtractionSettings)).Get<ExtractionSettings>();
 
 // Log to Elasticsearch
 Log.Logger = new LoggerConfiguration()
@@ -107,12 +108,12 @@ if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
     builder.Services.AddSingleton<IEmailSender, SendGridEmailService>();
 }
 
-if (!string.IsNullOrWhiteSpace(generalSettings.OpenAIKey))
+if (!string.IsNullOrWhiteSpace(assistantSettings.OpenAIKey))
 {
     builder.Services.AddHttpClient<IChatCompletionService, ChatGPTCompletionService>(o =>
     {
         o.BaseAddress = new Uri("https://api.openai.com/");
-        o.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", generalSettings.OpenAIKey);
+        o.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", assistantSettings.OpenAIKey);
     });
 };
 

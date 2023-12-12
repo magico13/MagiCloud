@@ -119,12 +119,17 @@
             //     // Determine extension from the content type
             //     extension = Lens.DetermineExtension(file.Type);
             // }
+            var fileType = file.Type;
+            if (string.IsNullOrWhiteSpace(fileType))
+            {
+                fileType = "application/octet-stream";
+            }
             var info = new ElasticFileInfo
             {
                 Name = PathAnalog.GetFileNameWithoutExtension(file.Name),
                 ParentId = CurrentDirectoryId,
                 Extension = extension,
-                MimeType = file.Type,
+                MimeType = fileType,
                 LastModified = file.LastModified,
                 Size = file.Size
             };
@@ -176,6 +181,10 @@
                     }
 
                     var contentType = response.Content.Headers.ContentType?.MediaType;
+                    if (string.IsNullOrEmpty(contentType))
+                    {
+                        contentType = "application/octet-stream";
+                    }
                     var lastModified = response.Content.Headers.LastModified ?? DateTimeOffset.Now;
                     var name = RemoteFileName;
                     if (string.IsNullOrWhiteSpace(name))

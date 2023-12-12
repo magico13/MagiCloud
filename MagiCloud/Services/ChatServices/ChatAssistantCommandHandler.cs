@@ -1,7 +1,9 @@
-﻿using MagiCommon.Extensions;
+﻿using MagiCloud.Configuration;
+using MagiCommon.Extensions;
 using MagiCommon.Models;
 using MagiCommon.Models.AssistantChat;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +15,8 @@ namespace MagiCloud.Services.ChatServices;
 public class ChatAssistantCommandHandler(
     ILogger<ChatAssistantCommandHandler> logger,
     ElasticManager elasticManager,
-    TextExtractionQueueWrapper extractionQueue)
+    TextExtractionQueueWrapper extractionQueue,
+    IOptions<AssistantSettings> assistantSettings)
 {
     public static Dictionary<string, Function> AvailableFunctionDefinitions { get; } = new()
     {
@@ -25,7 +28,7 @@ public class ChatAssistantCommandHandler(
         ["get_text"] = new()
         {
             Name = "get_text",
-            Description = "Gets the text rendition of a document. Provide a segment number to page through the document. Segments are blocks of 4000 characters.",
+            Description = "Gets a segment of the text rendition of a document. Provide a segment number to request a specific segment.",
             Parameters = new()
             {
                 Properties = new()
@@ -81,7 +84,7 @@ public class ChatAssistantCommandHandler(
         ["search"] = new()
         {
             Name = "search",
-            Description = "Searches for documents for the given keywords.",
+            Description = "Searches through the user's documents for the given keywords.",
             Parameters = new()
             {
                 Properties = new()
@@ -95,6 +98,8 @@ public class ChatAssistantCommandHandler(
                 Required = ["keywords"]
             }
         }
+        // TODO: Add search_within function
+        // It has to also take the highlights and return which segment it's in
     };
 
     public async Task<ChatCompletionResponse> HandleCommandsAsync(Chat chat, string userId, Message functionMessage)
@@ -169,8 +174,8 @@ public class ChatAssistantCommandHandler(
             // No results, return an empty response
             return response;
         }
-        // We have results, grab the top 5
-        var filteredResults = searchResults.Where(d => !d.IsDeleted).Take(5);
+        // We have results, grab the top N
+        var filteredResults = searchResults.Where(d => !d.IsDeleted).Take(assistantSettings.Value.MaxSearchResults);
         response["result_count"] = filteredResults.Count();
         var jsonResultList = new List<Dictionary<string, string>>();
         response["results"] = jsonResultList;
@@ -219,7 +224,7 @@ public class ChatAssistantCommandHandler(
             segment = segmentInt;
         }
 
-        var charLimit = 4000;
+        var charLimit = assistantSettings.Value.TextSegmentLength;
         var originalLength = doc.Text?.Length ?? 0;
         var startIndex = segment * charLimit;
         var endIndex = startIndex + charLimit;

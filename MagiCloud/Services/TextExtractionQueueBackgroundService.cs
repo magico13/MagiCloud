@@ -33,12 +33,13 @@ public class TextExtractionQueueBackgroundService(
             // And then calling the ExtractionHelper to extract the text
             // Then update the file in Elastic
             logger.LogInformation("Text Processing for file: {FileId}", fileId);
-            var (_, text) = await extractionHelper.ExtractTextAsync(fileId, true);
+            var (_, text, contentType) = await extractionHelper.ExtractTextAsync(fileId, true);
             // Update the document with the new text
             if (!string.IsNullOrEmpty(text))
             {
                 var fileInfo = await elasticManager.GetDocumentByIdAsync(fileId, false);
                 fileInfo.Text = text;
+                fileInfo.MimeType = contentType;
                 await elasticManager.UpdateFileAttributesAsync(fileInfo);
             }
             // If we got no text we don't bother updating the file
