@@ -140,7 +140,7 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
             return list;
         }
         _logger.LogError("Invalid GetFilesInFolderAsync call. {ServerError}", result.ServerError);
-        return new();
+        return [];
     }
 
     public async Task<(FileAccessResult accessLevel, ElasticFolder folder)> GetFolderAsync(string userId, string folderId)
@@ -192,7 +192,7 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
             return list;
         }
         _logger.LogError("Invalid GetFoldersAsync call. {ServerError}", result.ServerError);
-        return new();
+        return [];
     }
 
     public async Task<ElasticFolder> GetFolderByIdAsync(string id)
@@ -255,7 +255,7 @@ public class ElasticFolderRepo : BaseElasticRepo, IElasticFolderRepo
             return list;
         }
         _logger.LogError("Invalid GetFoldersInFolderAsync call. {ServerError}", result.ServerError);
-        return new();
+        return [];
     }
 
     public async Task<FileAccessResult> DeleteFolderAsync(string userId, string folderId)

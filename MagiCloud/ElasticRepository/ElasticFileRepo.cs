@@ -67,7 +67,7 @@ public class ElasticFileRepo(
             return list;
         }
         _logger.LogError("Invalid GetDocuments call. {ServerError}", result.ServerError);
-        return new List<SearchResult>();
+        return [];
     }
 
     public async Task<(FileAccessResult, ElasticFileInfo)> GetDocumentAsync(string userId, string id, bool includeText)
@@ -152,9 +152,9 @@ public class ElasticFileRepo(
                     Text = null
                 };
                 if (hit.Highlight.TryGetValue(nameof(SearchResult.Text).ToLower(), out var value)
-                    && value?.Any() == true)
+                    && value?.Count > 0)
                 {
-                    info.Highlights = value.ToArray();
+                    info.Highlights = [.. value];
                 }
                 list.Add(info);
             }

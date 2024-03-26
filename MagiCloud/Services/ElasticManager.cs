@@ -7,20 +7,12 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 
-public class ElasticManager
+public class ElasticManager(ILogger<ElasticManager> logger,
+                      IElasticFileRepo fileRepo,
+                      IElasticFolderRepo folderRepo)
 {
-    private ILogger<ElasticManager> Logger { get; }
-    public IElasticFileRepo FileRepo { get; }
-    public IElasticFolderRepo FolderRepo { get; }
-
-    public ElasticManager(ILogger<ElasticManager> logger,
-                          IElasticFileRepo fileRepo,
-                          IElasticFolderRepo folderRepo)
-    {
-        Logger = logger;
-        FileRepo = fileRepo;
-        FolderRepo = folderRepo;
-    }
+    public IElasticFileRepo FileRepo { get; } = fileRepo;
+    public IElasticFolderRepo FolderRepo { get; } = folderRepo;
 
     public async Task<(List<ElasticFolder> folders, List<ElasticFileInfo> files)> GetFolderContentsAsync(string userId, string folderId, bool onlyOwned = true)
     {
@@ -34,7 +26,7 @@ public class ElasticManager
         if (access is not FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
         {
             // No access to the folder, cancel now
-            return (new(), new());
+            return ([], []);
         }
 
         // Get the folders in the folder
@@ -108,7 +100,7 @@ public class ElasticManager
             if (folderAccess is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
             {
                 // Somehow a folder in the chain isn't permitted, stop here?
-                Logger.LogWarning(
+                logger.LogWarning(
                     "Reached folder without read access while iterating tree. User {UserId} Folder {FolderId}",
                     userId,
                     parentId);
@@ -122,7 +114,7 @@ public class ElasticManager
 
     public async Task<List<ElasticFolder>> GetParentsForObjectAsync(string userId, ElasticObject elasticObject)
     {
-        List<ElasticFolder> folderList = new();
+        List<ElasticFolder> folderList = [];
         var parentId = elasticObject.ParentId;
         while (!string.IsNullOrWhiteSpace(parentId))
         {
@@ -130,7 +122,7 @@ public class ElasticManager
             if (folderAccess is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
             {
                 // Somehow a folder in the chain isn't permitted, stop here?
-                Logger.LogWarning(
+                logger.LogWarning(
                     "Reached folder without read access while iterating tree. User {UserId} Folder {FolderId}",
                     userId,
                     parentId);
@@ -183,9 +175,9 @@ public class ElasticManager
                 if (permanentDelete)
                 {
                     // It's not safe to permanent delete a folder that still has children
-                    if (folders.Any() || files.Any())
+                    if (folders.Count > 0 || files.Count > 0)
                     {
-                        Logger.LogWarning("Cannot delete folder with ID {FolderId} because it still has children", elasticObject.Id);
+                        logger.LogWarning("Cannot delete folder with ID {FolderId} because it still has children", elasticObject.Id);
                         return false;
                     }
 
@@ -197,12 +189,12 @@ public class ElasticManager
                     // Delete every child of the folder, recursively, using the same settings
                     foreach (var file in files)
                     {
-                        Logger.LogInformation("Recursively deleting file {Id} from folder {FolderId}", file.Id, elasticObject.Id);
+                        logger.LogInformation("Recursively deleting file {Id} from folder {FolderId}", file.Id, elasticObject.Id);
                         await DeleteObject(userId, file, false);
                     }
                     foreach (var folder in folders)
                     {
-                        Logger.LogInformation("Recursively deleting folder {Id} from folder {FolderId}", folder.Id, elasticObject.Id);
+                        logger.LogInformation("Recursively deleting folder {Id} from folder {FolderId}", folder.Id, elasticObject.Id);
                         await DeleteObject(userId, folder, false);
                     }
 
