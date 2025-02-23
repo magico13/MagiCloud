@@ -53,16 +53,16 @@ jobs:
       uses: actions/download-artifact@v4
   # Build docker images for MagiCloud and GogglesApi, deploy them to Docker Hub
     - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ env.DOCKER_USERNAME }}" --password-stdin
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
     - name: Build and push MagiCloud image
       run: |
         cd magicloud
         docker build -f ../Dockerfile -t magicloud .
-        docker tag magicloud ${{ env.DOCKER_USERNAME }}/magicloud
-        docker push ${{ env.DOCKER_USERNAME }}/magicloud
+        docker tag magicloud ${{ vars.DOCKER_USERNAME }}/magicloud
+        docker push ${{ vars.DOCKER_USERNAME }}/magicloud
     - name: Build and push Goggles image
       run: |
         cd goggles
         docker build -f ../Goggles.dockerfile -t goggles .
-        docker tag goggles ${{ env.DOCKER_USERNAME }}/goggles
-        docker push ${{ env.DOCKER_USERNAME }}/goggles
+        docker tag goggles ${{ vars.DOCKER_USERNAME }}/goggles
+        docker push ${{ vars.DOCKER_USERNAME }}/goggles
