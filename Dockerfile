@@ -8,6 +8,6 @@ EXPOSE 443
 
 WORKDIR /app
 
-COPY . .
+COPY publish-magicloud/* .
 
 ENTRYPOINT ["dotnet", "MagiCloud.dll"]
