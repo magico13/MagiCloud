@@ -1,8 +1,6 @@
-﻿using FluentAssertions;
-using Goggles.TextExtraction;
+﻿using Goggles.TextExtraction;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NSubstitute;
 
 namespace Goggles.Tests.Unit;
 public class LensTests
@@ -33,52 +31,51 @@ public class LensTests
         result.Should().Be(expectedContentType);
     }
 
-    public static IEnumerable<object[]> FileExtensionAndExpectedContentTypeData 
-        => new List<object[]>
-        {
-            new object[] { ".csv", "text/csv" },
-            new object[] { ".doc", "application/msword" },
-            new object[] { ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-            new object[] { ".gcode", "text/x-gcode" },
-            new object[] { ".gif", "image/gif" },
-            new object[] { ".htm", "text/html" },
-            new object[] { ".html", "text/html" },
-            new object[] { ".ico", "image/x-icon" },
-            new object[] { ".ini", "text/plain" },
-            new object[] { ".ino", "text/plain" },
-            new object[] { ".jpeg", "image/jpeg" },
-            new object[] { ".jpg", "image/jpeg" },
-            new object[] { ".js", "text/javascript" },
-            new object[] { ".json", "application/json" },
-            new object[] { ".log", "text/plain" },
-            new object[] { ".mht", "message/rfc822" },
-            new object[] { ".mhtml", "message/rfc822" },
-            new object[] { ".mp3", "audio/mpeg" },
-            new object[] { ".mp4", "video/mp4" },
-            new object[] { ".msg", "application/vnd.ms-outlook" },
-            new object[] { ".odp", "application/vnd.oasis.opendocument.presentation" },
-            new object[] { ".ods", "application/vnd.oasis.opendocument.spreadsheet" },
-            new object[] { ".odt", "application/vnd.oasis.opendocument.text" },
-            new object[] { ".ogg", "video/ogg" },
-            new object[] { ".ofx", "text/plain" },
-            new object[] { ".pdf", "application/pdf" },
-            new object[] { ".png", "image/png" },
-            new object[] { ".ppt", "application/vnd.ms-powerpoint" },
-            new object[] { ".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
-            new object[] { ".py", "text/x-python" },
-            new object[] { ".rtf", "application/rtf" },
-            new object[] { ".svg", "image/svg+xml" },
-            new object[] { ".sql", "application/sql" },
-            new object[] { ".txt", "text/plain" },
-            new object[] { ".url", "application/internet-shortcut" },
-            new object[] { ".wav", "audio/wav" },
-            new object[] { ".webm", "video/webm" },
-            new object[] { ".wmv", "video/x-ms-wmv" },
-            new object[] { ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
-            new object[] { ".yaml", "text/x-yaml" },
-            new object[] { ".yml", "text/x-yaml" },
-            new object[] { ".xcf", "image/x-xcf" }
-        };
+    public static IEnumerable<object[]> FileExtensionAndExpectedContentTypeData =>
+        [
+            [".csv", "text/csv"],
+            [".doc", "application/msword"],
+            [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+            [".gcode", "text/x-gcode"],
+            [".gif", "image/gif"],
+            [".htm", "text/html"],
+            [".html", "text/html"],
+            [".ico", "image/x-icon"],
+            [".ini", "text/plain"],
+            [".ino", "text/plain"],
+            [".jpeg", "image/jpeg"],
+            [".jpg", "image/jpeg"],
+            [".js", "text/javascript"],
+            [".json", "application/json"],
+            [".log", "text/plain"],
+            [".mht", "message/rfc822"],
+            [".mhtml", "message/rfc822"],
+            [".mp3", "audio/mpeg"],
+            [".mp4", "video/mp4"],
+            [".msg", "application/vnd.ms-outlook"],
+            [".odp", "application/vnd.oasis.opendocument.presentation"],
+            [".ods", "application/vnd.oasis.opendocument.spreadsheet"],
+            [".odt", "application/vnd.oasis.opendocument.text"],
+            [".ogg", "video/ogg"],
+            [".ofx", "text/plain"],
+            [".pdf", "application/pdf"],
+            [".png", "image/png"],
+            [".ppt", "application/vnd.ms-powerpoint"],
+            [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+            [".py", "text/x-python"],
+            [".rtf", "application/rtf"],
+            [".svg", "image/svg+xml"],
+            [".sql", "application/sql"],
+            [".txt", "text/plain"],
+            [".url", "application/internet-shortcut"],
+            [".wav", "audio/wav"],
+            [".webm", "video/webm"],
+            [".wmv", "video/x-ms-wmv"],
+            [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+            [".yaml", "text/x-yaml"],
+            [".yml", "text/x-yaml"],
+            [".xcf", "image/x-xcf"]
+        ];
 
     [Fact]
     public async Task ExtractTextAsync_WithValidStreamAndExtractor_ReturnsExtractedText()
