@@ -12,7 +12,7 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY publish-goggles/* .
+COPY . .
 
 WORKDIR /app/x64
 RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 liblept.so.5 && \
