@@ -33,9 +33,6 @@
     <ProjectReference Include="..\MagiCommon\MagiCommon.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="data\" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Areas\Identity\Pages\Account\LogOut.cshtml" />
     <None Include="Areas\Identity\Pages\Shared\_LoginPartial.cshtml" />
   </ItemGroup>
