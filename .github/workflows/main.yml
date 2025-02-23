@@ -39,5 +39,5 @@ jobs:
     - name: Build and push Goggles image
       run: |
         docker build -f Goggles.dockerfile -t goggles .
-        docker tag goggles-api ${{ secrets.DOCKER_USERNAME }}/goggles
+        docker tag goggles ${{ secrets.DOCKER_USERNAME }}/goggles
         docker push ${{ secrets.DOCKER_USERNAME }}/goggles
