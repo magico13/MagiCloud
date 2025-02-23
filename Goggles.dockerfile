@@ -3,11 +3,10 @@
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 
-EXPOSE 80
-EXPOSE 443
+EXPOSE 8080
 
 RUN apt-get update && \
-	apt-get install -y libc6-dev libgdiplus libgif7 libjpeg62 libleptonica-dev libopenjp2-7 libpng16-16  libtesseract-dev && \
+	apt-get install -y curl libc6-dev libgdiplus libgif7 libjpeg62 libleptonica-dev libopenjp2-7 libpng16-16  libtesseract-dev && \
 	rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
