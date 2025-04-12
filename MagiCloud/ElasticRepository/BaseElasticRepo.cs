@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Nest;
 using System;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
@@ -60,7 +61,8 @@ public class BaseElasticRepo(
             {
                 throw new FileNotFoundException($"Certificate file not found at path: {_settings.CertificatePath}");
             }
-            connectionSettings.ClientCertificate(_settings.CertificatePath);
+            var cert = new X509Certificate2(_settings.CertificatePath);
+            connectionSettings.ClientCertificate(cert);
         }
 
         Client = new ElasticClient(connectionSettings);
