@@ -6,4 +6,5 @@ public class ElasticSettings
     public string ApiKey { get; set; }
     public string ApiKeyId { get; set; }
     public string Thumbprint { get; set; }
+    public string CertificatePath { get; set; }
 }

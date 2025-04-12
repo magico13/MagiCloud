@@ -46,7 +46,12 @@ public class BaseElasticRepo(
 
         if (!string.IsNullOrWhiteSpace(_settings.Thumbprint))
         {
-            connectionSettings.ServerCertificateValidationCallback(ValidateCertificate);
+            connectionSettings.CertificateFingerprint(_settings.Thumbprint);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_settings.CertificatePath))
+        {
+            connectionSettings.ClientCertificate(_settings.CertificatePath);
         }
 
         Client = new ElasticClient(connectionSettings);
@@ -101,21 +106,5 @@ public class BaseElasticRepo(
                 throw new Exception("Exception during processing. " + response.ServerError?.ToString());
             }
         }
-    }
-
-
-    public bool ValidateCertificate(
-        object sender,
-        System.Security.Cryptography.X509Certificates.X509Certificate cert,
-        System.Security.Cryptography.X509Certificates.X509Chain chain,
-        System.Net.Security.SslPolicyErrors errors)
-    {
-        string actualThumbprint = cert.GetCertHashString();
-        bool result = string.Equals(actualThumbprint, _settings.Thumbprint, StringComparison.OrdinalIgnoreCase);
-        if (!result)
-        {
-            _logger.LogWarning("Certificate thumbprint does not match. Expected: {Expected}, Actual: {Actual}", _settings.Thumbprint, actualThumbprint);
-        }
-        return result;
     }
 }
