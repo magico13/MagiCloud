@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nest;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
@@ -54,6 +55,11 @@ public class BaseElasticRepo(
         if (!string.IsNullOrWhiteSpace(_settings.CertificatePath))
         {
             _logger.LogInformation("Using certificate path authentication with path '{Path}'.", _settings.CertificatePath);
+            // check if the file exists
+            if (!File.Exists(_settings.CertificatePath))
+            {
+                throw new FileNotFoundException($"Certificate file not found at path: {_settings.CertificatePath}");
+            }
             connectionSettings.ClientCertificate(_settings.CertificatePath);
         }
 
