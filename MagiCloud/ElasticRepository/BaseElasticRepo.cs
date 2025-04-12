@@ -130,8 +130,8 @@ public class BaseElasticRepo(
      public bool ValidateCertificate(
         object _,
         X509Certificate cert,
-        X509Chain _,
-        System.Net.Security.SslPolicyErrors _)
+        X509Chain __,
+        System.Net.Security.SslPolicyErrors ___)
     {
         string actualThumbprint = cert.GetCertHashString();
         bool result = string.Equals(actualThumbprint, Thumbprint, StringComparison.OrdinalIgnoreCase);
