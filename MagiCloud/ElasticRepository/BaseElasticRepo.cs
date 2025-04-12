@@ -41,16 +41,19 @@ public class BaseElasticRepo(
 
         if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
+            _logger.LogInformation("Using API key authentication.");
             connectionSettings.ApiKeyAuthentication(_settings.ApiKeyId, _settings.ApiKey);
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.Thumbprint))
         {
+            _logger.LogInformation("Using certificate authentication with thumbprint '{Thumbprint}'.", _settings.Thumbprint);
             connectionSettings.CertificateFingerprint(_settings.Thumbprint);
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.CertificatePath))
         {
+            _logger.LogInformation("Using certificate path authentication with path '{Path}'.", _settings.CertificatePath);
             connectionSettings.ClientCertificate(_settings.CertificatePath);
         }
 
