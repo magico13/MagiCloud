@@ -8,23 +8,17 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 
-public class BaseElasticRepo : IElasticRepository
+public class BaseElasticRepo(
+    IOptions<ElasticSettings> options,
+    ILogger logger) : IElasticRepository
 {
     public const string FILES_INDEX = "magicloud_files";
     public const string FOLDERS_INDEX = "magicloud_folders";
 
     public IElasticClient Client { get; set; }
 
-    protected readonly ElasticSettings _settings;
-    protected readonly ILogger _logger;
-
-    public BaseElasticRepo(
-        IOptions<ElasticSettings> options,
-        ILogger logger)
-    {
-        _settings = options.Value;
-        _logger = logger;
-    }
+    protected readonly ElasticSettings _settings = options.Value;
+    protected readonly ILogger _logger = logger;
 
     public void Setup()
     {
@@ -52,8 +46,7 @@ public class BaseElasticRepo : IElasticRepository
 
         if (!string.IsNullOrWhiteSpace(_settings.Thumbprint))
         {
-            connectionSettings.ServerCertificateValidationCallback((caller, cert, chain, errors)
-                => string.Equals(cert.GetCertHashString(), _settings.Thumbprint, StringComparison.OrdinalIgnoreCase));
+            connectionSettings.ServerCertificateValidationCallback(ValidateCertificate);
         }
 
         Client = new ElasticClient(connectionSettings);
@@ -108,5 +101,21 @@ public class BaseElasticRepo : IElasticRepository
                 throw new Exception("Exception during processing. " + response.ServerError?.ToString());
             }
         }
+    }
+
+
+    public bool ValidateCertificate(
+        object sender,
+        System.Security.Cryptography.X509Certificates.X509Certificate cert,
+        System.Security.Cryptography.X509Certificates.X509Chain chain,
+        System.Net.Security.SslPolicyErrors errors)
+    {
+        string actualThumbprint = cert.GetCertHashString();
+        bool result = string.Equals(actualThumbprint, _settings.Thumbprint, StringComparison.OrdinalIgnoreCase);
+        if (!result)
+        {
+            _logger.LogWarning("Certificate thumbprint does not match. Expected: {Expected}, Actual: {Actual}", _settings.Thumbprint, actualThumbprint);
+        }
+        return result;
     }
 }
