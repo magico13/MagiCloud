@@ -17,7 +17,7 @@ public class TextExtractionQueueBackgroundService(
     IElasticFileRepo elasticManager) : BackgroundService
 {
     public int DefaultMaxAttempts { get; set; } = 5;
-    public TimeSpan PollingPeriod { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan PollingPeriod { get; set; } = TimeSpan.FromSeconds(1);
 
     private async Task ProcessMessage(Message<string> message)
     {
