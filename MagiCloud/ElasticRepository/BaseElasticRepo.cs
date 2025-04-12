@@ -19,6 +19,8 @@ public class BaseElasticRepo(
 
     public IElasticClient Client { get; set; }
 
+    public string Thumbprint {get; private set;}
+
     protected readonly ElasticSettings _settings = options.Value;
     protected readonly ILogger _logger = logger;
 
@@ -50,7 +52,8 @@ public class BaseElasticRepo(
         if (!string.IsNullOrWhiteSpace(_settings.Thumbprint))
         {
             _logger.LogInformation("Using certificate authentication with thumbprint '{Thumbprint}'.", _settings.Thumbprint);
-            connectionSettings.CertificateFingerprint(_settings.Thumbprint);
+            Thumbprint = _settings.Thumbprint;
+            connectionSettings.ServerCertificateValidationCallback(ValidateCertificate);
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.CertificatePath))
@@ -62,7 +65,12 @@ public class BaseElasticRepo(
                 throw new FileNotFoundException($"Certificate file not found at path: {_settings.CertificatePath}");
             }
             var cert = new X509Certificate2(_settings.CertificatePath);
-            connectionSettings.ClientCertificate(cert);
+            if (string.IsNullOrWhiteSpace(cert.Thumbprint))
+            {
+                throw new InvalidOperationException("Certificate thumbprint is empty.");
+            }
+            Thumbprint = cert.Thumbprint;
+            connectionSettings.ServerCertificateValidationCallback(ValidateCertificate);
         }
 
         Client = new ElasticClient(connectionSettings);
@@ -114,8 +122,23 @@ public class BaseElasticRepo(
             }
             else
             {
-                throw new Exception("Exception during processing. " + response.ServerError?.ToString());
+                throw new InvalidOperationException("Exception during processing. " + response.ServerError?.ToString());
             }
         }
+    }
+
+     public bool ValidateCertificate(
+        object _,
+        X509Certificate cert,
+        X509Chain _,
+        System.Net.Security.SslPolicyErrors _)
+    {
+        string actualThumbprint = cert.GetCertHashString();
+        bool result = string.Equals(actualThumbprint, Thumbprint, StringComparison.OrdinalIgnoreCase);
+        if (!result)
+        {
+            _logger.LogWarning("Certificate thumbprint does not match. Expected: {Expected}, Actual: {Actual}", Thumbprint, actualThumbprint);
+        }
+        return result;
     }
 }
