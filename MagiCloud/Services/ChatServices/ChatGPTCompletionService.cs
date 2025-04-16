@@ -1,9 +1,11 @@
-﻿using MagiCommon.Extensions;
+﻿using MagiCloud.Configuration;
+using MagiCommon.Extensions;
 using MagiCommon.Interfaces;
 using MagiCommon.Models;
 using MagiCommon.Models.AssistantChat;
 using MagiCommon.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Net.Http;
 using System.Text;
@@ -13,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace MagiCloud.Services.ChatServices;
 
-public class ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger) : IChatCompletionService
+public class ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger, IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
 {
     private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
@@ -55,6 +57,10 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
         string additionalContext,
         ElasticFileInfo fileContext = null)
     {
+        if (string.IsNullOrEmpty(initialRequest.Model))
+        {
+            initialRequest.Model = assistantSettings.Value.Model;
+        }
         additionalContext ??= string.Empty;
         // Reserialize to break any references
         if (fileContext is not null)

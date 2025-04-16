@@ -67,7 +67,7 @@ public class ChatAssistantCommandHandler(
         ["process"] = new()
         {
             Name = "process",
-            Description = "Runs text extraction on a document. This is a long process and requires user confirmation.",
+            Description = "Reruns automatic processing on a document. This is a long process and requires user confirmation.",
             Parameters = new()
             {
                 Properties = new()

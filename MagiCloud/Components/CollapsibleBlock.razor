@@ -1,0 +1,22 @@
+<div class="collapsible-block">
+    <Button Color="Color.Secondary" Clicked="ToggleCollapse" class="collapsible-button">
+        @ButtonText
+    </Button>
+    <div class="collapsible-content" style="@(IsCollapsed ? "display: none;" : "display: block;")">
+        <pre><code>
+            @ChildContent
+        </code></pre>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Show/Hide";
+
+    private bool IsCollapsed { get; set; } = true;
+
+    private void ToggleCollapse()
+    {
+        IsCollapsed = !IsCollapsed;
+    }
+}

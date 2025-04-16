@@ -11,6 +11,7 @@
 @using Microsoft.AspNetCore.Authorization;
 @using Microsoft.AspNetCore.Components.Authorization;
 @using System.Text;
+@using System.Text.Json;
 
 @attribute [Authorize]
 
@@ -34,12 +35,43 @@ else
 {
     <Card>
         <CardBody>
-            @foreach(var message in Chat.Messages.Where(m => m.Role != Role.System))
+            @foreach(var message in Chat.Messages.Where(m => m.Role is not Role.System))
             {
                 @*Assistant messages can use markdown but we shouldn't let users do that.*@
-                var text = message.Role == Role.Assistant ? Markdown.ToHtml(message.Content, MarkdownPipeline) : message.Content;
+                var text = string.Empty;
+                var functionText = string.Empty;
+                if (message.Role == Role.Assistant)
+                {
+                    text = Markdown.ToHtml(message.Content, MarkdownPipeline);
 
-                <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {text}")</Paragraph>
+                    if (message.FunctionCall is not null)
+                    {
+                        text += Markdown.ToHtml($"_Invoked_ `{message.FunctionCall.Name}` _with arguments_ `{message.FunctionCall.Arguments}`");
+                    }
+                }
+                else if (message.Role == Role.Function)
+                {
+                    // Format the function text as indented JSON
+                    functionText = JsonSerializer.Serialize(
+                        JsonSerializer.Deserialize<object>(message.Content),
+                        new JsonSerializerOptions { WriteIndented = true }
+                    );
+                }
+                else
+                {
+                    text = message.Content;
+                }
+
+                if (!string.IsNullOrEmpty(text))
+                {
+                    <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {text}")</Paragraph>
+                }
+                if (!string.IsNullOrEmpty(functionText))
+                {
+                    <CollapsibleBlock ButtonText="View Function Output">
+                        <Paragraph>@functionText</Paragraph>
+                    </CollapsibleBlock>
+                }
             }
             <Addons>
                 <Addon AddonType=AddonType.Body>
