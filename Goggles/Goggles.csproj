@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2" />
-    <PackageReference Include="PdfPig" Version="0.1.9" />
+    <PackageReference Include="PdfPig" Version="0.1.10" />
     <PackageReference Include="Tesseract" Version="[4.1.1, 5.0.0)" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

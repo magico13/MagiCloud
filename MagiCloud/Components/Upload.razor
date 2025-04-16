@@ -145,7 +145,7 @@
             file.ErrorMessage = ex.Message;
 
             // Forcibly tell the FilePicker that the upload ended without success
-            await filePicker.FileEdit.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
+            await filePicker.FileEditRef.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
         }
     }
 
