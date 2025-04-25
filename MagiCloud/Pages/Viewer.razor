@@ -12,82 +12,73 @@
 
 @if (FileInfo is not null)
 {
-    <Column>
-        <Row>
-            <Heading TextAlignment=TextAlignment.Center>@FileInfo.GetFileName()</Heading>
-        </Row>
-        <Row TextAlignment=TextAlignment.Center>
-            <Column>
-                @if (string.IsNullOrWhiteSpace(FileInfo.MimeType))
-                {
-                    <Anchor To=@FileInfo.GetFileContentUri(false) Target=Target.Blank>
-                        Try To View In Browser
-                    </Anchor>
-                }
-                else if (this.FileInfo.MimeType.StartsWith("image/"))
-                {
-                    <Image Source=@FileInfo.GetFileContentUri(true) Text=@FileInfo.GetFileName() Width=Width.Max100></Image>
-                }
-                else if (FileInfo.MimeType.StartsWith("audio/"))
-                {
-                    <video controls poster="images/audio_poster.png" crossorigin="anonymous" width="100%" height="480" src=@FileInfo.GetFileContentUri(false)>
-                        <source class="u-audio" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
-                        @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
-                        {
-                            <track label="English" kind="subtitles" srclang="en" src=@(FileInfo.GetFileContentUri(false)+"/text")>
-                        }
-                    </video>
-                }
-                else if (FileInfo.MimeType.StartsWith("video/"))
-                {
-                    <video controls crossorigin="anonymous" src=@FileInfo.GetFileContentUri(false) width="100%">
-                        <source class="u-video" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
-                        @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
-                        {
-                            <track label="English" kind="subtitles" srclang="en" src=@(FileInfo.GetFileContentUri(false)+"/text")>
-                        }
-                    </video>
-                }
-                else
-                {
-                    <Anchor To=@FileInfo.GetFileContentUri(false) Target=Target.Blank>
-                        Try To View In Browser
-                    </Anchor>
-                }
-            </Column>
-        </Row>
-        <Row>
-            <Span TextAlignment="TextAlignment.Center">
-                <Button Type=ButtonType.Link Color=Color.Primary To=@FileInfo.GetFileContentUri(true) Target=Target.Blank>Download File</Button>
-                @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
-                {
-                    <Button Type=ButtonType.Link Color=Color.Secondary To=@(FileInfo.GetFileContentUri()+"/text") Target=Target.Blank>Download Text</Button>
-                }
-            </Span>
-        </Row>
-        <Row>
-            @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
+    <div class="viewer-container">
+        <div class="viewer-header">
+            <h1 class="text-center">@FileInfo.GetFileName()</h1>
+        </div>
+        <div class="viewer-content">
+            @if (this.FileInfo.MimeType?.StartsWith("image/") == true)
             {
-                <textarea readonly style="width: 100%" rows=5>
+                <img src="@FileInfo.GetFileContentUri(true)" alt="@FileInfo.GetFileName()" class="viewer-image" />
+            }
+            else if (FileInfo.MimeType?.StartsWith("audio/") == true)
+            {
+                <video controls poster="images/audio_poster.png" crossorigin="anonymous" class="viewer-video">
+                    <source class="u-audio" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
+                    @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
+                    {
+                        <track label="English" kind="subtitles" srclang="en" src=@(FileInfo.GetFileContentUri(false)+"/text")>
+                    }
+                </video>
+            }
+            else if (FileInfo.MimeType?.StartsWith("video/") == true)
+            {
+                <video controls crossorigin="anonymous" class="viewer-video">
+                    <source class="u-video" type=@FileInfo.MimeType src=@FileInfo.GetFileContentUri(false)>
+                    @if (!string.IsNullOrWhiteSpace(FileInfo.Text))
+                    {
+                        <track label="English" kind="subtitles" srclang="en" src=@(FileInfo.GetFileContentUri(false)+"/text")>
+                    }
+                </video>
+            }
+            else if (FileInfo.MimeType?.StartsWith("text/") == true)
+            {
+                <textarea readonly class="viewer-textarea">
                     @FileInfo.Text
                 </textarea>
             }
-        </Row>
-        <Row>
-            <div>&nbsp;</div>
-        </Row>
-    </Column>
+            else if (FileInfo.MimeType?.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                <iframe src="@FileInfo.GetFileContentUri(false)" class="viewer-iframe">
+                    Your browser does not support PDFs.
+                </iframe>
+            }
+            else
+            {
+                <a href="@FileInfo.GetFileContentUri(false)" target="_blank" class="viewer-link">
+                    Try To View In Browser
+                </a>
+            }
+        </div>
+        <div class="viewer-footer">
+            <div class="viewer-buttons">
+                <button class="btn btn-primary" onclick="window.open('@FileInfo.GetFileContentUri(true)', '_blank')">Download File</button>
+                @if (!string.IsNullOrWhiteSpace(FileInfo.Text) && FileInfo.MimeType?.StartsWith("text/") != true)
+                {
+                    <button class="btn btn-secondary" onclick="window.open('@(FileInfo.GetFileContentUri()+"/text")', '_blank')">Download Text</button>
+                }
+            </div>
+        </div>
+    </div>
 }
 else if (FileAccess is not null)
 {
-    <Heading>Not Found</Heading>
-    <Paragraph>
-        File not found or you do not have access.
-    </Paragraph>
+    <h1>Not Found</h1>
+    <p>File not found or you do not have access.</p>
 }
 else
 {
-    <Heading>Loading...</Heading>
+    <h1>Loading...</h1>
 }
 
 @code {
