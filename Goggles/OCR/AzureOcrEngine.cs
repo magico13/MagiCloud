@@ -32,7 +32,7 @@ internal class AzureOcrEngine : IOcrEngine
             return new(null, null);
         }
 
-        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2023-04-01-preview&features=read,caption";
+        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read,caption";
 
         _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _azureConfig.SubscriptionKey);
 
