@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -32,7 +33,7 @@ internal class AzureOcrEngine : IOcrEngine
             return new(null, null);
         }
 
-        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read,caption";
+        var endpoint = $"{_azureConfig.VisionEndpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&model-version=latest&features=read,caption";
 
         _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _azureConfig.SubscriptionKey);
 
@@ -41,8 +42,7 @@ internal class AzureOcrEngine : IOcrEngine
         var response = await _httpClient.PostAsync(endpoint, httpContent);
         response.EnsureSuccessStatusCode();
         var ocrResponse = await response.Content.ReadFromJsonAsync<AzureOcrResponse>();
-        return new OcrResult(ocrResponse?.ReadResult?.Content, ocrResponse?.CaptionResult?.Text);
-        
+        return new OcrResult(ocrResponse?.ReadResult?.Text, ocrResponse?.CaptionResult?.Text);
     }
 
     public class AzureOcrResponse
@@ -67,41 +67,33 @@ internal class AzureOcrEngine : IOcrEngine
 
     public class ReadResult
     {
-        public string? StringIndexType { get; set; }
-        public string? Content { get; set; }
-        public Page[]? Pages { get; set; }
-        public object[]? Styles { get; set; }
-        public string? ModelVersion { get; set; }
+        public DetectedTextBlock[] Blocks { get; set; } = [];
+
+        public string Text => string.Join("\n", Blocks.SelectMany(b => b.Lines.Select(l => l.Text)));
     }
 
-    public class Page
+    public class DetectedTextBlock
     {
-        public float Height { get; set; }
-        public float Width { get; set; }
-        public float Angle { get; set; }
-        public int PageNumber { get; set; }
-        public Word[]? Words { get; set; }
-        public Span[]? Spans { get; set; }
-        public Line[]? Lines { get; set; }
-    }
-    public class Line
-    {
-        public string? Content { get; set; }
-        public float[]? BoundingBox { get; set; }
-        public Span[]? Spans { get; set; }
+        public DetectedTextLine[] Lines { get; set; } = [];
     }
 
-    public class Word
+    public class DetectedTextLine
     {
-        public string? Content { get; set; }
-        public float[]? BoundingBox { get; set; }
-        public float Confidence { get; set; }
-        public Span? Span { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public ImagePoint[] BoundingPolygon { get; set; } = [];
+        public DetectedTextWord[] Words { get; set; } = [];
     }
 
-    public class Span
+    public class DetectedTextWord
     {
-        public int Offset { get; set; }
-        public int Length { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public ImagePoint[] BoundingPolygon { get; set; } = [];
+        public double Confidence { get; set; }
+    }
+
+    public class ImagePoint
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
     }
 }
