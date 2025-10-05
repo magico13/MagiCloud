@@ -10,7 +10,7 @@ namespace MagiCommon.Models.AssistantChat
 {
     public class Chat
     {
-        // Store ResponseItem objects directly, like Python does
+        // Store ALL messages for display purposes
         public List<ResponseItem> ConversationHistory { get; } = new List<ResponseItem>();
         private string? LastResponseId { get; set; }
 
@@ -39,24 +39,30 @@ namespace MagiCommon.Models.AssistantChat
 
         public async Task<OpenAIResponse> SendUserMessage(string messageContent)
         {
-            // Add user message as ResponseItem
+            // Build request with only system message + new user message
+            var requestHistory = new List<ResponseItem>();
+            requestHistory.Add(ConversationHistory[0]); // System message
+            
+            // Add new user message to both request and conversation history
             if (!string.IsNullOrEmpty(messageContent))
             {
-                ConversationHistory.Add(ResponseItem.CreateUserMessageItem([
+                var userMessage = ResponseItem.CreateUserMessageItem([
                     ResponseContentPart.CreateInputTextPart(messageContent)
-                ]));
+                ]);
+                requestHistory.Add(userMessage);
+                ConversationHistory.Add(userMessage); // Keep for display
             }
 
             var request = new ChatCompletionRequest
             {
                 Model = InitialRequest.Model,
-                ConversationHistory = ConversationHistory,
+                ConversationHistory = requestHistory, // Only system + new message
                 Functions = InitialRequest.Functions,
                 Temperature = InitialRequest.Temperature,
                 TopP = InitialRequest.TopP,
                 MaxTokens = InitialRequest.MaxTokens,
                 User = InitialRequest.User,
-                PreviousResponseId = LastResponseId
+                PreviousResponseId = LastResponseId // API pulls previous context via this
             };
 
             var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
@@ -64,7 +70,7 @@ namespace MagiCommon.Models.AssistantChat
             // Store response ID for next request
             LastResponseId = response.Id;
             
-            // Add ALL output items directly to conversation history, like Python does
+            // Add all output items to conversation history for display purposes
             foreach (var outputItem in response.OutputItems)
             {
                 ConversationHistory.Add(outputItem);
@@ -75,22 +81,28 @@ namespace MagiCommon.Models.AssistantChat
 
         public async Task<OpenAIResponse> SendFunctionResult(string callId, string functionName, string result)
         {
-            // Add function result as ResponseItem
-            ConversationHistory.Add(ResponseItem.CreateFunctionCallOutputItem(
+            // Build request with only system message + new function result
+            var requestHistory = new List<ResponseItem>();
+            requestHistory.Add(ConversationHistory[0]); // System message
+            
+            // Add function result to both request and conversation history
+            var functionOutput = ResponseItem.CreateFunctionCallOutputItem(
                 callId: callId,
                 functionOutput: result
-            ));
+            );
+            requestHistory.Add(functionOutput);
+            ConversationHistory.Add(functionOutput); // Keep for display
 
             var request = new ChatCompletionRequest
             {
                 Model = InitialRequest.Model,
-                ConversationHistory = ConversationHistory,
+                ConversationHistory = requestHistory, // Only system + function result
                 Functions = InitialRequest.Functions,
                 Temperature = InitialRequest.Temperature,
                 TopP = InitialRequest.TopP,
                 MaxTokens = InitialRequest.MaxTokens,
                 User = InitialRequest.User,
-                PreviousResponseId = LastResponseId
+                PreviousResponseId = LastResponseId // API pulls previous context via this
             };
 
             var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
@@ -98,7 +110,7 @@ namespace MagiCommon.Models.AssistantChat
             // Store response ID
             LastResponseId = response.Id;
             
-            // Add all output items to history
+            // Add all output items to conversation history for display purposes
             foreach (var outputItem in response.OutputItems)
             {
                 ConversationHistory.Add(outputItem);
