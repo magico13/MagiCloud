@@ -3,19 +3,20 @@ using MagiCommon.Extensions;
 using MagiCommon.Interfaces;
 using MagiCommon.Models;
 using MagiCommon.Models.AssistantChat;
-using MagiCommon.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenAI.Responses;
 using System;
-using System.Net.Http;
-using System.Text;
+using System.Collections.Generic;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services.ChatServices;
 
-public class ChatGPTCompletionService(HttpClient httpClient, ILogger<ChatGPTCompletionService> logger, IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
+public class ChatGPTCompletionService(
+    OpenAIResponseClient responseClient, 
+    ILogger<ChatGPTCompletionService> logger, 
+    IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
 {
     private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
 
@@ -27,27 +28,136 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
 {3}";
 
-    //private const int MAX_TEXT_LENGTH = 8192;
-    private JsonSerializerOptions JsonSerializerOptions { get; } = new()
+    public async Task<OpenAIResponse> CreateCompletionAsync(ChatCompletionRequest request)
     {
-        PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
-        Converters = { new RoleJsonConverter() },
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
+        var responseItems = ConvertMessagesToResponseItems(request.Messages);
+        var options = ConvertToResponseCreationOptions(request);
 
-    public async Task<ChatCompletionResponse> CreateCompletionAsync(ChatCompletionRequest request)
-    {
-        var strContent = JsonSerializer.Serialize(request, JsonSerializerOptions);
-        var content = new StringContent(strContent, Encoding.UTF8, "application/json");
-        var response = await httpClient.PostAsync("v1/chat/completions", content);
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            logger.LogError("Failed to create completion: {ResponseText}", await response.Content.ReadAsStringAsync());
+            var response = await responseClient.CreateResponseAsync(responseItems, options);
+            return response;
         }
-        response.EnsureSuccessStatusCode();
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create completion");
+            throw;
+        }
+    }
 
-        var responseContent = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<ChatCompletionResponse>(responseContent, JsonSerializerOptions);
+    private static List<ResponseItem> ConvertMessagesToResponseItems(List<Message> messages)
+    {
+        var items = new List<ResponseItem>();
+        
+        foreach (var message in messages)
+        {
+            switch (message.Role)
+            {
+                case Role.System:
+                    items.Add(ResponseItem.CreateSystemMessageItem([
+                        ResponseContentPart.CreateInputTextPart(message.Content ?? string.Empty)
+                    ]));
+                    break;
+                    
+                case Role.User:
+                    items.Add(ResponseItem.CreateUserMessageItem([
+                        ResponseContentPart.CreateInputTextPart(message.Content ?? string.Empty)
+                    ]));
+                    break;
+                    
+                case Role.Assistant:
+                    if (message.FunctionCall != null)
+                    {
+                        // This shouldn't happen in request - function calls come from responses
+                        // But if we need to represent it, create a function call item
+                        items.Add(new FunctionCallResponseItem(
+                            callId: message.FunctionCall.Id ?? Guid.NewGuid().ToString(),
+                            functionName: message.FunctionCall.Name,
+                            functionArguments: BinaryData.FromString(message.FunctionCall.Arguments ?? "{}")
+                        ));
+                    }
+                    else
+                    {
+                        items.Add(ResponseItem.CreateAssistantMessageItem([
+                            ResponseContentPart.CreateOutputTextPart(message.Content ?? string.Empty, annotations: null)
+                        ]));
+                    }
+                    break;
+                    
+                case Role.Function:
+                    // Function result - use the stored call ID
+                    var callId = message.FunctionCall?.Id ?? message.Name ?? Guid.NewGuid().ToString();
+                    items.Add(ResponseItem.CreateFunctionCallOutputItem(
+                        callId: callId,
+                        functionOutput: message.Content ?? string.Empty
+                    ));
+                    break;
+            }
+        }
+        
+        return items;
+    }
+
+    private ResponseCreationOptions ConvertToResponseCreationOptions(ChatCompletionRequest request)
+    {
+        var options = new ResponseCreationOptions();
+
+        if (request.Temperature.HasValue)
+            options.Temperature = (float)request.Temperature.Value;
+            
+        if (request.TopP.HasValue)
+            options.TopP = (float)request.TopP.Value;
+            
+        if (request.MaxTokens.HasValue)
+            options.MaxOutputTokenCount = request.MaxTokens.Value;
+
+        // Pass previous response ID for better context management
+        if (!string.IsNullOrEmpty(request.PreviousResponseId))
+        {
+            options.PreviousResponseId = request.PreviousResponseId;
+        }
+
+        // Configure reasoning options
+        var reasoningEffort = assistantSettings.Value.ReasoningEffort?.ToLowerInvariant() switch
+        {
+            "low" => ResponseReasoningEffortLevel.Low,
+            "medium" => ResponseReasoningEffortLevel.Medium,
+            "high" => ResponseReasoningEffortLevel.High,
+            _ => ResponseReasoningEffortLevel.Medium
+        };
+
+        options.ReasoningOptions = new ResponseReasoningOptions
+        {
+            ReasoningEffortLevel = reasoningEffort
+        };
+
+        // Only set summary verbosity if summaries are enabled
+        // If not set (null), the API won't generate summaries
+        if (assistantSettings.Value.IncludeReasoningSummaries)
+        {
+            options.ReasoningOptions.ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Auto;
+        }
+
+        // Enable response storage for better context management
+        options.StoredOutputEnabled = assistantSettings.Value.StoreResponses;
+
+        // Add tools/functions
+        if (request.Functions != null)
+        {
+            foreach (var function in request.Functions)
+            {
+                var parametersJson = JsonSerializer.SerializeToUtf8Bytes(function.Parameters);
+                var tool = ResponseTool.CreateFunctionTool(
+                    functionName: function.Name,
+                    functionDescription: function.Description,
+                    functionParameters: BinaryData.FromBytes(parametersJson),
+                    strictModeEnabled: false
+                );
+                options.Tools.Add(tool);
+            }
+        }
+
+        return options;
     }
 
     public Chat CreateNewGeneralChat(
@@ -71,7 +181,7 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
             deserialized.Hash = null;
             deserialized.Name = deserialized.GetFileName();
 
-            var serializedContext = JsonSerializer.Serialize(deserialized, JsonSerializerOptions);
+            var serializedContext = JsonSerializer.Serialize(deserialized);
             additionalContext += "The file context is: " + serializedContext ?? "null";
         }
 

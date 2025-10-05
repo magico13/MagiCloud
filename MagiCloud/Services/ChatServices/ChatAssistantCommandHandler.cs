@@ -4,6 +4,7 @@ using MagiCommon.Models;
 using MagiCommon.Models.AssistantChat;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenAI.Responses;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -102,10 +103,9 @@ public class ChatAssistantCommandHandler(
         // It has to also take the highlights and return which segment it's in
     };
 
-    public async Task<ChatCompletionResponse> HandleCommandsAsync(Chat chat, string userId, Message functionMessage)
+    public async Task<OpenAIResponse> HandleCommandsAsync(Chat chat, string userId, Message functionMessage)
     {
         var functionCall = functionMessage.FunctionCall;
-        //functionMessage.Content ??= $"{functionCall.Name}: {functionCall.Arguments}";
 
         // switch on the function name, pass the arguments as-is
         object response = functionCall.Name switch
@@ -122,11 +122,13 @@ public class ChatAssistantCommandHandler(
         {
             return null;
         }
+        
         var completion = await chat.SendMessage(new()
         {
             Role = Role.Function,
             Content = JsonSerializer.Serialize(response),
-            Name = functionCall.Name
+            Name = functionCall.Name,
+            FunctionCall = new FunctionCall { Id = functionCall.Id } // Pass through the ID
         });
         return completion;
     }

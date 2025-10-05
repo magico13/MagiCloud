@@ -17,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using OpenAI.Responses;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
@@ -110,11 +112,14 @@ if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 
 if (!string.IsNullOrWhiteSpace(assistantSettings.OpenAIKey))
 {
-    builder.Services.AddHttpClient<IChatCompletionService, ChatGPTCompletionService>(o =>
+    builder.Services.AddSingleton<OpenAIResponseClient>(sp =>
     {
-        o.BaseAddress = new Uri("https://api.openai.com/");
-        o.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", assistantSettings.OpenAIKey);
+        var settings = sp.GetRequiredService<IOptions<AssistantSettings>>().Value;
+        return new OpenAIResponseClient(
+            model: settings.Model,
+            apiKey: settings.OpenAIKey);
     });
+    builder.Services.AddScoped<IChatCompletionService, ChatGPTCompletionService>();
 };
 
 // Add text extraction abilities

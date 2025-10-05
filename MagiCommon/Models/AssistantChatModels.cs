@@ -1,5 +1,6 @@
 ﻿using MagiCommon.Interfaces;
 using MagiCommon.Serialization;
+using OpenAI.Responses;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -10,6 +11,7 @@ namespace MagiCommon.Models.AssistantChat
     public class Chat
     {
         public List<Message> Messages { get; } = new List<Message>();
+        private string LastResponseId { get; set; }
 
         private IChatCompletionService ChatService { get; }
         private ChatCompletionRequest InitialRequest { get; }
@@ -25,10 +27,10 @@ namespace MagiCommon.Models.AssistantChat
             SystemMessage = systemMessage;
         }
 
-        public Task<ChatCompletionResponse> StartChatAsync()
+        public Task<OpenAIResponse> StartChatAsync()
             => SendMessage(new Message { Content = SystemMessage, Role = Role.System });
 
-        public Task<ChatCompletionResponse> SendUserMessage(string nextMessageContent)
+        public Task<OpenAIResponse> SendUserMessage(string nextMessageContent)
             => SendMessage(new Message
             {
                 Role = Role.User,
@@ -36,7 +38,7 @@ namespace MagiCommon.Models.AssistantChat
                 Name = InitialRequest.User
             });
 
-        public async Task<ChatCompletionResponse> SendMessage(Message message)
+        public async Task<OpenAIResponse> SendMessage(Message message)
         {
             Messages.Add(message);
             var request = new ChatCompletionRequest
@@ -53,14 +55,80 @@ namespace MagiCommon.Models.AssistantChat
                 PresencePenalty = InitialRequest.PresencePenalty,
                 FrequencyPenalty = InitialRequest.FrequencyPenalty,
                 LogitBias = InitialRequest.LogitBias,
-                User = InitialRequest.User
+                User = InitialRequest.User,
+                PreviousResponseId = LastResponseId // Pass previous response ID for better context
             };
 
-            var completed = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
-            var firstChoice = completed.Choices.First().Message;
-            firstChoice.Content ??= string.Empty;
-            Messages.Add(firstChoice);
-            return completed;
+            var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
+            
+            // Store response ID for next request
+            LastResponseId = response.Id;
+            
+            // Convert all response items to Messages for conversation history
+            var assistantMessages = ConvertResponseToMessages(response);
+            foreach (var assistantMessage in assistantMessages)
+            {
+                assistantMessage.Content ??= string.Empty;
+                Messages.Add(assistantMessage);
+            }
+            
+            return response;
+        }
+
+        private List<Message> ConvertResponseToMessages(OpenAIResponse response)
+        {
+            var messages = new List<Message>();
+            
+            // Process all output items - there may be multiple (reasoning, messages, function calls)
+            foreach (var item in response.OutputItems)
+            {
+                if (item is MessageResponseItem messageItem)
+                {
+                    // Combine all text content parts
+                    var textContent = string.Join("\n", 
+                        messageItem.Content
+                            .Where(c => !string.IsNullOrEmpty(c.Text))
+                            .Select(c => c.Text));
+                    
+                    if (!string.IsNullOrEmpty(textContent))
+                    {
+                        messages.Add(new Message
+                        {
+                            Role = Role.Assistant,
+                            Content = textContent
+                        });
+                    }
+                }
+                else if (item is FunctionCallResponseItem functionCallItem)
+                {
+                    messages.Add(new Message
+                    {
+                        Role = Role.Assistant,
+                        FunctionCall = new FunctionCall
+                        {
+                            Name = functionCallItem.FunctionName,
+                            Arguments = functionCallItem.FunctionArguments?.ToString() ?? string.Empty,
+                            Id = functionCallItem.CallId
+                        }
+                    });
+                }
+                else if (item is ReasoningResponseItem reasoningItem)
+                {
+                    // Extract reasoning summary if available
+                    var summaryText = reasoningItem.GetSummaryText();
+                    
+                    if (!string.IsNullOrEmpty(summaryText))
+                    {
+                        messages.Add(new Message
+                        {
+                            Role = Role.Reasoning,
+                            Content = summaryText
+                        });
+                    }
+                }
+            }
+            
+            return messages;
         }
     }
 
@@ -79,15 +147,7 @@ namespace MagiCommon.Models.AssistantChat
         public double? FrequencyPenalty { get; set; }
         public Dictionary<string, double> LogitBias { get; set; }
         public string User { get; set; }
-    }
-
-    public class ChatCompletionResponse
-    {
-        public string Id { get; set; }
-        public string Object { get; set; }
-        public int Created { get; set; }
-        public List<Choice> Choices { get; set; }
-        public Usage Usage { get; set; }
+        public string PreviousResponseId { get; set; }
     }
 
     public class Message
@@ -103,6 +163,7 @@ namespace MagiCommon.Models.AssistantChat
     {
         public string Name { get; set; }
         public string Arguments { get; set; }
+        public string Id { get; set; }
     }
 
     public class Function
@@ -127,35 +188,12 @@ namespace MagiCommon.Models.AssistantChat
         public string[] Enum { get; set; }
     }
 
-    public class Choice
-    {
-        public int Index { get; set; }
-        public Message Message { get; set; }
-
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public FinishReason? FinishReason { get; set; }
-    }
-
-    public class Usage
-    {
-        public int PromptTokens { get; set; }
-        public int CompletionTokens { get; set; }
-        public int TotalTokens { get; set; }
-    }
-
     public enum Role
     {
         System,
         User,
         Assistant,
-        Function
-    }
-
-    public enum FinishReason
-    {
-        Stop,
-        Length,
-        Content_Filter,
-        Function_Call
+        Function,
+        Reasoning
     }
 }

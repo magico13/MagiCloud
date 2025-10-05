@@ -2,9 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <NoWarn>$(NoWarn);OPENAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenAI" Version="2.5.0" />
     <PackageReference Include="System.Net.Http.Json" Version="9.0.9" />
   </ItemGroup>
 

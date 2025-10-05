@@ -10,6 +10,7 @@
 @using Markdig;
 @using Microsoft.AspNetCore.Authorization;
 @using Microsoft.AspNetCore.Components.Authorization;
+@using OpenAI.Responses;
 @using System.Text;
 @using System.Text.Json;
 
@@ -57,6 +58,14 @@ else
                         new JsonSerializerOptions { WriteIndented = true }
                     );
                 }
+                else if (message.Role == Role.Reasoning)
+                {
+                    // Reasoning summaries - show as a collapsible block
+                    <CollapsibleBlock ButtonText="?? View Reasoning">
+                        <Paragraph>@message.Content</Paragraph>
+                    </CollapsibleBlock>
+                    continue; // Skip the normal message rendering
+                }
                 else
                 {
                     text = message.Content;
@@ -83,7 +92,7 @@ else
             </Addons>
             @if(LastResponse is not null)
             {
-                <Text>@($"{LastResponse.Usage.TotalTokens}")</Text>
+                <Text>@($"Tokens: {GetTokenCount(LastResponse)}")</Text>
             }
         </CardBody>
     </Card>
@@ -96,7 +105,7 @@ else
     private string UserId { get; set; }
     private Chat Chat { get; set; }
     private string ForbiddenMessage { get; set; }
-    private ChatCompletionResponse LastResponse { get; set; }
+    private OpenAIResponse LastResponse { get; set; }
 
     private MarkdownPipeline MarkdownPipeline { get; set; } = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
@@ -166,16 +175,30 @@ else
         while (response is not null)
         {
             LastResponse = response;
-            var choice = response.Choices.First();
             response = null;
 
             this.StateHasChanged();
             await Task.Delay(1); // Add a delay to hopefully update the text
             
-            // Handle any commands the Assistant may have invoked
-            if (choice.FinishReason == FinishReason.Function_Call && choice.Message.FunctionCall is not null)
+            // Check if there are any function calls to handle
+            var functionCallItem = LastResponse.OutputItems
+                .OfType<FunctionCallResponseItem>()
+                .FirstOrDefault();
+                
+            if (functionCallItem is not null)
             {
-                response = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, choice.Message);
+                // Create a message from the function call
+                var functionMessage = new Message
+                {
+                    Role = Role.Assistant,
+                    FunctionCall = new FunctionCall
+                    {
+                        Name = functionCallItem.FunctionName,
+                        Arguments = functionCallItem.FunctionArguments?.ToString() ?? string.Empty,
+                        Id = functionCallItem.CallId
+                    }
+                };
+                response = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, functionMessage);
             }
         }
     }
@@ -186,5 +209,11 @@ else
         {
             await SendUserMessageAsync();
         }
+    }
+
+    private int GetTokenCount(OpenAIResponse response)
+    {
+        // The Responses API includes usage information
+        return response.Usage?.TotalTokenCount ?? 0;
     }
 }
