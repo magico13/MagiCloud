@@ -26,10 +26,6 @@ public class ChatAssistantCommandHandler(
             Name = "get_time",
             Description = "Gets the current time.",
             Parameters = new()
-            {
-                Type = "object",
-                Properties = new()
-            }
         },
         ["get_text"] = new()
         {
@@ -260,7 +256,8 @@ public class ChatAssistantCommandHandler(
         };
     }
 
-    private async Task<Dictionary<string, string>> HandleMetadataCommand(string userId, string arguments)
+    private async Task<Dictionary<string, string>> HandleMetadataCommand(string userId, string arguments
+)
     {
         if (string.IsNullOrWhiteSpace(arguments) || string.IsNullOrWhiteSpace(userId))
         {

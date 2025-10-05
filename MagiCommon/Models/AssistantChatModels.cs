@@ -1,6 +1,7 @@
 ﻿using MagiCommon.Interfaces;
 using MagiCommon.Serialization;
 using OpenAI.Responses;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -180,10 +181,10 @@ namespace MagiCommon.Models.AssistantChat
         public string Type { get; set; } = "object";
         
         [JsonPropertyName("properties")]
-        public Dictionary<string, FunctionProperty> Properties { get; set; }
-        
+        public Dictionary<string, FunctionProperty> Properties { get; set; } = new Dictionary<string, FunctionProperty>();
+
         [JsonPropertyName("required")]
-        public string[] Required { get; set; }
+        public string[] Required { get; set; } = Array.Empty<string>();
     }
 
     public class FunctionProperty

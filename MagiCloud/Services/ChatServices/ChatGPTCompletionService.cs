@@ -146,7 +146,8 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
         {
             var jsonOptions = new JsonSerializerOptions
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             };
 
             foreach (var function in request.Functions)
