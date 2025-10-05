@@ -6,7 +6,7 @@ namespace MagiCommon.Comparers.ElasticFileInfoComparers
 {
     public class NameComparer : IComparer<ElasticObject>
     {
-        public int Compare(ElasticObject x, ElasticObject y)
+        public int Compare(ElasticObject? x, ElasticObject? y)
         {
             if (x is null && y is null)
             {
@@ -18,7 +18,7 @@ namespace MagiCommon.Comparers.ElasticFileInfoComparers
 
     public class SizeComparer : IComparer<ElasticFileInfo>
     {
-        public int Compare(ElasticFileInfo x, ElasticFileInfo y)
+        public int Compare(ElasticFileInfo? x, ElasticFileInfo? y)
         {
             if (x is null && y is null)
             {

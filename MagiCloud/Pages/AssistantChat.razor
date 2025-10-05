@@ -36,50 +36,51 @@ else
 {
     <Card>
         <CardBody>
-            @foreach(var message in Chat.Messages.Where(m => m.Role is not Role.System))
+            @foreach(var item in Chat.ConversationHistory.Skip(1)) @* Skip system message *@
             {
-                @*Assistant messages can use markdown but we shouldn't let users do that.*@
-                var text = string.Empty;
-                var functionText = string.Empty;
-                if (message.Role == Role.Assistant)
+                @if (item is MessageResponseItem messageItem)
                 {
-                    text = Markdown.ToHtml(message.Content, MarkdownPipeline);
-
-                    if (message.FunctionCall is not null)
+                    var isUserMessage = messageItem.Role == MessageRole.User;
+                    var textContent = string.Join("\n", 
+                        messageItem.Content
+                            .Where(c => !string.IsNullOrEmpty(c.Text))
+                            .Select(c => c.Text));
+                    
+                    if (!string.IsNullOrEmpty(textContent))
                     {
-                        text += Markdown.ToHtml($"_Invoked_ `{message.FunctionCall.Name}` _with arguments_ `{message.FunctionCall.Arguments}`");
+                        var displayText = isUserMessage ? textContent : Markdown.ToHtml(textContent, MarkdownPipeline);
+                        var alignment = isUserMessage ? TextAlignment.End : TextAlignment.Start;
+                        var role = isUserMessage ? "User" : "Assistant";
+                        
+                        <Paragraph TextAlignment="@alignment">@((MarkupString)$"<b>{role}</b>: {displayText}")</Paragraph>
                     }
                 }
-                else if (message.Role == Role.Function)
+                else if (item is FunctionCallResponseItem functionCallItem)
                 {
-                    // Format the function text as indented JSON
-                    functionText = JsonSerializer.Serialize(
-                        JsonSerializer.Deserialize<object>(message.Content),
+                    <Paragraph TextAlignment="TextAlignment.Start">
+                        @((MarkupString)Markdown.ToHtml($"_Invoked_ `{functionCallItem.FunctionName}` _with arguments_ `{functionCallItem.FunctionArguments}`", MarkdownPipeline))
+                    </Paragraph>
+                }
+                else if (item is FunctionCallOutputResponseItem functionOutputItem)
+                {
+                    var functionText = JsonSerializer.Serialize(
+                        JsonSerializer.Deserialize<object>(functionOutputItem.FunctionOutput),
                         new JsonSerializerOptions { WriteIndented = true }
                     );
-                }
-                else if (message.Role == Role.Reasoning)
-                {
-                    // Reasoning summaries - show as a collapsible block
-                    <CollapsibleBlock ButtonText="?? View Reasoning">
-                        <Paragraph>@message.Content</Paragraph>
-                    </CollapsibleBlock>
-                    continue; // Skip the normal message rendering
-                }
-                else
-                {
-                    text = message.Content;
-                }
-
-                if (!string.IsNullOrEmpty(text))
-                {
-                    <Paragraph TextAlignment="@(message.Role == Role.User ? TextAlignment.End : TextAlignment.Start)">@((MarkupString)$"<b>{message.Role}</b>: {text}")</Paragraph>
-                }
-                if (!string.IsNullOrEmpty(functionText))
-                {
+                    
                     <CollapsibleBlock ButtonText="View Function Output">
                         <Paragraph>@functionText</Paragraph>
                     </CollapsibleBlock>
+                }
+                else if (item is ReasoningResponseItem reasoningItem)
+                {
+                    var summaryText = reasoningItem.GetSummaryText();
+                    if (!string.IsNullOrEmpty(summaryText))
+                    {
+                        <CollapsibleBlock ButtonText="?? View Reasoning">
+                            <Paragraph>@summaryText</Paragraph>
+                        </CollapsibleBlock>
+                    }
                 }
             }
             <Addons>
@@ -172,6 +173,7 @@ else
         var msgCopy = UserMessage;
         UserMessage = null;
         var response = await Chat.SendUserMessage(msgCopy);
+        
         while (response is not null)
         {
             LastResponse = response;
@@ -187,18 +189,12 @@ else
                 
             if (functionCallItem is not null)
             {
-                // Create a message from the function call
-                var functionMessage = new Message
-                {
-                    Role = Role.Assistant,
-                    FunctionCall = new FunctionCall
-                    {
-                        Name = functionCallItem.FunctionName,
-                        Arguments = functionCallItem.FunctionArguments?.ToString() ?? string.Empty,
-                        Id = functionCallItem.CallId
-                    }
-                };
-                response = await ChatAssistantCommandHandler.HandleCommandsAsync(Chat, UserId, functionMessage);
+                // Handle the function call directly
+                response = await ChatAssistantCommandHandler.HandleFunctionCallAsync(
+                    Chat, 
+                    UserId, 
+                    functionCallItem
+                );
             }
         }
     }

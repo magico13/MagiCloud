@@ -30,12 +30,12 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
     public async Task<OpenAIResponse> CreateCompletionAsync(ChatCompletionRequest request)
     {
-        var responseItems = ConvertMessagesToResponseItems(request.Messages);
         var options = ConvertToResponseCreationOptions(request);
 
         try
         {
-            var response = await responseClient.CreateResponseAsync(responseItems, options);
+            // Pass conversation history directly - no conversion needed!
+            var response = await responseClient.CreateResponseAsync(request.ConversationHistory, options);
             return response;
         }
         catch (Exception ex)
@@ -43,59 +43,6 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
             logger.LogError(ex, "Failed to create completion");
             throw;
         }
-    }
-
-    private static List<ResponseItem> ConvertMessagesToResponseItems(List<Message> messages)
-    {
-        var items = new List<ResponseItem>();
-        
-        foreach (var message in messages)
-        {
-            switch (message.Role)
-            {
-                case Role.System:
-                    items.Add(ResponseItem.CreateSystemMessageItem([
-                        ResponseContentPart.CreateInputTextPart(message.Content ?? string.Empty)
-                    ]));
-                    break;
-                    
-                case Role.User:
-                    items.Add(ResponseItem.CreateUserMessageItem([
-                        ResponseContentPart.CreateInputTextPart(message.Content ?? string.Empty)
-                    ]));
-                    break;
-                    
-                case Role.Assistant:
-                    if (message.FunctionCall != null)
-                    {
-                        // This shouldn't happen in request - function calls come from responses
-                        // But if we need to represent it, create a function call item
-                        items.Add(new FunctionCallResponseItem(
-                            callId: message.FunctionCall.Id ?? Guid.NewGuid().ToString(),
-                            functionName: message.FunctionCall.Name,
-                            functionArguments: BinaryData.FromString(message.FunctionCall.Arguments ?? "{}")
-                        ));
-                    }
-                    else
-                    {
-                        items.Add(ResponseItem.CreateAssistantMessageItem([
-                            ResponseContentPart.CreateOutputTextPart(message.Content ?? string.Empty, annotations: null)
-                        ]));
-                    }
-                    break;
-                    
-                case Role.Function:
-                    // Function result - use the stored call ID
-                    var callId = message.FunctionCall?.Id ?? message.Name ?? Guid.NewGuid().ToString();
-                    items.Add(ResponseItem.CreateFunctionCallOutputItem(
-                        callId: callId,
-                        functionOutput: message.Content ?? string.Empty
-                    ));
-                    break;
-            }
-        }
-        
-        return items;
     }
 
     private ResponseCreationOptions ConvertToResponseCreationOptions(ChatCompletionRequest request)

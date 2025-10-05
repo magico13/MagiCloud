@@ -12,20 +12,16 @@ namespace MagiCommon
     {
         Task<List<SearchResult>> GetFilesAsync(bool? deleted);
         Task<List<SearchResult>> SearchAsync(string query);
-        Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
-        Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo);
-        Task<ElasticFileInfo> GetFileInfoAsync(string id);
+        Task<ElasticFileInfo?> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream);
+        Task<ElasticFileInfo?> UpdateFileAsync(ElasticFileInfo fileInfo);
+        Task<ElasticFileInfo?> GetFileInfoAsync(string id);
         Task<Stream> GetFileContentAsync(string id);
         Uri GetFileContentUri(string id, bool download);
         Task RemoveFileAsync(string id, bool permanent);
     }
 
-    public class MagiCloudAPI : IMagiCloudAPI
+    public class MagiCloudAPI(HttpClient client) : IMagiCloudAPI
     {
-        public HttpClient Client { get; }
-
-        public MagiCloudAPI(HttpClient client) => Client = client;
-
         public async Task<List<SearchResult>> GetFilesAsync(bool? deleted = null)
         {
             var url = "api/files";
@@ -33,21 +29,21 @@ namespace MagiCommon
             {
                 url += $"?deleted={deleted}";
             }
-            return await Client.GetFromJsonAsync<List<SearchResult>>(url);
+            return await client.GetFromJsonAsync<List<SearchResult>>(url) ?? [];
         }
 
         public async Task<List<SearchResult>> SearchAsync(string query)
         {
             var url = $"api/search?query={query}";
-            return await Client.GetFromJsonAsync<List<SearchResult>>(url);
+            return await client.GetFromJsonAsync<List<SearchResult>>(url) ?? [];
         }
 
-        public async Task<ElasticFileInfo> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
+        public async Task<ElasticFileInfo?> UploadFileAsync(ElasticFileInfo fileInfo, Stream fileStream)
         {
-            var response = await Client.PostAsJsonAsync("api/files", fileInfo);
+            var response = await client.PostAsJsonAsync("api/files", fileInfo);
             response.EnsureSuccessStatusCode();
-            var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
-            if (fileInfo.Hash != returnedInfo.Hash || string.IsNullOrWhiteSpace(returnedInfo.Hash))
+            var returnedInfo = await response.Content.ReadFromJsonAsync<ElasticFileInfo>() ?? throw new Exception("Failed to get file info after upload.");
+            if (string.IsNullOrWhiteSpace(returnedInfo?.Hash) || fileInfo.Hash != returnedInfo.Hash)
             {
                 // if file is less than the chunk size, upload it all at once
                 var fileSize = fileStream.Length;
@@ -57,10 +53,10 @@ namespace MagiCommon
                 {
                     var content = new MultipartFormDataContent
                     {
-                        { new StreamContent(fileStream), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
+                        { new StreamContent(fileStream), "file", $"{returnedInfo!.Name}.{returnedInfo.Extension}" }
                     };
 
-                    response = await Client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
+                    response = await client.PutAsync("api/filecontent/" + returnedInfo.Id, content);
                     response.EnsureSuccessStatusCode();
                 }
                 else
@@ -72,43 +68,43 @@ namespace MagiCommon
 
                         using var partialStream = new MemoryStream(chunkSize);
                         var buffer = new byte[chunkSize];
-                        var actual = await fileStream.ReadAsync(buffer, 0, chunkSize);
+                        var actual = await fileStream.ReadAsync(buffer.AsMemory(0, chunkSize));
                         var content = new MultipartFormDataContent
                             {
-                                { new ByteArrayContent(buffer, 0, actual), "file", $"{returnedInfo.Name}.{returnedInfo.Extension}" }
+                                { new ByteArrayContent(buffer, 0, actual), "file", $"{returnedInfo!.Name}.{returnedInfo.Extension}" }
                             };
 
 
-                        response = await Client.PutAsync($"api/filecontent/{returnedInfo.Id}/{i}?final={final}", content);
+                        response = await client.PutAsync($"api/filecontent/{returnedInfo.Id}/{i}?final={final}", content);
                         response.EnsureSuccessStatusCode();
                     }
                 }
                 
             }
             
-            return await GetFileInfoAsync(returnedInfo.Id);
+            return await GetFileInfoAsync(returnedInfo!.Id);
         }
 
-        public async Task<ElasticFileInfo> UpdateFileAsync(ElasticFileInfo fileInfo)
+        public async Task<ElasticFileInfo?> UpdateFileAsync(ElasticFileInfo fileInfo)
         {
-            var response = await Client.PostAsJsonAsync("api/files", fileInfo);
+            var response = await client.PostAsJsonAsync("api/files", fileInfo);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<ElasticFileInfo>();
         }
 
-        public async Task<ElasticFileInfo> GetFileInfoAsync(string id) => await Client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
+        public async Task<ElasticFileInfo?> GetFileInfoAsync(string id) => await client.GetFromJsonAsync<ElasticFileInfo>($"api/files/{id}");
 
-        public async Task<Stream> GetFileContentAsync(string id) => await Client.GetStreamAsync($"api/filecontent/{id}");
+        public async Task<Stream> GetFileContentAsync(string id) => await client.GetStreamAsync($"api/filecontent/{id}");
 
         public Uri GetFileContentUri(string id, bool download)
         {
-            var builder = new UriBuilder(new Uri(Client.BaseAddress, $"api/filecontent/{id}"))
+            var builder = new UriBuilder(new Uri(client.BaseAddress ?? new(""), $"api/filecontent/{id}"))
             {
                 Query = $"download={download}"
             };
             return builder.Uri;
         }
 
-        public async Task RemoveFileAsync(string id, bool permanent) => await Client.DeleteAsync($"api/files/{id}?permanent={permanent}");
+        public async Task RemoveFileAsync(string id, bool permanent) => await client.DeleteAsync($"api/files/{id}?permanent={permanent}");
     }
 }

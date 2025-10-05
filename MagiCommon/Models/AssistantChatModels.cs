@@ -1,5 +1,4 @@
 ﻿using MagiCommon.Interfaces;
-using MagiCommon.Serialization;
 using OpenAI.Responses;
 using System;
 using System.Collections.Generic;
@@ -11,12 +10,12 @@ namespace MagiCommon.Models.AssistantChat
 {
     public class Chat
     {
-        public List<Message> Messages { get; } = new List<Message>();
-        private string LastResponseId { get; set; }
+        // Store ResponseItem objects directly, like Python does
+        public List<ResponseItem> ConversationHistory { get; } = new List<ResponseItem>();
+        private string? LastResponseId { get; set; }
 
         private IChatCompletionService ChatService { get; }
         private ChatCompletionRequest InitialRequest { get; }
-        private string SystemMessage { get; }
 
         public Chat(
             IChatCompletionService chatService,
@@ -25,39 +24,39 @@ namespace MagiCommon.Models.AssistantChat
         {
             ChatService = chatService;
             InitialRequest = initialRequest;
-            SystemMessage = systemMessage;
+            
+            // Add system message as a ResponseItem
+            ConversationHistory.Add(ResponseItem.CreateSystemMessageItem([
+                ResponseContentPart.CreateInputTextPart(systemMessage ?? string.Empty)
+            ]));
         }
 
-        public Task<OpenAIResponse> StartChatAsync()
-            => SendMessage(new Message { Content = SystemMessage, Role = Role.System });
-
-        public Task<OpenAIResponse> SendUserMessage(string nextMessageContent)
-            => SendMessage(new Message
-            {
-                Role = Role.User,
-                Content = nextMessageContent,
-                Name = InitialRequest.User
-            });
-
-        public async Task<OpenAIResponse> SendMessage(Message message)
+        public async Task<OpenAIResponse> StartChatAsync()
         {
-            Messages.Add(message);
+            var response = await SendUserMessage(string.Empty);
+            return response;
+        }
+
+        public async Task<OpenAIResponse> SendUserMessage(string messageContent)
+        {
+            // Add user message as ResponseItem
+            if (!string.IsNullOrEmpty(messageContent))
+            {
+                ConversationHistory.Add(ResponseItem.CreateUserMessageItem([
+                    ResponseContentPart.CreateInputTextPart(messageContent)
+                ]));
+            }
+
             var request = new ChatCompletionRequest
             {
                 Model = InitialRequest.Model,
-                Messages = Messages,
+                ConversationHistory = ConversationHistory,
                 Functions = InitialRequest.Functions,
                 Temperature = InitialRequest.Temperature,
                 TopP = InitialRequest.TopP,
-                N = InitialRequest.N,
-                Stream = InitialRequest.Stream,
-                Stop = InitialRequest.Stop,
                 MaxTokens = InitialRequest.MaxTokens,
-                PresencePenalty = InitialRequest.PresencePenalty,
-                FrequencyPenalty = InitialRequest.FrequencyPenalty,
-                LogitBias = InitialRequest.LogitBias,
                 User = InitialRequest.User,
-                PreviousResponseId = LastResponseId // Pass previous response ID for better context
+                PreviousResponseId = LastResponseId
             };
 
             var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
@@ -65,114 +64,69 @@ namespace MagiCommon.Models.AssistantChat
             // Store response ID for next request
             LastResponseId = response.Id;
             
-            // Convert all response items to Messages for conversation history
-            var assistantMessages = ConvertResponseToMessages(response);
-            foreach (var assistantMessage in assistantMessages)
+            // Add ALL output items directly to conversation history, like Python does
+            foreach (var outputItem in response.OutputItems)
             {
-                assistantMessage.Content ??= string.Empty;
-                Messages.Add(assistantMessage);
+                ConversationHistory.Add(outputItem);
             }
             
             return response;
         }
 
-        private List<Message> ConvertResponseToMessages(OpenAIResponse response)
+        public async Task<OpenAIResponse> SendFunctionResult(string callId, string functionName, string result)
         {
-            var messages = new List<Message>();
-            
-            // Process all output items - there may be multiple (reasoning, messages, function calls)
-            foreach (var item in response.OutputItems)
+            // Add function result as ResponseItem
+            ConversationHistory.Add(ResponseItem.CreateFunctionCallOutputItem(
+                callId: callId,
+                functionOutput: result
+            ));
+
+            var request = new ChatCompletionRequest
             {
-                if (item is MessageResponseItem messageItem)
-                {
-                    // Combine all text content parts
-                    var textContent = string.Join("\n", 
-                        messageItem.Content
-                            .Where(c => !string.IsNullOrEmpty(c.Text))
-                            .Select(c => c.Text));
-                    
-                    if (!string.IsNullOrEmpty(textContent))
-                    {
-                        messages.Add(new Message
-                        {
-                            Role = Role.Assistant,
-                            Content = textContent
-                        });
-                    }
-                }
-                else if (item is FunctionCallResponseItem functionCallItem)
-                {
-                    messages.Add(new Message
-                    {
-                        Role = Role.Assistant,
-                        FunctionCall = new FunctionCall
-                        {
-                            Name = functionCallItem.FunctionName,
-                            Arguments = functionCallItem.FunctionArguments?.ToString() ?? string.Empty,
-                            Id = functionCallItem.CallId
-                        }
-                    });
-                }
-                else if (item is ReasoningResponseItem reasoningItem)
-                {
-                    // Extract reasoning summary if available
-                    var summaryText = reasoningItem.GetSummaryText();
-                    
-                    if (!string.IsNullOrEmpty(summaryText))
-                    {
-                        messages.Add(new Message
-                        {
-                            Role = Role.Reasoning,
-                            Content = summaryText
-                        });
-                    }
-                }
+                Model = InitialRequest.Model,
+                ConversationHistory = ConversationHistory,
+                Functions = InitialRequest.Functions,
+                Temperature = InitialRequest.Temperature,
+                TopP = InitialRequest.TopP,
+                MaxTokens = InitialRequest.MaxTokens,
+                User = InitialRequest.User,
+                PreviousResponseId = LastResponseId
+            };
+
+            var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
+            
+            // Store response ID
+            LastResponseId = response.Id;
+            
+            // Add all output items to history
+            foreach (var outputItem in response.OutputItems)
+            {
+                ConversationHistory.Add(outputItem);
             }
             
-            return messages;
+            return response;
         }
     }
 
     public class ChatCompletionRequest
     {
-        public string Model { get; set; }
-        public List<Message> Messages { get; set; } = new List<Message>();
-        public List<Function> Functions { get; set; }
+        public string? Model { get; set; }
+        public List<ResponseItem> ConversationHistory { get; set; } = new List<ResponseItem>();
+        public List<Function>? Functions { get; set; }
         public double? Temperature { get; set; }
         public double? TopP { get; set; }
-        public int? N { get; set; }
-        public bool? Stream { get; set; }
-        public string[] Stop { get; set; }
         public int? MaxTokens { get; set; }
-        public double? PresencePenalty { get; set; }
-        public double? FrequencyPenalty { get; set; }
-        public Dictionary<string, double> LogitBias { get; set; }
-        public string User { get; set; }
-        public string PreviousResponseId { get; set; }
+        public string? User { get; set; }
+        public string? PreviousResponseId { get; set; }
     }
 
-    public class Message
-    {
-        [JsonConverter(typeof(RoleJsonConverter))]
-        public Role Role { get; set; }
-        public string Content { get; set; }
-        public string Name { get; set; }
-        public FunctionCall FunctionCall { get; set; }
-    }
-
-    public class FunctionCall
-    {
-        public string Name { get; set; }
-        public string Arguments { get; set; }
-        public string Id { get; set; }
-    }
-
+    // Function definition types for tool registration
     public class Function
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
         public FunctionParameters Parameters { get; set; } 
-            = new FunctionParameters() { Properties = new Dictionary<string, FunctionProperty>() };
+            = new FunctionParameters();
     }
 
     public class FunctionParameters
@@ -184,27 +138,18 @@ namespace MagiCommon.Models.AssistantChat
         public Dictionary<string, FunctionProperty> Properties { get; set; } = new Dictionary<string, FunctionProperty>();
 
         [JsonPropertyName("required")]
-        public string[] Required { get; set; } = Array.Empty<string>();
+        public string[] Required { get; set; } = [];
     }
 
     public class FunctionProperty
     {
         [JsonPropertyName("type")]
-        public string Type { get; set; }
+        public string? Type { get; set; }
         
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
         
         [JsonPropertyName("enum")]
-        public string[] Enum { get; set; }
-    }
-
-    public enum Role
-    {
-        System,
-        User,
-        Assistant,
-        Function,
-        Reasoning
+        public string[]? Enum { get; set; }
     }
 }

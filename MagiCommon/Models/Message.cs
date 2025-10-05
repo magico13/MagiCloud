@@ -7,7 +7,7 @@ namespace MagiCommon.Models
         public Message() { }
         public Message(T content) => Content = content;
 
-        public T Content { get; set; }
+        public T Content { get; set; } = default!;
         public DateTimeOffset QueuedTime { get; set; } = DateTimeOffset.Now;
         public int RetryCount { get; set; }
         public DateTimeOffset? ExpirationTime { get; set; }

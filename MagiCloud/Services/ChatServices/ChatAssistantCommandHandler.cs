@@ -104,18 +104,20 @@ public class ChatAssistantCommandHandler(
         // It has to also take the highlights and return which segment it's in
     };
 
-    public async Task<OpenAIResponse> HandleCommandsAsync(Chat chat, string userId, Message functionMessage)
+    public async Task<OpenAIResponse> HandleFunctionCallAsync(Chat chat, string userId, FunctionCallResponseItem functionCallItem)
     {
-        var functionCall = functionMessage.FunctionCall;
+        var functionName = functionCallItem.FunctionName;
+        var arguments = functionCallItem.FunctionArguments?.ToString() ?? "{}";
+        var callId = functionCallItem.CallId;
 
         // switch on the function name, pass the arguments as-is
-        object response = functionCall.Name switch
+        object response = functionName switch
         {
             "get_time" => new Dictionary<string, object> { ["time"] = DateTimeOffset.Now },
-            "get_text" => await HandleTextCommand(userId, functionCall.Arguments),
-            "get_metadata" => await HandleMetadataCommand(userId, functionCall.Arguments),
-            "process" => await HandleProcessCommand(userId, functionCall.Arguments),
-            "search" => await HandleSearchCommand(userId, functionCall.Arguments),
+            "get_text" => await HandleTextCommand(userId, arguments),
+            "get_metadata" => await HandleMetadataCommand(userId, arguments),
+            "process" => await HandleProcessCommand(userId, arguments),
+            "search" => await HandleSearchCommand(userId, arguments),
             _ => new Dictionary<string, object> { ["message"] = "Unknown command" }
         };
 
@@ -124,13 +126,12 @@ public class ChatAssistantCommandHandler(
             return null;
         }
         
-        var completion = await chat.SendMessage(new()
-        {
-            Role = Role.Function,
-            Content = JsonSerializer.Serialize(response),
-            Name = functionCall.Name,
-            FunctionCall = new FunctionCall { Id = functionCall.Id } // Pass through the ID
-        });
+        var completion = await chat.SendFunctionResult(
+            callId,
+            functionName,
+            JsonSerializer.Serialize(response)
+        );
+        
         return completion;
     }
 

@@ -19,6 +19,6 @@
             UserId = fileInfo.UserId;
         }
 
-        public string[] Highlights { get; set; }
+        public string[]? Highlights { get; set; }
     }
 }

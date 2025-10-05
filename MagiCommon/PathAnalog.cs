@@ -18,9 +18,13 @@ namespace MagiCommon
             return path1.TrimEnd('/') + $"/{path2}";
         }
 
-        public static string GetFileNameWithoutExtension(string path)
+        public static string? GetFileNameWithoutExtension(string path)
         {
             var filenameWithExtension = path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+            if (filenameWithExtension is null)
+            {
+                return null;
+            }
             // Split on the last '.' to get the filename without extension
             var lastPeriodIndex = filenameWithExtension.LastIndexOf('.');
             if (lastPeriodIndex >= 0)
@@ -30,7 +34,7 @@ namespace MagiCommon
             return filenameWithExtension;
         }
 
-        public static string GetExtension(string path)
+        public static string? GetExtension(string path)
             => path.Split('.').LastOrDefault();
     }
 }
