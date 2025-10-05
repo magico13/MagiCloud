@@ -51,7 +51,7 @@ jobs:
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
     - name: Download artifacts
-      uses: actions/download-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
   # Build docker images for MagiCloud and GogglesApi, deploy them to Docker Hub
     - name: Login to Docker Hub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
