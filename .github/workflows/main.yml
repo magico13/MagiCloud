@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -28,7 +28,7 @@ jobs:
     - name: Publish MagiCloud
       run: dotnet publish MagiCloud/MagiCloud.csproj -c Release -o ./publish-magicloud -r linux-x64 --self-contained false
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: magicloud
         path: ./publish-magicloud
@@ -38,7 +38,7 @@ jobs:
     - name: Publish GogglesApi
       run: dotnet publish GogglesApi/GogglesApi.csproj -c Release -o ./publish-goggles -r linux-x64 --self-contained false
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: goggles
         path: ./publish-goggles
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
     - name: Download artifacts
       uses: actions/download-artifact@v4
   # Build docker images for MagiCloud and GogglesApi, deploy them to Docker Hub
