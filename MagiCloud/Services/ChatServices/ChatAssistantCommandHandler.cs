@@ -24,7 +24,12 @@ public class ChatAssistantCommandHandler(
         ["get_time"] = new()
         {
             Name = "get_time",
-            Description = "Gets the current time."
+            Description = "Gets the current time.",
+            Parameters = new()
+            {
+                Type = "object",
+                Properties = new()
+            }
         },
         ["get_text"] = new()
         {
