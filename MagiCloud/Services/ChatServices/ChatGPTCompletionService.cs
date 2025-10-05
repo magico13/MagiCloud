@@ -144,13 +144,17 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
         // Add tools/functions
         if (request.Functions != null)
         {
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
             foreach (var function in request.Functions)
             {
-                var parametersJson = JsonSerializer.SerializeToUtf8Bytes(function.Parameters);
                 var tool = ResponseTool.CreateFunctionTool(
                     functionName: function.Name,
                     functionDescription: function.Description,
-                    functionParameters: BinaryData.FromBytes(parametersJson),
+                    functionParameters: BinaryData.FromObjectAsJson(function.Parameters, jsonOptions),
                     strictModeEnabled: false
                 );
                 options.Tools.Add(tool);
