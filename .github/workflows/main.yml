@@ -45,6 +45,7 @@ jobs:
         retention-days: 1
 
   docker:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     needs: build
     steps:
