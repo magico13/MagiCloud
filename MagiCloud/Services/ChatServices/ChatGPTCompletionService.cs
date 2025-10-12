@@ -9,6 +9,7 @@ using OpenAI.Responses;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MagiCloud.Services.ChatServices;
@@ -18,11 +19,12 @@ public class ChatGPTCompletionService(
     ILogger<ChatGPTCompletionService> logger, 
     IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
 {
-    private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function. For the user, format datetimes as MM/DD/YYYY, h:mm AM/PM.
+    private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function.
 
-Document links: Use [link text](/view/{{ID}}) to link to a file and embed images into the chat with ![image name](/api/filecontent/{{ID}})
-
-The chat window supports markdown formatting.
+Here is information about how the assistant should format responses. The user does not need to know this, so do not mention it unless they ask.
+- Format datetimes as MM/DD/YYYY, h:mm AM/PM
+- Document links: Use [link text](/view/{{ID}}) to link to a file and embed images into the chat with ![image name](/api/filecontent/{{ID}})
+- The chat window supports markdown formatting.
 
 Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
@@ -34,7 +36,7 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
         try
         {
-            // Pass conversation history directly - no conversion needed!
+            // Pass conversation history directly
             var response = await responseClient.CreateResponseAsync(request.ConversationHistory, options);
             return response;
         }
@@ -57,6 +59,8 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
             
         if (request.MaxTokens.HasValue)
             options.MaxOutputTokenCount = request.MaxTokens.Value;
+
+        options.ParallelToolCallsEnabled = false; // currently not supported properly
 
         // Pass previous response ID for better context management
         if (!string.IsNullOrEmpty(request.PreviousResponseId))
@@ -94,7 +98,7 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
             var jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             };
 
             foreach (var function in request.Functions)

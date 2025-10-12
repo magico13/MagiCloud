@@ -23,7 +23,6 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using System;
-using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 var applicationCancellationTokenSource = new System.Threading.CancellationTokenSource();
@@ -87,7 +86,11 @@ builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuth
 
 // Other setup
 builder.Services
-    .AddBlazorise(options => options.Immediate = true)
+    .AddBlazorise(options =>
+    {
+        options.Immediate = true;
+        options.ProductToken = generalSettings.BlazoriseProductToken;
+    })
     .AddBootstrap5Providers()
     .AddFontAwesomeIcons();
 
