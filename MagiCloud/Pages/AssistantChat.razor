@@ -77,8 +77,9 @@ else
                     var summaryText = reasoningItem.GetSummaryText();
                     if (!string.IsNullOrEmpty(summaryText))
                     {
+                        var summaryDisplay = Markdown.ToHtml(summaryText, MarkdownPipeline);
                         <CollapsibleBlock ButtonText="View Reasoning">
-                            <Paragraph>@summaryText</Paragraph>
+                            <Paragraph>@((MarkupString)summaryDisplay)</Paragraph>
                         </CollapsibleBlock>
                     }
                 }
