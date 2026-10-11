@@ -23,7 +23,7 @@ public class ElasticManager(ILogger<ElasticManager> logger,
 
         // Get the folder
         var (access, folder) = await FolderRepo.GetFolderAsync(userId, folderId);
-        if (access is not FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
+        if (access is not (FileAccessResult.FullAccess or FileAccessResult.ReadOnly))
         {
             // No access to the folder, cancel now
             return ([], []);
