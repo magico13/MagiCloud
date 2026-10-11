@@ -1,0 +1,61 @@
+name: Build and Push to Docker Hub
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@46720775978a31e3d4c0b0f01303463384132634
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install Workloads
+        run: dotnet workload install wasm-tools
+
+      - name: Restore dependencies
+        run: dotnet restore MagiCloud.sln
+
+      - name: Build and Publish
+        run: |
+          dotnet publish MagiCloud/MagiCloud.csproj -c Release -r linux-x64 --self-contained false -o ./publish/MagiCloud
+          dotnet publish GogglesApi/GogglesApi.csproj -c Release -r linux-x64 --self-contained false -o ./publish/GogglesApi
+
+      - name: Test
+        run: dotnet test MagiCloud.sln --configuration Release --no-build
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/magicloud:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/magicloud:${{ github.sha }}
+
+      - name: Build and push GogglesApi image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Goggles.dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/goggles:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/goggles:${{ github.sha }}
