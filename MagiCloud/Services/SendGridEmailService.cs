@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity.UI.Services;
+﻿using MagiCloud.Configuration;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Threading.Tasks;
-using System;
-using MagiCloud.Configuration;
-using SendGrid.Helpers.Mail;
 using SendGrid;
+using SendGrid.Helpers.Mail;
+using System;
+using System.Threading.Tasks;
 
 namespace MagiCloud.Services;
 

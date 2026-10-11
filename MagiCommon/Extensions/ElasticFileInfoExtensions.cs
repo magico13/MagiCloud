@@ -9,7 +9,7 @@ namespace MagiCommon.Extensions
         /// </summary>
         /// <param name="file">Source file</param>
         /// <returns>File name with extension</returns>
-        public static string GetFileName(this ElasticFileInfo file) 
+        public static string GetFileName(this ElasticFileInfo file)
             => !string.IsNullOrWhiteSpace(file.Extension) ? $"{file.Name}.{file.Extension}" : file.Name;
 
         /// <summary>
@@ -18,7 +18,7 @@ namespace MagiCommon.Extensions
         /// <param name="file">Source file</param>
         /// <param name="download">Boolean. Set true to download with pretty name. False when trying to view in browser.</param>
         /// <returns>Partial path to the file download API</returns>
-        public static string GetFileContentUri(this ElasticFileInfo file, bool download = false) 
+        public static string GetFileContentUri(this ElasticFileInfo file, bool download = false)
             => $"api/filecontent/{file.Id}" + (download ? $"?download={download}" : string.Empty);
 
         /// <summary>

@@ -2,6 +2,7 @@
 using System;
 
 namespace MagiCloud.Db.Migrations;
+
 public partial class CreateIdentitySchema : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

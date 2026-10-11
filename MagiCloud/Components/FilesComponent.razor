@@ -21,7 +21,7 @@
                     <Field>
                         <FieldLabel>Folder Name</FieldLabel>
                         <Validation Validator=ExtendedValidationRules.IsFileName>
-                            <TextEdit @bind-Text=_newFolderText Autofocus />
+                            <TextInput @bind-Value=_newFolderText Autofocus />
                             <ValidationError>
                                 Invalid folder name.
                             </ValidationError>
@@ -113,27 +113,27 @@ else
             </DataGridCommandColumn>
             <DataGridColumn Field="Name" Caption="File Name" Editable Validator=ExtendedValidationRules.IsFilePath>
                 <DisplayTemplate>
-                    @if(context.BackingObject is ElasticFileInfo fileInfo)
+                    @if(context.Item.BackingObject is ElasticFileInfo fileInfo)
                     {
                         <Anchor To="@("/view/" + fileInfo.Id)" Target="Target.Blank">
                             @fileInfo.GetFileName()
                         </Anchor>
                     }
-                    else if (context.BackingObject is null || context.BackingObject is ElasticFolder)
+                    else if (context.Item.BackingObject is null || context.Item.BackingObject is ElasticFolder)
                     {
-                        ElasticFolder folderInfo = context.BackingObject as ElasticFolder;
+                        ElasticFolder folderInfo = context.Item.BackingObject as ElasticFolder;
                         <Button Clicked="@(() => FilterToFolder(folderInfo))">
-                            @context.Name
+                            @context.Item.Name
                         </Button>
                     }
                 </DisplayTemplate>
             </DataGridColumn>
             <DataGridColumn Field="Size" Caption="File Size">
                 <DisplayTemplate>
-                    @if (context.Size.HasValue)
+                    @if (context.Item.Size.HasValue)
                     {
                         <Span>
-                            @((context.Size).Value.Bytes().ToString("#.##"))
+                            @((context.Item.Size).Value.Bytes().ToString("#.##"))
                         </Span>
                     }
                     else
@@ -145,22 +145,22 @@ else
             <DataGridColumn Field="MimeType" Caption="File Type" />
             <DataGridColumn Field="LastUpdated" Caption="Last Update">
                 <DisplayTemplate>
-                    <Tooltip Text="@(context.LastUpdated?.LocalDateTime.ToString())">
-                        @(context.LastUpdated?.LocalDateTime.Humanize())
+                    <Tooltip Text="@(context.Item.LastUpdated?.LocalDateTime.ToString())">
+                        @(context.Item.LastUpdated?.LocalDateTime.Humanize())
                     </Tooltip>
                 </DisplayTemplate>
             </DataGridColumn>
             <DataGridColumn Field="IsPublic" Caption="Public?">
                 <DisplayTemplate>
-                    @if (context.IsPublic == true)
+                    @if (context.Item.IsPublic == true)
                     {
-                        <Button Clicked="@(async () => await UpdateVisibility(context, false))">
+                        <Button Clicked="@(async () => await UpdateVisibility(context.Item, false))">
                             <Icon Name="IconName.Eye"/>
                         </Button>
                     }
-                    else if (context.IsPublic == false)
+                    else if (context.Item.IsPublic == false)
                     {
-                        <Button Clicked="@(async () => await UpdateVisibility(context, true))">
+                        <Button Clicked="@(async () => await UpdateVisibility(context.Item, true))">
                             <Icon Name="IconName.EyeSlash" IconStyle="IconStyle.Regular"/>
                         </Button>
                     }
@@ -168,7 +168,7 @@ else
             </DataGridColumn>
         </DataGridColumns>
         <DetailRowTemplate>
-            @if(context?.BackingObject is SearchResult searchResult && searchResult.Highlights?.Any() == true)
+            @if(context?.Item.BackingObject is SearchResult searchResult && searchResult.Highlights?.Any() == true)
             {
                 // print out all the highlights
                @((MarkupString)string.Join("<br/>", searchResult.Highlights))

@@ -27,7 +27,7 @@
                     <Field>
                         <FieldLabel>Remote File URL</FieldLabel>
                         <Validation Validator=ExtendedValidationRules.IsURI>
-                            <TextEdit @bind-Text=UrlText Autofocus />
+                            <TextInput @bind-Value=UrlText Autofocus />
                             <ValidationError>
                                 Invalid URL.
                             </ValidationError>
@@ -39,7 +39,7 @@
                     <Field>
                         <FieldLabel>Desired File Name</FieldLabel>
                         <Validation Validator=ExtendedValidationRules.IsFileName>
-                            <TextEdit @bind-Text=RemoteFileName />
+                            <TextInput @bind-Value=RemoteFileName />
                             <ValidationError>
                                 Invalid File name.
                             </ValidationError>
@@ -145,7 +145,7 @@
             file.ErrorMessage = ex.Message;
 
             // Forcibly tell the FilePicker that the upload ended without success
-            await filePicker.FileEditRef.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
+            await filePicker.FileInputRef.UpdateFileEndedAsync(file, false, FileInvalidReason.UnexpectedError);
         }
     }
 

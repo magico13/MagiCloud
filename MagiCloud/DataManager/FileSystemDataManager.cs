@@ -42,7 +42,7 @@ public class FileSystemDataManager : IDataManager
         {
             throw new InvalidOperationException("A seekable stream is required if not at position 0");
         }
-        
+
         await file.CopyToAsync(filestream);
         // rewind the filestream so it can be read again
         filestream.Seek(0, SeekOrigin.Begin);

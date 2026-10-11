@@ -79,9 +79,9 @@ namespace MagiCommon
                         response.EnsureSuccessStatusCode();
                     }
                 }
-                
+
             }
-            
+
             return await GetFileInfoAsync(returnedInfo!.Id);
         }
 

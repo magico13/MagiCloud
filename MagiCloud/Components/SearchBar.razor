@@ -7,7 +7,7 @@
 <Form>
     <Fields>
         <Field>
-            <TextEdit Placeholder="Search..." @bind-Text="SearchQuery" Float="Float.Start"></TextEdit>
+            <TextInput Placeholder="Search..." @bind-Value="SearchQuery" Float="Float.Start"></TextInput>
         </Field>
         <Field ColumnSize=ColumnSize.IsAuto>
             <Button Color=Color.Primary Clicked=Search Type=ButtonType.Submit PreventDefaultOnSubmit>Search</Button>

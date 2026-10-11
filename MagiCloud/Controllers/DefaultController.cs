@@ -19,7 +19,7 @@ public class DefaultController : ControllerBase
         var elasticReady = false;
         try
         {
-             elasticReady = await Elastic.SetupIndicesAsync();
+            elasticReady = await Elastic.SetupIndicesAsync();
         }
         catch { }
 

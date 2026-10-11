@@ -17,7 +17,7 @@ public class TesseractOcrEngine : IOcrEngine, IDisposable
     public TesseractOcrEngine(ILogger<TesseractOcrEngine> logger)
     {
         _logger = logger;
-        _logger.LogInformation("Current directory is "+System.Environment.CurrentDirectory);
+        _logger.LogInformation("Current directory is " + System.Environment.CurrentDirectory);
         _engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
 
         _engine.SetVariable("tessedit_char_whitelist", ALPHANUMERIC_WITH_PUNCTUATION);
@@ -33,7 +33,7 @@ public class TesseractOcrEngine : IOcrEngine, IDisposable
     public async Task<OcrResult> ExtractText(Stream stream, string filename, string contentType)
     {
         var imageBytes = new byte[stream.Length];
-        await stream.ReadAsync(imageBytes);
+        await stream.ReadExactlyAsync(imageBytes);
         using var img = Pix.LoadFromMemory(imageBytes);
         using var page = _engine.Process(img);
         var text = page.GetText();

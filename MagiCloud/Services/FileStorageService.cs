@@ -33,8 +33,8 @@ public class FileStorageService
     {
         var (result, doc) = await Elastic.GetDocumentAsync(userId, docId, true);
         doc.Id = docId;
-        return result != FileAccessResult.FullAccess 
-            ? result 
+        return result != FileAccessResult.FullAccess
+            ? result
             : await StoreFile(userId, doc, stream);
     }
 

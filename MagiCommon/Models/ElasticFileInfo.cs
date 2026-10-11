@@ -10,5 +10,5 @@ namespace MagiCommon.Models
         public DateTimeOffset LastModified { get; set; }
         public string? Hash { get; set; }
         public string? Text { get; set; }
-    } 
+    }
 }

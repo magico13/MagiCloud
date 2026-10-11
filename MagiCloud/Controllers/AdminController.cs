@@ -17,7 +17,7 @@ public class AdminController : ControllerBase
     private TextExtractionQueueWrapper ExtractionQueue { get; }
 
     public AdminController(
-        ILogger<AdminController> logger, 
+        ILogger<AdminController> logger,
         IElasticFileRepo elastic,
         TextExtractionQueueWrapper extractionQueue)
     {

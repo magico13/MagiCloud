@@ -86,7 +86,7 @@ else
             }
             <Addons>
                 <Addon AddonType=AddonType.Body>
-                    <TextEdit @bind-Text=UserMessage KeyUp=KeyUpHandler Role="TextRole.Text"></TextEdit>
+                    <TextInput @bind-Value=UserMessage KeyUp=KeyUpHandler Role="TextRole.Text"></TextInput>
                 </Addon>
                 <Addon AddonType=AddonType.End>
                     <Button Color="Color.Primary" Clicked="SendUserMessageAsync">Send</Button>

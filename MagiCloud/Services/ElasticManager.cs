@@ -33,7 +33,7 @@ public class ElasticManager(ILogger<ElasticManager> logger,
         var folders = await FolderRepo.GetFoldersInFolderAsync(folderId);
         // Filter out any the user doesn't have access to
         folders = folders
-            .Where(f => f.UserId == userId || 
+            .Where(f => f.UserId == userId ||
                 !onlyOwned && BaseElasticRepo.DetermineAccessForUser(userId, f) is FileAccessResult.ReadOnly)
             .ToList();
 
@@ -91,7 +91,7 @@ public class ElasticManager(ILogger<ElasticManager> logger,
             return null;
         }
 
-        var filePath = "/"+currentFile.GetFileName();
+        var filePath = "/" + currentFile.GetFileName();
         // Now we iterate up the folder structure by parentId, adding in each folder's name
         var parentId = currentFile.ParentId;
         while (!string.IsNullOrWhiteSpace(parentId))

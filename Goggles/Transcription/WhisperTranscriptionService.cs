@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace Goggles.Transcription;
+
 internal class WhisperTranscriptionService(HttpClient client, ILogger<WhisperTranscriptionService> logger) : ITranscriptionService
 {
     public async Task<string> TranscribeStreamAsync(Stream stream, string filename, string contentType)

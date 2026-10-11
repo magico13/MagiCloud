@@ -15,8 +15,8 @@ using System.Threading.Tasks;
 namespace MagiCloud.Services.ChatServices;
 
 public class ChatGPTCompletionService(
-    ResponsesClient responseClient, 
-    ILogger<ChatGPTCompletionService> logger, 
+    ResponsesClient responseClient,
+    ILogger<ChatGPTCompletionService> logger,
     IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
 {
     private const string GENERAL_SYSTEM_MESSAGE = @"You're the MagiCloud assistant, a personal cloud storage website created as a one-person hobby project. Begin with a friendly hello and ask how you can help but do not start with a function.
@@ -58,10 +58,10 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
         if (request.Temperature.HasValue)
             options.Temperature = (float)request.Temperature.Value;
-            
+
         if (request.TopP.HasValue)
             options.TopP = (float)request.TopP.Value;
-            
+
         if (request.MaxTokens.HasValue)
             options.MaxOutputTokenCount = request.MaxTokens.Value;
 

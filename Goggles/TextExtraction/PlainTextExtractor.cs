@@ -8,10 +8,10 @@ public class PlainTextExtractor : ITextExtractor
     public bool IsValidForContentType(string contentType)
     {
         if (string.IsNullOrEmpty(contentType))
-        { 
-            return false; 
+        {
+            return false;
         }
-        return contentType.StartsWith("text/") 
+        return contentType.StartsWith("text/")
             || contentType.StartsWith("message/")
             || contentType == "application/json";
     }

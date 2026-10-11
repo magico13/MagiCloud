@@ -125,13 +125,13 @@ public class ChatAssistantCommandHandler(
         {
             return null;
         }
-        
+
         var completion = await chat.SendFunctionResult(
             callId,
             functionName,
             JsonSerializer.Serialize(response)
         );
-        
+
         return completion;
     }
 
@@ -333,12 +333,12 @@ public class ChatAssistantCommandHandler(
     {
         var args = ExtractArguments(arg);
 
-        if (args?.TryGetValue("doc_id", out var obj) == true 
+        if (args?.TryGetValue("doc_id", out var obj) == true
             && obj is string docId)
         {
             return docId;
         }
-        
+
         return null;
     }
 

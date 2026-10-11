@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Goggles.Tests.Unit;
+
 public class LensTests
 {
     private readonly ILogger<Lens> _logger;
@@ -25,7 +26,7 @@ public class LensTests
         // Arrange
 
         // Act
-        var result = _lens.DetermineContentType("example"+extension);
+        var result = _lens.DetermineContentType("example" + extension);
 
         // Assert
         result.Should().Be(expectedContentType);

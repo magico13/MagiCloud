@@ -1,8 +1,8 @@
+using Goggles.OCR;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Goggles.OCR;
-using Microsoft.Extensions.Logging;
 
 namespace Goggles.TextExtraction;
 

@@ -6,14 +6,17 @@
     <NoWarn>$(NoWarn);OPENAI001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Blazorise" Version="1.8.5">
+    <PackageReference Include="Blazorise" Version="2.3.3">
       <TreatAsUsed>true</TreatAsUsed>
     </PackageReference>
-    <PackageReference Include="Blazorise.Bootstrap5" Version="1.8.5" />
-    <PackageReference Include="Blazorise.DataGrid" Version="1.8.5" />
-    <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.8.5" />
-    <PackageReference Include="Humanizer.Core" Version="2.14.1" />
-    <PackageReference Include="Markdig" Version="0.43.0" />
+    <PackageReference Include="Blazorise.Bootstrap5" Version="2.3.3" />
+    <PackageReference Include="Blazorise.DataGrid" Version="2.3.3" />
+    <PackageReference Include="Blazorise.Icons.FontAwesome" Version="2.3.3" />
+    <PackageReference Include="Humanizer" Version="3.0.10" />
+    <PackageReference Include="Markdig" Version="1.4.0" />
+    <!-- Override transitive NuGet.* 6.12.1 (via Razor.Language 6.0.24) to patched 6.12.5: GHSA-g4vj-cjjj-v7hg -->
+    <PackageReference Include="NuGet.Packaging" Version="6.12.5" />
+    <PackageReference Include="NuGet.Protocol" Version="6.12.5" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.12" />

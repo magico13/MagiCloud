@@ -1,6 +1,6 @@
-﻿using System.Collections.Concurrent;
+﻿using MagiCommon.Models;
 using System;
-using MagiCommon.Models;
+using System.Collections.Concurrent;
 
 namespace MagiCloud.Services;
 
@@ -16,7 +16,7 @@ public class InMemoryMessageQueueService<T> : IMessageQueueService<T>
     {
         while (_queue.TryPeek(out var message))
         {
-            if (message.VisibilityTimeout.HasValue 
+            if (message.VisibilityTimeout.HasValue
                 && message.VisibilityTimeout.Value > DateTimeOffset.Now)
             {
                 continue;
@@ -36,7 +36,7 @@ public class InMemoryMessageQueueService<T> : IMessageQueueService<T>
     {
         while (_queue.TryPeek(out var message))
         {
-            if (message.VisibilityTimeout.HasValue 
+            if (message.VisibilityTimeout.HasValue
                 && message.VisibilityTimeout.Value > DateTimeOffset.Now)
             {
                 continue;

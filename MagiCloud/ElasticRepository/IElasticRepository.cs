@@ -54,7 +54,7 @@ public interface IElasticFolderRepo : IElasticRepository
 
     // Get a list of ElasticFileInfo that's in the folder
     Task<List<ElasticFileInfo>> GetFilesInFolderAsync(string folderId);
-    
+
     // Get a folder by userId and folder id
     Task<(FileAccessResult accessLevel, ElasticFolder folder)> GetFolderAsync(string userId, string folderId);
 

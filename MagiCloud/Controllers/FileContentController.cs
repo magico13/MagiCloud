@@ -47,7 +47,7 @@ public class FileContentController : ControllerBase
         {
             var userId = User.GetUserId();
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
-            
+
             if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
                 && doc != null && !string.IsNullOrWhiteSpace(doc.Id) && !doc.IsDeleted)
             {
@@ -121,7 +121,7 @@ public class FileContentController : ControllerBase
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, true);
 
             if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly
-                && doc != null && !string.IsNullOrWhiteSpace(doc.Id) 
+                && doc != null && !string.IsNullOrWhiteSpace(doc.Id)
                 && !doc.IsDeleted && !string.IsNullOrWhiteSpace(doc.Text))
             {
                 return File(Encoding.UTF8.GetBytes(doc.Text), "text/plain");
@@ -145,7 +145,8 @@ public class FileContentController : ControllerBase
         {
             //get the file info from the db, upload the file data, update the info in the db
             var userId = User.GetUserId();
-            if (userId == null) { return Forbid(); }
+            if (userId == null)
+            { return Forbid(); }
             if (file is null || file.Length < 0)
             {
                 return BadRequest();

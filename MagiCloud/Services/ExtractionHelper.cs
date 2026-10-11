@@ -90,7 +90,7 @@ public class ExtractionHelper
                             }
                             if (result.TryGetValue("description", out var description) && !string.IsNullOrWhiteSpace(description))
                             {
-                                
+
                                 finalText += $"\n{description}";
                             }
 

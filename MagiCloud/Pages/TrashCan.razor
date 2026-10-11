@@ -31,16 +31,16 @@
             <DataGridColumn Field="@nameof(ElasticObject.Name)" Caption="Name" />
             <DataGridColumn Field="@nameof(ElasticObject.LastUpdated)" Caption="Last Updated">
                 <DisplayTemplate>
-                    @(context.LastUpdated.LocalDateTime)
+                    @(context.Item.LastUpdated.LocalDateTime)
                 </DisplayTemplate>
             </DataGridColumn>
             <DataGridColumn Field="@nameof(ElasticObject.Name)" Caption="Type" Sortable=false>
                 <DisplayTemplate>
-                    @if(context is ElasticFileInfo efi)
+                    @if(context.Item is ElasticFileInfo efi)
                     {
                         @(efi.MimeType)
                     }
-                    else if (context is ElasticFolder)
+                    else if (context.Item is ElasticFolder)
                     {
                         @("Folder")
                     }
@@ -48,8 +48,8 @@
             </DataGridColumn>
             <DataGridColumn Sortable=false>
                 <DisplayTemplate>
-                    <Button Color="Color.Primary" Clicked=@(async () => await UndeleteAsync(context))>Restore</Button>
-                    <Button Color="Color.Danger" Clicked=@(async () => await PermanentlyDeleteAsync(context))>Perma-Delete</Button>
+                    <Button Color="Color.Primary" Clicked=@(async () => await UndeleteAsync(context.Item))>Restore</Button>
+                    <Button Color="Color.Danger" Clicked=@(async () => await PermanentlyDeleteAsync(context.Item))>Perma-Delete</Button>
                 </DisplayTemplate>
             </DataGridColumn>
         </DataGridColumns>

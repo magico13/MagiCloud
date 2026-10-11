@@ -2,17 +2,18 @@
 using Microsoft.AspNetCore.Mvc;
 
 namespace GogglesApi.Controllers;
+
 [Route("api/[controller]")]
 [ApiController]
 public class StatusController : ControllerBase
 {
     private readonly ILens _lens;
 
-    public StatusController(ILens lens) 
+    public StatusController(ILens lens)
         => _lens = lens;
 
     [HttpGet]
-    public IActionResult Get() 
+    public IActionResult Get()
         => new JsonResult(new
         {
             Status = "Ok",

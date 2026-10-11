@@ -29,8 +29,8 @@ public class Lens(
         {
             return new ExtractionResult(null, contentType, null);
         }
-        if (string.IsNullOrWhiteSpace(contentType)) 
-        { 
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
             contentType = DetermineContentType(filename);
         }
 

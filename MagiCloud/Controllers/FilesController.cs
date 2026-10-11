@@ -39,7 +39,8 @@ public class FilesController : Controller
         try
         {
             var userId = User.GetUserId();
-            if (userId is null) { return Forbid(); }
+            if (userId is null)
+            { return Forbid(); }
             var docs = await _elastic.GetDocumentsAsync(userId, deleted);
             return Json(docs);
         }
@@ -58,7 +59,8 @@ public class FilesController : Controller
         try
         {
             var userId = User.GetUserId();
-            if (userId == null) { return Forbid(); }
+            if (userId == null)
+            { return Forbid(); }
             var (result, file) = await _elastic.GetDocumentAsync(userId, id, includeText);
             if (result is FileAccessResult.FullAccess or FileAccessResult.ReadOnly)
             {
@@ -82,12 +84,13 @@ public class FilesController : Controller
 
     [HttpPost]
     [Route("")]
-    public async Task<IActionResult> PostAsync([FromBody]ElasticFileInfo file)
+    public async Task<IActionResult> PostAsync([FromBody] ElasticFileInfo file)
     {
         try
         {
             var userId = User.GetUserId();
-            if (userId == null) { return Forbid(); }
+            if (userId == null)
+            { return Forbid(); }
             await _elastic.SetupIndicesAsync();
             var docId = await _elastic.IndexDocumentAsync(userId, file);
             var (_, doc) = await _elastic.GetDocumentAsync(userId, docId, false);
@@ -104,12 +107,13 @@ public class FilesController : Controller
     // DELETE: files/5?permanent=true
     [HttpDelete]
     [Route("{id}")]
-    public async Task<IActionResult> DeleteAsync(string id, [FromQuery]bool permanent=false)
+    public async Task<IActionResult> DeleteAsync(string id, [FromQuery] bool permanent = false)
     {
         try
         {
             var userId = User.GetUserId();
-            if (userId == null) { return Forbid(); }
+            if (userId == null)
+            { return Forbid(); }
             var (result, doc) = await _elastic.GetDocumentAsync(userId, id, false);
             if (result == FileAccessResult.FullAccess)
             {

@@ -122,7 +122,8 @@ if (!string.IsNullOrWhiteSpace(assistantSettings.OpenAIKey))
             apiKey: settings.OpenAIKey);
     });
     builder.Services.AddScoped<IChatCompletionService, ChatGPTCompletionService>();
-};
+}
+;
 
 // Add text extraction abilities
 builder.Services.AddSingleton<ExtractionHelper>();

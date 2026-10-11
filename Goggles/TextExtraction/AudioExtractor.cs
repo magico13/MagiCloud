@@ -5,11 +5,12 @@ using System.IO;
 using System.Threading.Tasks;
 
 namespace Goggles.TextExtraction;
+
 internal class AudioExtractor(ITranscriptionService transcriptionService, ILogger<AudioExtractor> logger) : ITextExtractor
 {
     public bool UsesOCR => false;
     public bool UsesAudioTranscription => true;
-    public bool IsValidForContentType(string contentType) 
+    public bool IsValidForContentType(string contentType)
         => contentType.StartsWith("audio") || contentType.StartsWith("video");
 
     public async Task<ExtractionResult> ExtractTextAsync(Stream stream, string filename, string contentType)

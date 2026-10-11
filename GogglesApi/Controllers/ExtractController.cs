@@ -16,9 +16,9 @@ public class ExtractController(ILens lens) : ControllerBase
     public async Task<IActionResult> PostAsync(IFormFile file)
     {
         using var fileStream = file.OpenReadStream();
-        var contentType = string.IsNullOrWhiteSpace(file.ContentType) 
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
             || file.ContentType == "application/octet-stream"
-            ? lens.DetermineContentType(file.FileName) 
+            ? lens.DetermineContentType(file.FileName)
             : file.ContentType;
         var result = await lens.ExtractTextAsync(fileStream, file.FileName, contentType);
         return new JsonResult(result);
@@ -26,17 +26,17 @@ public class ExtractController(ILens lens) : ControllerBase
 
     [HttpGet]
     [Route("contentType")]
-    public IActionResult GetContentType([FromQuery] string extension) 
+    public IActionResult GetContentType([FromQuery] string extension)
         => new JsonResult(new
-            {
-                ContentType = lens.DetermineContentType(extension)
-            });
+        {
+            ContentType = lens.DetermineContentType(extension)
+        });
 
     [HttpGet]
     [Route("extension")]
-    public IActionResult GetExtension([FromQuery] string contentType) 
+    public IActionResult GetExtension([FromQuery] string contentType)
         => new JsonResult(new
-            {
-                Extension = lens.DetermineExtension(contentType)
-            });
+        {
+            Extension = lens.DetermineExtension(contentType)
+        });
 }

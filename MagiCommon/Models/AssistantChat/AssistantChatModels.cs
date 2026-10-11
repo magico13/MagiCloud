@@ -23,7 +23,7 @@ public class Chat
     {
         ChatService = chatService;
         InitialRequest = initialRequest;
-        
+
         // Add system message as a ResponseItem
         ConversationHistory.Add(ResponseItem.CreateSystemMessageItem([
             ResponseContentPart.CreateInputTextPart(systemMessage ?? string.Empty)
@@ -40,7 +40,7 @@ public class Chat
     {
         // Build request with only new user message
         var requestHistory = new List<ResponseItem>();
-        
+
         // Add new user message to both request and conversation history
         if (!string.IsNullOrEmpty(messageContent))
         {
@@ -58,28 +58,28 @@ public class Chat
         }
 
         var request = new ChatCompletionRequest
-            {
-                Model = InitialRequest.Model,
-                ConversationHistory = requestHistory, //new message
-                Functions = InitialRequest.Functions,
-                Temperature = InitialRequest.Temperature,
-                TopP = InitialRequest.TopP,
-                MaxTokens = InitialRequest.MaxTokens,
-                User = InitialRequest.User,
-                PreviousResponseId = LastResponseId // API pulls previous context via this
-            };
+        {
+            Model = InitialRequest.Model,
+            ConversationHistory = requestHistory, //new message
+            Functions = InitialRequest.Functions,
+            Temperature = InitialRequest.Temperature,
+            TopP = InitialRequest.TopP,
+            MaxTokens = InitialRequest.MaxTokens,
+            User = InitialRequest.User,
+            PreviousResponseId = LastResponseId // API pulls previous context via this
+        };
 
         var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
-        
+
         // Store response ID for next request
         LastResponseId = response.Id;
-        
+
         // Add all output items to conversation history for display purposes
         foreach (var outputItem in response.OutputItems)
         {
             ConversationHistory.Add(outputItem);
         }
-        
+
         return response;
     }
 
@@ -87,7 +87,7 @@ public class Chat
     {
         // Build request with only new function result
         var requestHistory = new List<ResponseItem>();
-        
+
         // Add function result to both request and conversation history
         var functionOutput = ResponseItem.CreateFunctionCallOutputItem(
             callId: callId,
@@ -109,16 +109,16 @@ public class Chat
         };
 
         var response = await ChatService.CreateCompletionAsync(request).ConfigureAwait(false);
-        
+
         // Store response ID
         LastResponseId = response.Id;
-        
+
         // Add all output items to conversation history for display purposes
         foreach (var outputItem in response.OutputItems)
         {
             ConversationHistory.Add(outputItem);
         }
-        
+
         return response;
     }
 }
@@ -140,7 +140,7 @@ public class Function
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public FunctionParameters Parameters { get; set; } 
+    public FunctionParameters Parameters { get; set; }
         = new FunctionParameters();
 }
 
@@ -148,7 +148,7 @@ public class FunctionParameters
 {
     [JsonPropertyName("type")]
     public string Type { get; set; } = "object";
-    
+
     [JsonPropertyName("properties")]
     public Dictionary<string, FunctionProperty> Properties { get; set; } = new Dictionary<string, FunctionProperty>();
 
@@ -160,10 +160,10 @@ public class FunctionProperty
 {
     [JsonPropertyName("type")]
     public string? Type { get; set; }
-    
+
     [JsonPropertyName("description")]
     public string? Description { get; set; }
-    
+
     [JsonPropertyName("enum")]
     public string[]? Enum { get; set; }
 }

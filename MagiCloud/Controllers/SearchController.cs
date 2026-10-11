@@ -32,7 +32,8 @@ public class SearchController : Controller
                 return BadRequest(new { Message = "Invalid query" });
             }
             var userId = User.GetUserId();
-            if (userId == null) { return Forbid(); }
+            if (userId == null)
+            { return Forbid(); }
             var docs = await _elastic.SearchAsync(userId, query);
             return Json(docs);
         }

@@ -19,7 +19,7 @@ public class BaseElasticRepo(
 
     public IElasticClient Client { get; set; }
 
-    public string Thumbprint {get; private set;}
+    public string Thumbprint { get; private set; }
 
     protected readonly ElasticSettings _settings = options.Value;
     protected readonly ILogger _logger = logger;
@@ -64,7 +64,7 @@ public class BaseElasticRepo(
             {
                 throw new FileNotFoundException($"Certificate file not found at path: {_settings.CertificatePath}");
             }
-            var cert = new X509Certificate2(_settings.CertificatePath);
+            var cert = X509CertificateLoader.LoadCertificateFromFile(_settings.CertificatePath);
             if (string.IsNullOrWhiteSpace(cert.Thumbprint))
             {
                 throw new InvalidOperationException("Certificate thumbprint is empty.");
@@ -127,11 +127,11 @@ public class BaseElasticRepo(
         }
     }
 
-     public bool ValidateCertificate(
-        object _,
-        X509Certificate cert,
-        X509Chain __,
-        System.Net.Security.SslPolicyErrors ___)
+    public bool ValidateCertificate(
+       object _,
+       X509Certificate cert,
+       X509Chain __,
+       System.Net.Security.SslPolicyErrors ___)
     {
         string actualThumbprint = cert.GetCertHashString();
         bool result = string.Equals(actualThumbprint, Thumbprint, StringComparison.OrdinalIgnoreCase);
