@@ -356,3 +356,7 @@ MigrationBackup/
 appsettings.Development.json
 .vscode/
 identity.db*
+
+# local docker compose (contains secrets)
+compose.yml
+.env

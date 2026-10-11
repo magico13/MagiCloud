@@ -12,11 +12,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Setup .NET
-      uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: '10.x'
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -27,43 +28,66 @@ jobs:
     # Publish MagiCloud
     - name: Publish MagiCloud
       run: dotnet publish MagiCloud/MagiCloud.csproj -c Release -o ./publish-magicloud -r linux-x64 --self-contained false
-    - name: Upload artifact
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+    - name: Upload MagiCloud artifact
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: magicloud
         path: ./publish-magicloud
-        retention-days: 1
+        retention-days: 7
 
     # Publish GogglesApi
     - name: Publish GogglesApi
       run: dotnet publish GogglesApi/GogglesApi.csproj -c Release -o ./publish-goggles -r linux-x64 --self-contained false
-    - name: Upload artifact
-      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+    - name: Upload Goggles artifact
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: goggles
         path: ./publish-goggles
-        retention-days: 1
+        retention-days: 7
 
   docker:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
-    - name: Download artifacts
-      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-  # Build docker images for MagiCloud and GogglesApi, deploy them to Docker Hub
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Download MagiCloud artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: magicloud
+        path: ./publish-magicloud
+    - name: Download Goggles artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: goggles
+        path: ./publish-goggles
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
     - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ vars.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
     - name: Build and push MagiCloud image
-      run: |
-        cd magicloud
-        docker build -f ../Dockerfile -t magicloud .
-        docker tag magicloud ${{ vars.DOCKER_USERNAME }}/magicloud
-        docker push ${{ vars.DOCKER_USERNAME }}/magicloud
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ./publish-magicloud
+        file: ./Dockerfile
+        push: true
+        tags: |
+          ${{ vars.DOCKER_USERNAME }}/magicloud:latest
+          ${{ vars.DOCKER_USERNAME }}/magicloud:${{ github.sha }}
+
     - name: Build and push Goggles image
-      run: |
-        cd goggles
-        docker build -f ../Goggles.dockerfile -t goggles .
-        docker tag goggles ${{ vars.DOCKER_USERNAME }}/goggles
-        docker push ${{ vars.DOCKER_USERNAME }}/goggles
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ./publish-goggles
+        file: ./Goggles.dockerfile
+        push: true
+        tags: |
+          ${{ vars.DOCKER_USERNAME }}/goggles:latest
+          ${{ vars.DOCKER_USERNAME }}/goggles:${{ github.sha }}
