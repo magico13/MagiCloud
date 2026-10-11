@@ -115,11 +115,10 @@ if (!string.IsNullOrWhiteSpace(generalSettings.SendGridKey))
 
 if (!string.IsNullOrWhiteSpace(assistantSettings.OpenAIKey))
 {
-    builder.Services.AddSingleton<OpenAIResponseClient>(sp =>
+    builder.Services.AddSingleton<ResponsesClient>(sp =>
     {
         var settings = sp.GetRequiredService<IOptions<AssistantSettings>>().Value;
-        return new OpenAIResponseClient(
-            model: settings.Model,
+        return new ResponsesClient(
             apiKey: settings.OpenAIKey);
     });
     builder.Services.AddScoped<IChatCompletionService, ChatGPTCompletionService>();

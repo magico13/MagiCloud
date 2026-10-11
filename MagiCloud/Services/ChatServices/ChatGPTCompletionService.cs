@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 namespace MagiCloud.Services.ChatServices;
 
 public class ChatGPTCompletionService(
-    OpenAIResponseClient responseClient, 
+    ResponsesClient responseClient, 
     ILogger<ChatGPTCompletionService> logger, 
     IOptions<AssistantSettings> assistantSettings) : IChatCompletionService
 {
@@ -30,14 +30,14 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
 
 {3}";
 
-    public async Task<OpenAIResponse> CreateCompletionAsync(ChatCompletionRequest request)
+    public async Task<ResponseResult> CreateCompletionAsync(ChatCompletionRequest request)
     {
         var options = ConvertToResponseCreationOptions(request);
 
         try
         {
             // Pass conversation history directly
-            var response = await responseClient.CreateResponseAsync(request.ConversationHistory, options);
+            var response = await responseClient.CreateResponseAsync(options);
             return response;
         }
         catch (Exception ex)
@@ -47,9 +47,14 @@ Chatting with user {0} (id={1}), Chat Start Time: {2}.
         }
     }
 
-    private ResponseCreationOptions ConvertToResponseCreationOptions(ChatCompletionRequest request)
+    private CreateResponseOptions ConvertToResponseCreationOptions(ChatCompletionRequest request)
     {
-        var options = new ResponseCreationOptions();
+        var options = new CreateResponseOptions
+        {
+            Model = request.Model
+        };
+        foreach (var item in request.ConversationHistory)
+            options.InputItems.Add(item);
 
         if (request.Temperature.HasValue)
             options.Temperature = (float)request.Temperature.Value;

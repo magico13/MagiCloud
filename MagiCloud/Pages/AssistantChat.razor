@@ -107,7 +107,7 @@ else
     private string UserId { get; set; }
     private Chat Chat { get; set; }
     private string ForbiddenMessage { get; set; }
-    private OpenAIResponse LastResponse { get; set; }
+    private ResponseResult LastResponse { get; set; }
 
     private MarkdownPipeline MarkdownPipeline { get; set; } = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
@@ -208,7 +208,7 @@ else
         }
     }
 
-    private int GetTokenCount(OpenAIResponse response)
+    private int GetTokenCount(ResponseResult response)
     {
         // The Responses API includes usage information
         return response.Usage?.TotalTokenCount ?? 0;

@@ -30,13 +30,13 @@ public class Chat
         ]));
     }
 
-    public async Task<OpenAIResponse> StartChatAsync()
+    public async Task<ResponseResult> StartChatAsync()
     {
         var response = await SendUserMessage(string.Empty);
         return response;
     }
 
-    public async Task<OpenAIResponse> SendUserMessage(string messageContent)
+    public async Task<ResponseResult> SendUserMessage(string messageContent)
     {
         // Build request with only new user message
         var requestHistory = new List<ResponseItem>();
@@ -83,7 +83,7 @@ public class Chat
         return response;
     }
 
-    public async Task<OpenAIResponse> SendFunctionResult(string callId, string functionName, string result)
+    public async Task<ResponseResult> SendFunctionResult(string callId, string functionName, string result)
     {
         // Build request with only new function result
         var requestHistory = new List<ResponseItem>();

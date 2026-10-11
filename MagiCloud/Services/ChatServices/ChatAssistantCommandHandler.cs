@@ -104,7 +104,7 @@ public class ChatAssistantCommandHandler(
         // It has to also take the highlights and return which segment it's in
     };
 
-    public async Task<OpenAIResponse> HandleFunctionCallAsync(Chat chat, string userId, FunctionCallResponseItem functionCallItem)
+    public async Task<ResponseResult> HandleFunctionCallAsync(Chat chat, string userId, FunctionCallResponseItem functionCallItem)
     {
         var functionName = functionCallItem.FunctionName;
         var arguments = functionCallItem.FunctionArguments?.ToString() ?? "{}";
