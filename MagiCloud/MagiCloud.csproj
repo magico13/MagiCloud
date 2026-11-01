@@ -13,15 +13,15 @@
     <PackageReference Include="Blazorise.DataGrid" Version="2.4.1" />
     <PackageReference Include="Blazorise.Icons.FontAwesome" Version="2.4.1" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
-    <PackageReference Include="Markdig" Version="1.5.0" />
+    <PackageReference Include="Markdig" Version="1.5.1" />
     <!-- Override transitive NuGet.* 6.12.1 (via Razor.Language 6.0.24) to patched 6.12.5: GHSA-g4vj-cjjj-v7hg -->
-    <PackageReference Include="NuGet.Packaging" Version="6.12.5" />
-    <PackageReference Include="NuGet.Protocol" Version="6.12.5" />
+    <PackageReference Include="NuGet.Packaging" Version="7.9.0" />
+    <PackageReference Include="NuGet.Protocol" Version="7.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.14">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <TreatAsUsed>true</TreatAsUsed>
